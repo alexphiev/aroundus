@@ -1,0 +1,83 @@
+"use server";
+
+import { createClient } from "@/utils/supabase/server";
+import { z } from "zod";
+
+// Define the structure of a trip to be saved, matching the TripResult and table schema
+const TripDataSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  lat: z.number(),
+  long: z.number(),
+});
+
+export type TripToSave = z.infer<typeof TripDataSchema>;
+
+export async function saveTripAction(tripData: TripToSave) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error("User not authenticated to save trip:", userError);
+    return { error: "Authentication required to save trips." };
+  }
+
+  const parseResult = TripDataSchema.safeParse(tripData);
+  if (!parseResult.success) {
+    console.error("Invalid trip data for saving:", parseResult.error.flatten());
+    return {
+      error: "Invalid trip data provided.",
+      details: parseResult.error.flatten(),
+    };
+  }
+
+  const { name, description, lat, long } = parseResult.data;
+
+  try {
+    const { data, error } = await supabase
+      .from("saved_places")
+      .insert([
+        {
+          user_id: user.id,
+          name,
+          description,
+          lat,
+          long,
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error("Supabase error saving trip:", error);
+      if (error.code === "23503" && error.message?.includes("auth.users")) {
+        return {
+          error:
+            "Failed to save trip due to a user reference issue. Please try again.",
+        };
+      }
+      if (error.code === "42501") {
+        // RLS violation
+        return {
+          error:
+            "You don't have permission to save this trip. Please ensure you are logged in.",
+        };
+      }
+      return {
+        error: `Failed to save trip: ${
+          error.message || "Unknown Supabase error"
+        }`,
+      };
+    }
+
+    console.log("Trip saved successfully:", data);
+    return { success: true, data };
+  } catch (e: any) {
+    console.error("Unexpected error saving trip:", e);
+    return {
+      error: `An unexpected error occurred: ${e.message || "Unknown error"}`,
+    };
+  }
+}

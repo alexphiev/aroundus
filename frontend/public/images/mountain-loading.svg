@@ -1,0 +1,44 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background sky -->
+  <rect width="400" height="300" fill="#f8fafc" />
+  
+  <!-- Sun with pulsing animation -->
+  <circle cx="300" cy="80" r="30" fill="#fbbf24">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Far mountains -->
+  <path d="M0,300 L100,200 L150,230 L200,180 L250,220 L300,150 L350,220 L400,180 L400,300 Z" fill="#cbd5e1" />
+  
+  <!-- Middle mountains -->
+  <path d="M0,300 L50,230 L100,250 L150,200 L200,240 L250,190 L300,250 L350,210 L400,240 L400,300 Z" fill="#94a3b8" />
+  
+  <!-- Near mountains with loading animation -->
+  <path d="M0,300 L80,220 L160,270 L240,190 L320,250 L400,200 L400,300 Z" fill="#64748b">
+    <animate attributeName="d" 
+             values="M0,300 L80,220 L160,270 L240,190 L320,250 L400,200 L400,300 Z;
+                    M0,300 L80,230 L160,260 L240,200 L320,260 L400,210 L400,300 Z;
+                    M0,300 L80,220 L160,270 L240,190 L320,250 L400,200 L400,300 Z" 
+             dur="4s" 
+             repeatCount="indefinite" />
+  </path>
+  
+  <!-- Trees -->
+  <circle cx="120" cy="270" r="8" fill="#166534" />
+  <circle cx="135" cy="275" r="6" fill="#166534" />
+  <circle cx="280" cy="260" r="7" fill="#166534" />
+  <circle cx="300" cy="270" r="5" fill="#166534" />
+  
+  <!-- Moving clouds -->
+  <g>
+    <ellipse cx="80" cy="100" rx="25" ry="15" fill="#f1f5f9">
+      <animate attributeName="cx" values="80;120;80" dur="20s" repeatCount="indefinite" />
+    </ellipse>
+    <ellipse cx="250" cy="70" rx="40" ry="20" fill="#f1f5f9">
+      <animate attributeName="cx" values="250;200;250" dur="25s" repeatCount="indefinite" />
+    </ellipse>
+    <ellipse cx="350" cy="120" rx="30" ry="15" fill="#f1f5f9">
+      <animate attributeName="cx" values="350;380;350" dur="18s" repeatCount="indefinite" />
+    </ellipse>
+  </g>
+</svg> 
