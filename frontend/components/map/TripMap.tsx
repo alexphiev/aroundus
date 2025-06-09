@@ -42,24 +42,29 @@ interface TripResult {
     | "walking"
     | "swimming"
     | string;
+  starRating?: number;
 }
 
 interface TripMapProps {
   tripResults: TripResult[] | null;
   userLocation?: TripLocation | null; // Optional user location to center map initially
   className?: string; // Allow passing custom classes
-  activeMarkerIndex?: number; // Index of the active marker to highlight
+  activeMarkerIndex?: number; // Index of the active marker to highlight (-1 for none)
   shouldUpdateBounds?: boolean; // Whether to update map bounds when results change
   isProgressiveSearch?: boolean; // Whether this is a progressive search
+  onMarkerClick?: (index: number) => void; // Callback when marker is clicked
+  onPopupClose?: () => void; // Callback when popup is closed
 }
 
 const TripMap: React.FC<TripMapProps> = ({
   tripResults,
   userLocation,
   className = "",
-  activeMarkerIndex = 0,
+  activeMarkerIndex = -1,
   shouldUpdateBounds = true,
   isProgressiveSearch = false,
+  onMarkerClick,
+  onPopupClose,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<Map | null>(null);
@@ -253,32 +258,43 @@ const TripMap: React.FC<TripMapProps> = ({
         const el = document.createElement("div");
         el.className = "custom-marker";
         el.style.cursor = "pointer";
-        el.style.transform =
-          index === activeMarkerIndex ? "scale(1.2)" : "scale(1)";
-        el.style.zIndex = index === activeMarkerIndex ? "2" : "1";
-        el.style.transition = "all 0.3s ease";
-        el.style.filter =
-          index === activeMarkerIndex
-            ? "drop-shadow(0 4px 8px rgba(0,0,0,0.3))"
-            : "drop-shadow(0 2px 4px rgba(0,0,0,0.2))";
+        el.style.transform = "scale(1)"; // No auto-scaling on initial load
+        el.style.zIndex = "1";
+        el.style.filter = "drop-shadow(0 2px 4px rgba(0,0,0,0.2))";
 
-        // Create the exact same styling as the card icons
+        // Create tree icons based on star rating
+        const starRating = trip.starRating || 1; // Default to 1 if no rating
+        const numTrees = Math.min(Math.max(starRating, 1), 3); // Ensure between 1-3 trees
+
         const iconContainer = document.createElement("div");
-        iconContainer.style.background = "hsl(var(--primary))"; // bg-primary (100% opacity)
-        iconContainer.style.padding = "4px"; // p-1
-        iconContainer.style.borderRadius = "50%"; // rounded-full
         iconContainer.style.display = "flex";
-        iconContainer.style.justifyContent = "center";
         iconContainer.style.alignItems = "center";
-        iconContainer.style.width = "28px";
-        iconContainer.style.height = "28px";
-        iconContainer.style.border = "2px solid white";
-        iconContainer.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+        iconContainer.style.justifyContent = "center";
+        iconContainer.style.position = "relative";
 
-        // Add landscape icon (matching the card icons)
-        const LandscapeIcon = getLandscapeIcon(trip.landscape);
-        const landscapeIconSvg = iconToSvg(LandscapeIcon);
-        iconContainer.innerHTML = landscapeIconSvg;
+        // Tree icon SVG in primary color with accent border - crisp rendering
+        const treeIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="hsl(var(--primary))" stroke="hsl(var(--accent))" stroke-width="1.5" style="shape-rendering: crispEdges; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17z"/><path d="M12 22v-3"/></svg>`;
+
+        // Add the appropriate number of tree icons with overlapping positioning
+        for (let i = 0; i < numTrees; i++) {
+          const treeIcon = document.createElement("div");
+          treeIcon.innerHTML = treeIconSvg;
+          treeIcon.style.display = "flex";
+          treeIcon.style.alignItems = "center";
+          treeIcon.style.justifyContent = "center";
+          treeIcon.style.position = "absolute";
+          treeIcon.style.left = `${i * 8.5}px`; // Overlap by positioning each tree 8.5px apart
+          treeIcon.style.zIndex = `${numTrees - i}`; // Stack them properly
+          // Ensure crisp rendering
+          treeIcon.style.imageRendering = "crisp-edges";
+          treeIcon.style.imageRendering = "-webkit-optimize-contrast";
+          treeIcon.style.transform = "translateZ(0)"; // Force hardware acceleration
+          iconContainer.appendChild(treeIcon);
+        }
+
+        // Set container width to accommodate overlapping trees
+        iconContainer.style.width = `${36 + (numTrees - 1) * 12}px`;
+        iconContainer.style.height = "36px";
 
         el.appendChild(iconContainer);
 
@@ -306,21 +322,37 @@ const TripMap: React.FC<TripMapProps> = ({
           }, index * 100); // Stagger animations for multiple new markers
         }
 
+        // Add click handler to marker
+        el.addEventListener("click", () => {
+          if (onMarkerClick) {
+            onMarkerClick(index);
+          }
+        });
+
+        const popup = new maplibregl.Popup({
+          closeButton: true,
+          closeOnClick: false,
+          offset: [0, -10],
+          className: "custom-popup",
+        }).setHTML(
+          `<div class="p-2 pr-4">
+            <h6 class="font-bold text-sm">${trip.name}</h6>
+           </div>`
+        );
+
+        // Add close event listener to popup
+        popup.on('close', () => {
+          if (onPopupClose) {
+            onPopupClose();
+          }
+        });
+
         const marker = new maplibregl.Marker({ element: el })
           .setLngLat([trip.long, trip.lat])
-          .setPopup(
-            new maplibregl.Popup().setHTML(
-              `<h6 class="font-bold">${trip.name}</h6>
-               <p>${trip.description.substring(0, 50)}...</p>
-               ${trip.landscape ? `<p class="text-xs mt-1 capitalize"><strong>Landscape:</strong> ${trip.landscape}</p>` : ""}
-               ${trip.activity ? `<p class="text-xs capitalize"><strong>Activity:</strong> ${trip.activity}</p>` : ""}`
-            )
-          )
+          .setPopup(popup)
           .addTo(map.current!);
 
-        if (index === activeMarkerIndex) {
-          marker.togglePopup(); // Show popup for active marker
-        }
+        // Don't auto-show popup for active marker on initial load
 
         markersRef.current.push(marker);
         bounds.extend([trip.long, trip.lat]);
@@ -379,19 +411,19 @@ const TripMap: React.FC<TripMapProps> = ({
       const el = marker.getElement();
 
       // Update marker styles based on active state
-      el.style.transform =
-        actualTripIndex === activeMarkerIndex ? "scale(1.2)" : "scale(1)";
-      el.style.zIndex = actualTripIndex === activeMarkerIndex ? "2" : "1";
-      el.style.filter =
-        actualTripIndex === activeMarkerIndex
-          ? "drop-shadow(0 4px 8px rgba(0,0,0,0.3))"
-          : "drop-shadow(0 2px 4px rgba(0,0,0,0.2))";
+      const isActive =
+        actualTripIndex === activeMarkerIndex && activeMarkerIndex >= 0;
+      el.style.transform = isActive ? "scale(1.2)" : "scale(1)";
+      el.style.zIndex = isActive ? "2" : "1";
+      el.style.filter = isActive
+        ? "drop-shadow(0 4px 8px rgba(0,0,0,0.3))"
+        : "drop-shadow(0 2px 4px rgba(0,0,0,0.2))";
 
-      // Hide all popups
+      // Hide all popups first
       marker.getPopup().remove();
 
-      // Show popup only for active marker
-      if (actualTripIndex === activeMarkerIndex) {
+      // Show popup and pan only for active marker (when user clicks)
+      if (isActive) {
         marker.togglePopup();
 
         // Pan to the active marker
@@ -405,17 +437,42 @@ const TripMap: React.FC<TripMapProps> = ({
   }, [activeMarkerIndex, tripResults, mapLoaded, userLocation]);
 
   return (
-    <div
-      ref={mapContainer}
-      className={`w-full h-full rounded-lg shadow-md bg-muted overflow-hidden relative ${className}`}
-      aria-label="Map of trip suggestions"
-    >
-      {!mapLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-          <p className="text-muted-foreground">Loading map...</p>
-        </div>
-      )}
-    </div>
+    <>
+      <style>{`
+        .custom-popup {
+          z-index: 1000 !important;
+        }
+        .custom-popup .maplibregl-popup-content {
+          padding: 0;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          z-index: 1000 !important;
+        }
+        .custom-popup .maplibregl-popup-close-button {
+          right: 2px;
+          top: 2px;
+          font-size: 16px;
+          width: 24px;
+          height: 28px;
+          z-index: 1001 !important;
+        }
+        .custom-popup .maplibregl-popup-tip {
+          border-top-color: white;
+          z-index: 1000 !important;
+        }
+      `}</style>
+      <div
+        ref={mapContainer}
+        className={`w-full h-full rounded-lg shadow-md bg-muted overflow-hidden relative ${className}`}
+        aria-label="Map of trip suggestions"
+      >
+        {!mapLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+            <p className="text-muted-foreground">Loading map...</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

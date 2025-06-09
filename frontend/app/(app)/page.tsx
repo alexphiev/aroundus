@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import MapResult from "@/components/map/MapResult";
-import { getSavedTripsAction } from "./search-history/actions";
+import { getSavedTripsAction } from "@/actions/save-trip.actions";
 
 export default async function AppPage() {
   const supabase = await createClient(); // Await due to server.ts's potential async nature

@@ -13,6 +13,36 @@ const TripDataSchema = z.object({
 
 export type TripToSave = z.infer<typeof TripDataSchema>;
 
+export async function getSavedTripsAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error("User not authenticated to get saved trips:", userError);
+    return { error: "Authentication required to get saved trips." };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("saved_places")
+      .select("*")
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Supabase error getting saved trips:", error);
+      return { error: `Failed to get saved trips: ${error.message}` };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (e: any) {
+    console.error("Unexpected error getting saved trips:", e);
+    return { error: `An unexpected error occurred: ${e.message || "Unknown error"}` };
+  }
+}
+
 export async function saveTripAction(tripData: TripToSave) {
   const supabase = await createClient();
   const {
