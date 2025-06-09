@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/card";
 import Image from "next/image";
 import TripMap from "@/components/map/TripMap";
-import { handleTripSearch } from "../search-trip/actions";
+import { handleProgressiveTripSearch } from "../search-trip/actions";
 import { saveTripAction, TripToSave } from "../search-trip/saveTripActions";
 
 // Define the structure of a trip result
@@ -32,15 +32,22 @@ interface TripResult {
   description: string;
   lat: number;
   long: number;
+  landscape?: string;
+  activity?: string;
+  estimatedActivityDuration?: string;
+  estimatedTransportTime?: string;
+  whyRecommended?: string;
+  isOtherCategory?: boolean;
 }
 
-export default function TripResultsPage() {
+function TripResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [isSaving, startSavingTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
   const [tripResults, setTripResults] = useState<TripResult[] | null>(null);
+  const [currentStage, setCurrentStage] = useState<string>("");
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -58,8 +65,8 @@ export default function TripResultsPage() {
       const distanceValue = searchParams.get("distanceValue");
       const distanceUnit = searchParams.get("distanceUnit");
       const activityLevel = searchParams.get("activityLevel");
-      const durationValue = searchParams.get("durationValue");
-      const durationUnit = searchParams.get("durationUnit");
+      const activityDurationValue = searchParams.get("activityDurationValue");
+      const activityDurationUnit = searchParams.get("activityDurationUnit");
       const lat = searchParams.get("lat");
       const lng = searchParams.get("lng");
 
@@ -69,8 +76,8 @@ export default function TripResultsPage() {
         !distanceValue ||
         !distanceUnit ||
         !activityLevel ||
-        !durationValue ||
-        !durationUnit ||
+        !activityDurationValue ||
+        !activityDurationUnit ||
         !lat ||
         !lng
       ) {
@@ -91,8 +98,8 @@ export default function TripResultsPage() {
         distanceValue: parseInt(distanceValue),
         distanceUnit: distanceUnit as "minutes" | "hours",
         activityLevel: parseInt(activityLevel),
-        durationValue: parseInt(durationValue),
-        durationUnit: durationUnit as "hours" | "days",
+        activityDurationValue: parseInt(activityDurationValue),
+        activityDurationUnit: activityDurationUnit as "hours" | "days",
         location: {
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
@@ -102,19 +109,23 @@ export default function TripResultsPage() {
       try {
         // Execute search
         setIsLoading(true);
-        const result = await handleTripSearch(payload);
+        setTripResults([]);
+        setCurrentStage("searching");
+
+        const result = await handleProgressiveTripSearch(payload);
 
         if (result?.error) {
           toast.error(result.error);
           setTripResults([]);
         } else if (result?.data) {
           const dataArray = Array.isArray(result.data) ? result.data : [];
+          setTripResults(dataArray as TripResult[]);
+
           if (dataArray.length > 0) {
-            toast.success(`Found ${dataArray.length} trip(s)!`);
+            toast.success(`Found ${dataArray.length} destinations!`);
           } else {
             toast.info("No trips found matching your criteria.");
           }
-          setTripResults(dataArray as TripResult[]);
         } else {
           toast.warning("No specific data or error returned from search.");
           setTripResults([]);
@@ -125,6 +136,7 @@ export default function TripResultsPage() {
         setTripResults([]);
       } finally {
         setIsLoading(false);
+        setCurrentStage("");
       }
     };
 
@@ -209,8 +221,18 @@ export default function TripResultsPage() {
       </Button>
       <h1 className="text-3xl font-bold mb-2">Your Nature Trip Results</h1>
 
+      {/* Progress Indicator */}
+      {isLoading && currentStage && (
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">
+            Finding {currentStage} destinations...
+          </span>
+        </div>
+      )}
+
       {/* Loading Animation */}
-      {isLoading && (
+      {isLoading && !tripResults?.length && (
         <div className="mt-10 text-center py-10">
           <div className="relative w-64 h-64 mx-auto">
             <Image
@@ -242,7 +264,7 @@ export default function TripResultsPage() {
       )}
 
       {/* Results Found */}
-      {!isLoading && tripResults && tripResults.length > 0 && (
+      {tripResults && tripResults.length > 0 && (
         <div className="mt-10 space-y-8">
           {/* Map Section */}
           <div className="w-full">
@@ -352,5 +374,31 @@ export default function TripResultsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TripResultsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto py-8 px-4">
+          <div className="mt-10 text-center py-10">
+            <div className="relative w-64 h-64 mx-auto">
+              <Image
+                src="/images/mountain-loading.svg"
+                alt="Loading mountain scenery"
+                fill
+                className="object-contain"
+              />
+            </div>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Loading trip results...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <TripResultsContent />
+    </Suspense>
   );
 }

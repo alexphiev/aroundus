@@ -9,7 +9,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bookmark, MapPin, Filter, Search, Mountain } from "lucide-react";
+import {
+  Bookmark,
+  MapPin,
+  Filter,
+  Search,
+  Mountain,
+  Star,
+  Trees,
+  Waves,
+  TreePine,
+  Droplets,
+  Flower2,
+  Sun,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useMemo } from "react";
 import TripMap from "@/components/map/TripMap";
 import {
   TooltipProvider,
@@ -47,6 +62,11 @@ export interface TripResultItem {
     | "walking"
     | "swimming"
     | string;
+  estimatedActivityDuration?: string;
+  estimatedTransportTime?: string;
+  whyRecommended?: string;
+  isOtherCategory?: boolean;
+  starRating?: number;
   created_at?: string;
 }
 
@@ -61,6 +81,8 @@ interface MapResultProps {
   isLoading?: boolean;
   className?: string;
   onSaveTrip?: (trip: TripResultItem) => Promise<void>;
+  progressiveStage?: string;
+  isProgressiveComplete?: boolean;
 }
 
 export default function MapResult({
@@ -74,9 +96,18 @@ export default function MapResult({
   isLoading = false,
   className = "",
   onSaveTrip,
+  progressiveStage,
+  isProgressiveComplete = true,
 }: MapResultProps) {
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // Randomly select a loading GIF each time the component loads
+  const loadingGif = useMemo(() => {
+    const gifs = ['animals.gif', 'lake.gif', 'landscape.gif'];
+    const randomIndex = Math.floor(Math.random() * gifs.length);
+    return `/images/${gifs[randomIndex]}`;
+  }, [isLoading]); // Re-select when isLoading changes
 
   // Save trip handler
   const handleSaveTrip = async (trip: TripResultItem) => {
@@ -110,39 +141,81 @@ export default function MapResult({
     setIsSaving(false);
   };
 
-  // Get landscape icon (simplified version)
+  // Get landscape icon based on type
   const getLandscapeIcon = (landscape?: string) => {
-    return <Mountain className="h-5 w-5" />;
+    switch (landscape?.toLowerCase()) {
+      case "mountain":
+        return <Mountain className="h-5 w-5" />;
+      case "forest":
+        return <Trees className="h-5 w-5" />;
+      case "lake":
+        return <Waves className="h-5 w-5" />;
+      case "beach":
+        return <Sun className="h-5 w-5" />;
+      case "river":
+        return <Droplets className="h-5 w-5" />;
+      case "park":
+        return <Flower2 className="h-5 w-5" />;
+      case "wetland":
+        return <Droplets className="h-5 w-5" />;
+      case "desert":
+        return <Sun className="h-5 w-5" />;
+      default:
+        return <TreePine className="h-5 w-5" />;
+    }
   };
 
-  // Get activity icon (simplified version)
+  // Get activity icon based on type
   const getActivityIcon = (activity?: string) => {
-    return <Mountain className="h-5 w-5" />;
+    switch (activity?.toLowerCase()) {
+      case "hiking":
+        return <Mountain className="h-5 w-5" />;
+      case "biking":
+        return <TreePine className="h-5 w-5" />;
+      case "camping":
+        return <Trees className="h-5 w-5" />;
+      case "photography":
+        return <Sun className="h-5 w-5" />;
+      case "wildlife":
+        return <Flower2 className="h-5 w-5" />;
+      case "walking":
+        return <TreePine className="h-5 w-5" />;
+      case "swimming":
+        return <Waves className="h-5 w-5" />;
+      default:
+        return <Mountain className="h-5 w-5" />;
+    }
   };
 
   return (
-    <div className={`container mx-auto py-6 px-4 md:px-6 ${className}`}>
-      {/* Main Content */}
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Left Column - Trip Cards */}
-        <div className="w-full md:w-1/2 lg:w-2/5">
-          <div className="sticky top-20">
-            <h1 className="text-3xl font-bold mb-2">{title}</h1>
-            <p className="text-muted-foreground mb-6">{subtitle}</p>
+    <div className={`h-screen flex ml-[60px] ${className}`}>
+      {/* Left Column - Title and Trip Cards */}
+      <div className="w-full md:w-1/2 flex flex-col h-full px-6">
+        {/* Fixed Title Header */}
+        <div className="flex-shrink-0 pt-6 pb-4 bg-background">
+          <h1 className="text-3xl font-bold mb-2">{title}</h1>
+          <p className="text-muted-foreground">{subtitle}</p>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto py-4 pb-8 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">{/* Scrollable content with padding for card borders */}
 
             {/* Loading State */}
             {isLoading && (
               <div className="bg-muted rounded-lg p-8 text-center">
-                <div className="relative w-40 h-40 mx-auto mb-4">
+                <div className="relative w-40 h-40 mx-auto mb-4 flex items-center justify-center">
+                  {/* Random loading GIF */}
                   <Image
-                    src="/images/mountain-loading.svg"
-                    alt="Loading mountain scenery"
-                    fill
-                    className="object-contain"
+                    src={loadingGif}
+                    alt="Loading animation"
+                    width={160}
+                    height={160}
+                    className="rounded-lg object-cover"
+                    unoptimized // Allow GIF animation
                   />
                 </div>
                 <p className="text-lg text-muted-foreground">
-                  Loading places...
+                  Searching for amazing places...
                 </p>
               </div>
             )}
@@ -162,126 +235,182 @@ export default function MapResult({
 
             {/* Trip Results Grid */}
             {!isLoading && tripResults && tripResults.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {tripResults.map((trip, index) => (
-                  <Card
-                    key={trip.id || index}
-                    className={`cursor-pointer transition-all hover:shadow-lg ${activeCardIndex === index ? "ring-2 ring-primary" : ""}`}
-                    onClick={() => {
-                      setActiveCardIndex(index);
-                    }}
-                  >
-                    <CardHeader className="p-4 pb-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex gap-1">
-                          {trip.landscape && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="bg-primary/10 p-1 rounded-full">
-                                    {getLandscapeIcon(trip.landscape)}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="capitalize">{trip.landscape}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-
-                          {trip.activity && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="bg-primary/10 p-1 rounded-full">
-                                    {getActivityIcon(trip.activity)}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="capitalize">{trip.activity}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-
-                        {showSaveButton && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            disabled={isSaving}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveTrip(trip);
-                            }}
-                          >
-                            <Bookmark className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <CardTitle className="text-lg mt-2">
-                        {trip.name}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <CardDescription className="line-clamp-2">
-                        {trip.description}
-                      </CardDescription>
-                      <div className="flex items-center text-xs text-muted-foreground mt-2">
-                        <MapPin className="mr-1 h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">
-                          GPS: {trip.lat.toFixed(4)}, {trip.long.toFixed(4)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column - Map */}
-        <div className="w-full md:w-1/2 lg:w-3/5 h-[calc(100vh-150px)] sticky top-20">
-          <div className="rounded-lg overflow-hidden h-full border">
-            {tripResults && tripResults.length > 0 ? (
-              <TripMap
-                tripResults={tripResults.map((trip) => ({
-                  name: trip.name,
-                  description: trip.description,
-                  lat: trip.lat,
-                  long: trip.long,
-                  landscape: trip.landscape as any,
-                  activity: trip.activity as any,
-                }))}
-                userLocation={userLocation}
-                activeMarkerIndex={activeCardIndex}
-                className="h-full"
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center bg-muted/30">
-                <div className="text-center p-6">
-                  <Mountain className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-semibold mb-2">
-                    {emptyStateMessage}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">
+                    Nature Destinations ({tripResults.length} found)
                   </h3>
-                  <p className="text-muted-foreground mb-4">
-                    {onSearchClick
-                      ? "Use the search button to find places"
-                      : "Save places to see them on the map"}
-                  </p>
-                  {onSearchClick && (
-                    <Button onClick={onSearchClick}>
-                      <Search className="mr-2 h-4 w-4" />
-                      Search Places
-                    </Button>
+                  {!isProgressiveComplete && progressiveStage && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="animate-pulse h-2 w-2 bg-primary rounded-full"></div>
+                      <span>Finding {progressiveStage} destinations...</span>
+                    </div>
                   )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <AnimatePresence>
+                    {tripResults.map((trip, index) => (
+                      <motion.div
+                        key={trip.id || index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.3,
+                          delay: index * 0.1,
+                          ease: "easeOut",
+                        }}
+                        layout
+                      >
+                        <Card
+                          className={`cursor-pointer transition-all hover:shadow-lg h-full flex flex-col ${activeCardIndex === index ? "ring-2 ring-primary" : ""}`}
+                          onClick={() => {
+                            setActiveCardIndex(index);
+                          }}
+                        >
+                          <CardHeader className="p-4 pb-2 flex-shrink-0">
+                            <div className="flex justify-between items-start">
+                              <div className="flex gap-1">
+                                {trip.landscape && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="bg-primary/10 p-1 rounded-full">
+                                          {getLandscapeIcon(trip.landscape)}
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="capitalize">
+                                          {trip.landscape}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+
+                                {trip.activity && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="bg-primary/10 p-1 rounded-full">
+                                          {getActivityIcon(trip.activity)}
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="capitalize">
+                                          {trip.activity}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+
+                              {showSaveButton && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  disabled={isSaving}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSaveTrip(trip);
+                                  }}
+                                >
+                                  <Bookmark className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <CardTitle className="text-lg mt-2 line-clamp-2">
+                              {trip.name}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 flex-1 flex flex-col">
+                            <CardDescription className="line-clamp-3 mb-3 flex-shrink-0">
+                              {trip.description}
+                            </CardDescription>
+
+                            <div className="flex-1 space-y-3">
+                              {/* Duration Information */}
+                              {(trip.estimatedActivityDuration ||
+                                trip.estimatedTransportTime) && (
+                                <div className="flex gap-2 flex-wrap">
+                                  {trip.estimatedActivityDuration && (
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                      Activity: {trip.estimatedActivityDuration}
+                                    </span>
+                                  )}
+                                  {trip.estimatedTransportTime && (
+                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                      Travel: {trip.estimatedTransportTime}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Star Rating Badge */}
+                              {trip.starRating && (
+                                <div className="flex items-center gap-1">
+                                  {Array.from(
+                                    { length: trip.starRating },
+                                    (_, i) => (
+                                      <Star
+                                        key={i}
+                                        className="h-3 w-3 fill-yellow-400 text-yellow-400"
+                                      />
+                                    )
+                                  )}
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    {trip.starRating === 3 && "Must-Visit"}
+                                    {trip.starRating === 2 && "Excellent"}
+                                    {trip.starRating === 1 && "Hidden Gem"}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Why Recommended */}
+                              {trip.whyRecommended && (
+                                <p className="text-xs text-muted-foreground italic line-clamp-2">
+                                  {trip.whyRecommended}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* GPS Coordinates - Always at bottom */}
+                            <div className="flex items-center text-xs text-muted-foreground mt-auto pt-2 border-t">
+                              <MapPin className="mr-1 h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">
+                                GPS: {trip.lat.toFixed(4)},{" "}
+                                {trip.long.toFixed(4)}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
-          </div>
         </div>
+      </div>
+
+      {/* Right Column - Map (Full Screen Height) */}
+      <div className="w-full md:w-1/2 h-screen">
+        <TripMap
+          tripResults={tripResults && tripResults.length > 0 ? tripResults.map((trip) => ({
+            name: trip.name,
+            description: trip.description,
+            lat: trip.lat,
+            long: trip.long,
+            landscape: trip.landscape as any,
+            activity: trip.activity as any,
+          })) : []} // Pass empty array instead of null when no results
+          userLocation={userLocation}
+          activeMarkerIndex={activeCardIndex}
+          className="h-full"
+          shouldUpdateBounds={true}
+          isProgressiveSearch={!isProgressiveComplete}
+        />
       </div>
     </div>
   );

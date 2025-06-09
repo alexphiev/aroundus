@@ -7,11 +7,11 @@ import { Toaster } from "@/components/ui/toaster";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-screen">
+    <div className="relative flex h-screen overflow-hidden">
       <SidebarProvider>
         <AppSidebar />
 
-        <main className="flex-1 md:ml-[60px] transition-all duration-300 pt-4">
+        <main className="flex-1 transition-all duration-300 overflow-hidden">
           {children}
         </main>
       </SidebarProvider>

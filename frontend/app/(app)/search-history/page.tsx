@@ -125,22 +125,23 @@ export default function SearchHistoryPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center text-muted-foreground">
-                <MapPin className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span>
-                  GPS: {trip.gps_latitude.toFixed(4)},{" "}
-                  {trip.gps_longitude.toFixed(4)}
-                </span>
-              </div>
-              {trip.activity_notes && (
+              {trip.lat && trip.long && (
+                <div className="flex items-center text-muted-foreground">
+                  <MapPin className="mr-2 h-4 w-4 flex-shrink-0" />
+                  <span>
+                    GPS: {trip.lat.toFixed(4)}, {trip.long.toFixed(4)}
+                  </span>
+                </div>
+              )}
+              {trip.activity && (
                 <p>
-                  <strong className="font-medium">Activities:</strong>{" "}
-                  {trip.activity_notes}
+                  <strong className="font-medium">Activity:</strong>{" "}
+                  {trip.activity}
                 </p>
               )}
-              {trip.estimated_travel_time && (
+              {trip.landscape && (
                 <Badge variant="outline" className="mt-1">
-                  Travel: {trip.estimated_travel_time}
+                  Landscape: {trip.landscape}
                 </Badge>
               )}
             </CardContent>

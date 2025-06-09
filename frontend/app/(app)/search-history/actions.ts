@@ -4,15 +4,15 @@ import { createClient } from "@/utils/supabase/server";
 import { Database } from "database-types";
 
 export interface SavedTrip {
-  id: string; // Assuming UUID from Supabase
-  user_id: string;
+  id: string;
+  user_id: string | null;
   created_at: string;
   name: string;
   description: string | null;
-  gps_latitude: number;
-  gps_longitude: number;
-  activity_notes: string | null;
-  estimated_travel_time: string | null;
+  lat: number | null;
+  long: number | null;
+  activity: string | null;
+  landscape: string | null;
 }
 
 export async function getSavedTripsAction(): Promise<{

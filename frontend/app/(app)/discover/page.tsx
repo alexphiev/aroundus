@@ -73,7 +73,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import TripMap from "@/components/map/TripMap";
-import { handleTripSearch } from "../search-trip/actions";
+import { handleProgressiveTripSearch, handleProgressiveTripSearchByStage } from "../search-trip/actions";
 import { saveTripAction } from "../search-trip/saveTripActions";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -112,11 +112,11 @@ const formSchema = z.object({
     message: "Please select a transport type.",
   }),
   activityLevel: z.number().min(1).max(5),
-  durationValue: z.coerce
+  activityDurationValue: z.coerce
     .number()
-    .min(1, { message: "Duration must be at least 1." }),
-  durationUnit: z.enum(["hours", "days"], {
-    message: "Please select a duration unit.",
+    .min(1, { message: "Activity duration must be at least 1." }),
+  activityDurationUnit: z.enum(["hours", "days"], {
+    message: "Please select an activity duration unit.",
   }),
 });
 
@@ -222,6 +222,8 @@ export default function DiscoverPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
   const [selectedTrip, setSelectedTrip] = useState<TripResult | null>(null);
+  const [searchStage, setSearchStage] = useState<string>(""); // Track current search stage
+  const [hasInitialResults, setHasInitialResults] = useState<boolean>(false); // Track if we have any results yet
 
   // Initialize form
   const form = useForm<FormSchemaType>({
@@ -231,8 +233,8 @@ export default function DiscoverPage() {
       distance: "1_hour",
       transportType: "transit",
       activityLevel: 3,
-      durationValue: 4,
-      durationUnit: "hours",
+      activityDurationValue: 4,
+      activityDurationUnit: "hours",
     },
   });
 
@@ -267,7 +269,7 @@ export default function DiscoverPage() {
     getLocation();
   }, []);
 
-  // Form submission handler
+  // Form submission handler with progressive search
   function onSubmit(values: FormSchemaType) {
     if (!userLocation) {
       toast.error("Please allow location access to search for trips.");
@@ -275,9 +277,14 @@ export default function DiscoverPage() {
       return;
     }
 
+    // Close modal immediately
+    setIsSearchOpen(false);
+    setIsLoading(true);
+    setTripResults(null); // Clear previous results
+    setSearchStage("");
+    setHasInitialResults(false);
+
     startTransition(async () => {
-      setIsLoading(true);
-      setIsSearchOpen(false); // Close the search modal
 
       // Convert distance string to value and unit
       let distanceValue = 30;
@@ -311,76 +318,87 @@ export default function DiscoverPage() {
         tripCompanions: values.tripCompanions,
         distanceValue: distanceValue,
         distanceUnit: distanceUnit,
-        transportType: values.transportType,
         activityLevel: values.activityLevel,
-        durationValue: values.durationValue,
-        durationUnit: values.durationUnit,
+        activityDurationValue: values.activityDurationValue,
+        activityDurationUnit: values.activityDurationUnit,
         location: {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
         },
       };
 
+      let allResults: TripResult[] = [];
+      let conversationHistory: any[] = [];
+
       try {
-        const result = await handleTripSearch(payload);
-
-        if (result?.error) {
-          toast.error(result.error);
-          setTripResults([]);
-        } else if (result?.data) {
-          const dataArray = Array.isArray(result.data) ? result.data : [];
-
-          // Enhance the data with landscape and activity types
-          const enhancedData = dataArray.map((trip) => {
-            // Assign random landscape and activity types for now
-            // In real implementation, this would come from the AI
-            const landscapes = [
-              "mountain",
-              "forest",
-              "lake",
-              "beach",
-              "river",
-              "park",
-              "wetland",
-              "desert",
-            ];
-            const activities = [
-              "hiking",
-              "biking",
-              "camping",
-              "photography",
-              "wildlife",
-              "walking",
-              "swimming",
-            ];
-
-            return {
-              ...trip,
-              landscape: landscapes[
-                Math.floor(Math.random() * landscapes.length)
-              ] as TripResult["landscape"],
-              activity: activities[
-                Math.floor(Math.random() * activities.length)
-              ] as TripResult["activity"],
-            };
-          });
-
-          if (enhancedData.length > 0) {
-            toast.success(`Found ${enhancedData.length} trip(s)!`);
-          } else {
-            toast.info("No trips found matching your criteria.");
+        // Stage 1: 3-star destinations
+        setSearchStage("iconic");
+        const threeStarResult = await handleProgressiveTripSearchByStage(payload, "3-star", conversationHistory);
+        
+        if (threeStarResult?.error) {
+          toast.error(threeStarResult.error);
+        } else if (threeStarResult?.data && threeStarResult.success) {
+          const threeStarPlaces = Array.isArray(threeStarResult.data) ? threeStarResult.data : [];
+          allResults = [...allResults, ...threeStarPlaces];
+          conversationHistory = threeStarResult.conversationHistory || [];
+          
+          // Update UI with 3-star results immediately
+          setTripResults([...allResults] as TripResult[]);
+          setHasInitialResults(true); // We now have initial results to show
+          if (threeStarPlaces.length > 0) {
+            toast.success(`Found ${threeStarPlaces.length} iconic destinations!`);
           }
-          setTripResults(enhancedData as TripResult[]);
-        } else {
-          toast.warning("No specific data or error returned from search.");
-          setTripResults([]);
         }
+
+        // Stage 2: 2-star destinations
+        setSearchStage("local");
+        const twoStarResult = await handleProgressiveTripSearchByStage(payload, "2-star", conversationHistory);
+        
+        if (twoStarResult?.error) {
+          toast.error(twoStarResult.error);
+        } else if (twoStarResult?.data && twoStarResult.success) {
+          const twoStarPlaces = Array.isArray(twoStarResult.data) ? twoStarResult.data : [];
+          allResults = [...allResults, ...twoStarPlaces];
+          conversationHistory = twoStarResult.conversationHistory || [];
+          
+          // Update UI with 2-star results immediately
+          setTripResults([...allResults] as TripResult[]);
+          if (twoStarPlaces.length > 0) {
+            toast.success(`Found ${twoStarPlaces.length} additional great spots!`);
+          }
+        }
+
+        // Stage 3: 1-star destinations
+        setSearchStage("hidden gems");
+        const oneStarResult = await handleProgressiveTripSearchByStage(payload, "1-star", conversationHistory);
+        
+        if (oneStarResult?.error) {
+          toast.error(oneStarResult.error);
+        } else if (oneStarResult?.data && oneStarResult.success) {
+          const oneStarPlaces = Array.isArray(oneStarResult.data) ? oneStarResult.data : [];
+          allResults = [...allResults, ...oneStarPlaces];
+          
+          // Final update with all results
+          setTripResults([...allResults] as TripResult[]);
+          if (oneStarPlaces.length > 0) {
+            toast.success(`Found ${oneStarPlaces.length} hidden gems!`);
+          }
+        }
+
+        // Final summary
+        if (allResults.length > 0) {
+          toast.success(`Search complete! Found ${allResults.length} total destinations.`);
+        } else {
+          toast.info("No trips found matching your criteria.");
+        }
+
       } catch (error) {
         console.error("Error fetching trip results:", error);
         toast.error("Failed to fetch trip results. Please try again.");
         setTripResults([]);
       } finally {
         setIsLoading(false);
+        setSearchStage("");
       }
     });
   }
@@ -464,15 +482,6 @@ export default function DiscoverPage() {
     <>
       {/* Search Form Modal */}
       <Dialog open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-        <DialogTrigger asChild>
-          <Button
-            className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg"
-            size="lg"
-          >
-            <Filter className="mr-2 h-5 w-5" />
-            Search Trips
-          </Button>
-        </DialogTrigger>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Plan Your Nature Trip</DialogTitle>
@@ -658,14 +667,14 @@ export default function DiscoverPage() {
                 )}
               />
 
-              {/* Duration */}
+              {/* Activity Duration */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="durationValue"
+                  name="activityDurationValue"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Trip Duration</FormLabel>
+                      <FormLabel>Activity Duration</FormLabel>
                       <Select
                         onValueChange={(value) =>
                           field.onChange(parseInt(value))
@@ -684,6 +693,9 @@ export default function DiscoverPage() {
                           <SelectItem value="3">3</SelectItem>
                           <SelectItem value="4">4</SelectItem>
                           <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="6">6</SelectItem>
+                          <SelectItem value="8">8</SelectItem>
+                          <SelectItem value="12">12</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -693,7 +705,7 @@ export default function DiscoverPage() {
 
                 <FormField
                   control={form.control}
-                  name="durationUnit"
+                  name="activityDurationUnit"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Unit</FormLabel>
@@ -741,10 +753,12 @@ export default function DiscoverPage() {
         title="Discover Nature Trips"
         subtitle="Find the perfect nature spot based on your preferences"
         userLocation={userLocation}
-        isLoading={isLoading}
+        isLoading={isLoading && (!tripResults || tripResults.length === 0)}
         onSearchClick={() => setIsSearchOpen(true)}
         emptyStateMessage="No trips found matching your criteria"
         onSaveTrip={handleSaveTrip}
+        progressiveStage={searchStage}
+        isProgressiveComplete={!isLoading}
       />
 
       {/* Trip Details Modal */}

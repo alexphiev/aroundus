@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, MountainIcon, UserCircle2 } from "lucide-react";
 import Link from "next/link";
-import { AppSidebar } from "./sidebar"; // Import the sidebar content
+import { Sidebar } from "./sidebar"; // Import the sidebar content
 import { createClient } from "@/utils/supabase/client";
 import { useEffect, useState } from "react";
 import { type User } from "@supabase/supabase-js";

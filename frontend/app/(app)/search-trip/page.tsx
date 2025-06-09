@@ -25,17 +25,18 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Search, Star } from "lucide-react";
+import Link from "next/link";
 
 const formSchema = z.object({
   tripCompanions: z.string().min(1, { message: "Please select who is going." }),
   distance: z.string().min(1, { message: "Please select a distance." }),
   activityLevel: z.number().min(1).max(5),
-  durationValue: z.coerce
+  activityDurationValue: z.coerce
     .number()
-    .min(1, { message: "Duration must be at least 1." }),
-  durationUnit: z.enum(["hours", "days"], {
-    message: "Please select a duration unit.",
+    .min(1, { message: "Activity duration must be at least 1." }),
+  activityDurationUnit: z.enum(["hours", "days"], {
+    message: "Please select an activity duration unit.",
   }),
 });
 
@@ -56,8 +57,8 @@ export default function SearchTripPage() {
       tripCompanions: "",
       distance: "30_min",
       activityLevel: 3,
-      durationValue: 2,
-      durationUnit: "hours",
+      activityDurationValue: 2,
+      activityDurationUnit: "hours",
     },
   });
 
@@ -98,8 +99,11 @@ export default function SearchTripPage() {
       searchParams.set("companions", values.tripCompanions);
       searchParams.set("distance", values.distance);
       searchParams.set("activityLevel", values.activityLevel.toString());
-      searchParams.set("durationValue", values.durationValue.toString());
-      searchParams.set("durationUnit", values.durationUnit);
+      searchParams.set(
+        "activityDurationValue",
+        values.activityDurationValue.toString()
+      );
+      searchParams.set("activityDurationUnit", values.activityDurationUnit);
       searchParams.set("lat", userLocation.latitude.toString());
       searchParams.set("lng", userLocation.longitude.toString());
 
@@ -114,9 +118,29 @@ export default function SearchTripPage() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
       <h1 className="text-3xl font-bold mb-2">Plan Your Nature Trip</h1>
-      <p className="text-muted-foreground mb-8">
+      <p className="text-muted-foreground mb-4">
         Tell us your preferences, and we'll find the perfect spots!
       </p>
+
+      {/* Demo Link */}
+      <div className="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-blue-900">
+              Try Progressive Search Demo
+            </h3>
+            <p className="text-sm text-blue-700">
+              See how results appear progressively with elegant animations
+            </p>
+          </div>
+          <Link href="/search-trip/demo">
+            <Button variant="outline" size="sm">
+              <Star className="mr-2 h-4 w-4" />
+              View Demo
+            </Button>
+          </Link>
+        </div>
+      </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -255,14 +279,17 @@ export default function SearchTripPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               control={form.control}
-              name="durationValue"
+              name="activityDurationValue"
               render={({
                 field,
               }: {
-                field: ControllerRenderProps<FormSchemaType, "durationValue">;
+                field: ControllerRenderProps<
+                  FormSchemaType,
+                  "activityDurationValue"
+                >;
               }) => (
                 <FormItem>
-                  <FormLabel>Desired Trip Duration</FormLabel>
+                  <FormLabel>Desired Activity Duration</FormLabel>
                   <Input
                     type="number"
                     placeholder="e.g., 2"
@@ -275,11 +302,14 @@ export default function SearchTripPage() {
             />
             <FormField
               control={form.control}
-              name="durationUnit"
+              name="activityDurationUnit"
               render={({
                 field,
               }: {
-                field: ControllerRenderProps<FormSchemaType, "durationUnit">;
+                field: ControllerRenderProps<
+                  FormSchemaType,
+                  "activityDurationUnit"
+                >;
               }) => (
                 <FormItem>
                   <FormLabel>Unit</FormLabel>
