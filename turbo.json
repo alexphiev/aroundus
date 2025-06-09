@@ -4,8 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": [
-        "^build",
-        "database-types#build"
+        "^build"
       ],
       "inputs": [
         "$TURBO_DEFAULT$",
@@ -16,7 +15,7 @@
         "!.next/cache/**"
       ]
     },
-    "database-types#build": {
+    "generate-types": {
       "outputs": []
     },
     "lint": {
