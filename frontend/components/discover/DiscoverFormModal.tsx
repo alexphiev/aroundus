@@ -50,17 +50,26 @@ import {
   Heart,
   Plus,
   Camera,
+  CalendarIcon,
 } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import type { FormValues } from "@/types/search-history.types";
 import {
   ACTIVITY_OPTIONS,
+  WHEN_OPTIONS,
   DISTANCE_OPTIONS,
   TRANSPORT_OPTIONS,
   ACTIVITY_DURATION_VALUES,
   ACTIVITY_DURATION_UNITS,
   SPECIAL_CARE_OPTIONS,
 } from "@/constants/discover.constants";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
 
 type FormSchemaType = FormValues;
 
@@ -73,8 +82,7 @@ interface SelectionGridProps {
   }>;
   value?: string;
   onChange: (value?: string) => void;
-  columns?: 2 | 3 | 4 | 5 | 6;
-  allowDeselect?: boolean;
+  columns?: number;
 }
 
 function SelectionGrid({
@@ -82,18 +90,9 @@ function SelectionGrid({
   value,
   onChange,
   columns = 3,
-  allowDeselect = true,
 }: SelectionGridProps) {
-  const gridCols = {
-    2: "grid-cols-2",
-    3: "grid-cols-3",
-    4: "grid-cols-4",
-    5: "grid-cols-5",
-    6: "grid-cols-6",
-  };
-
   return (
-    <div className={cn("grid gap-3", gridCols[columns])}>
+    <div className="flex flex-wrap gap-3">
       {options.map((option) => {
         const isSelected = value === option.value;
         return (
@@ -101,14 +100,12 @@ function SelectionGrid({
             key={option.value}
             type="button"
             className={cn(
-              "flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all min-h-[80px] flex-1",
+              "flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all min-h-[80px] flex-1 min-w-[120px]",
               isSelected
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-muted-foreground/20 bg-background hover:border-primary/50 hover:bg-primary/5"
             )}
-            onClick={() =>
-              onChange(isSelected && allowDeselect ? undefined : option.value)
-            }
+            onClick={() => onChange(isSelected ? undefined : option.value)}
           >
             <div className="mb-2">{option.icon}</div>
             <span className="text-sm font-medium text-center">
@@ -206,7 +203,7 @@ export function SearchFormModal({
 }: SearchFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Plan Your Nature Trip</DialogTitle>
         </DialogHeader>
@@ -245,8 +242,7 @@ export function SearchFormModal({
                         options={ACTIVITY_OPTIONS}
                         value={field.value}
                         onChange={field.onChange}
-                        columns={3}
-                        allowDeselect={false}
+                        columns={6}
                       />
                       <FormMessage />
                     </FormItem>
@@ -270,62 +266,6 @@ export function SearchFormModal({
                   />
                 )}
               </div>
-
-              {/* Distance */}
-              <FormField
-                control={form.control}
-                name="distance"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Distance From You</FormLabel>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={isPending}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select distance" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {DISTANCE_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="transportType"
-                        render={({ field }) => (
-                          <div className="flex items-center gap-2 justify-around p-2">
-                            {TRANSPORT_OPTIONS.map((option) => (
-                              <TransportOption
-                                key={option.value}
-                                value={option.value}
-                                current={field.value}
-                                onChange={field.onChange}
-                                icon={option.icon!}
-                                label={option.label}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               {/* Activity Level */}
               <FormField
@@ -427,6 +367,127 @@ export function SearchFormModal({
                 />
               </div>
 
+              {/* When Selection */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="when"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>When would you like to go?</FormLabel>
+                      <SelectionGrid
+                        options={WHEN_OPTIONS}
+                        value={field.value}
+                        onChange={field.onChange}
+                        columns={4}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {form.watch("when") === "custom" && (
+                  <FormField
+                    control={form.control}
+                    name="customDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select custom date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isPending}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date() ||
+                                date < new Date("1900-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+
+              {/* Distance */}
+              <FormField
+                control={form.control}
+                name="distance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Max Distance From You</FormLabel>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          disabled={isPending}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select distance" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {DISTANCE_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="transportType"
+                        render={({ field }) => (
+                          <div className="flex items-center gap-2 justify-around p-2">
+                            {TRANSPORT_OPTIONS.map((option) => (
+                              <TransportOption
+                                key={option.value}
+                                value={option.value}
+                                current={field.value}
+                                onChange={field.onChange}
+                                icon={option.icon!}
+                                label={option.label}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      />
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Special Care - Advanced Options */}
               <div className="space-y-4 pt-4 border-t border-muted">
                 <FormField
@@ -440,7 +501,6 @@ export function SearchFormModal({
                         value={field.value}
                         onChange={field.onChange}
                         columns={3}
-                        allowDeselect={true}
                       />
                       <FormMessage />
                     </FormItem>

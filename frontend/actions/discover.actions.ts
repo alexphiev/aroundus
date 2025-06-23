@@ -1,12 +1,15 @@
 "use server";
 
+import { MODEL } from "@/constants/ai.constants";
 import { createClient } from "@/utils/supabase/server";
-import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import * as z from "zod";
+import { getFiveDayForecast } from "./weather.actions";
 
 // Re-define or import the schema if it's complex and shared
 const formSchema = z.object({
   activity: z.string().min(1),
+  when: z.string().min(1),
   distance: z.string().min(1),
   activityLevel: z.number().min(1).max(5),
   activityDurationValue: z.coerce.number(),
@@ -21,6 +24,73 @@ const formSchema = z.object({
 
 type FormSchemaWithLocation = z.infer<typeof formSchema>;
 
+// Helper function to get weather data for AI prompts
+async function getWeatherDataForAI(lat: number, lon: number, targetDate: Date) {
+  try {
+    const weatherResult = await getFiveDayForecast(lat, lon);
+    
+    if (weatherResult.error || !weatherResult.data) {
+      return "Weather data unavailable";
+    }
+
+    const forecast = weatherResult.data;
+    const targetDateStr = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Find forecast items for the target date (within 5 days)
+    const targetDateItems = forecast.list.filter(item => {
+      const itemDate = new Date(item.dt * 1000);
+      const itemDateStr = itemDate.toISOString().split('T')[0];
+      return itemDateStr === targetDateStr;
+    });
+
+    if (targetDateItems.length === 0) {
+      // If no exact match, get the closest available forecast
+      const closestItem = forecast.list.find(item => {
+        const itemDate = new Date(item.dt * 1000);
+        return itemDate >= targetDate;
+      });
+      
+      if (closestItem) {
+        return `Weather forecast for ${new Date(closestItem.dt * 1000).toDateString()}: ${closestItem.weather[0].description}, temperature ${Math.round(closestItem.main.temp)}°C (feels like ${Math.round(closestItem.main.feels_like)}°C), humidity ${closestItem.main.humidity}%, wind ${Math.round(closestItem.wind.speed)} m/s, precipitation chance ${Math.round(closestItem.pop * 100)}%`;
+      }
+      
+      return "Weather forecast not available for target date";
+    }
+
+    // Get morning, afternoon, and evening forecasts for the target date
+    const timeSlots = targetDateItems.map(item => {
+      const time = new Date(item.dt * 1000);
+      const hour = time.getHours();
+      let timeOfDay = '';
+      if (hour >= 6 && hour < 12) timeOfDay = 'morning';
+      else if (hour >= 12 && hour < 18) timeOfDay = 'afternoon';
+      else if (hour >= 18 && hour < 22) timeOfDay = 'evening';
+      else timeOfDay = 'night';
+      
+      return {
+        timeOfDay,
+        time: time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        description: item.weather[0].description,
+        temp: Math.round(item.main.temp),
+        feelsLike: Math.round(item.main.feels_like),
+        humidity: item.main.humidity,
+        windSpeed: Math.round(item.wind.speed),
+        precipChance: Math.round(item.pop * 100)
+      };
+    });
+
+    const weatherSummary = `Weather forecast for ${targetDate.toDateString()}:\n` +
+      timeSlots.map(slot => 
+        `- ${slot.timeOfDay} (${slot.time}): ${slot.description}, ${slot.temp}°C (feels like ${slot.feelsLike}°C), ${slot.precipChance}% chance of precipitation, wind ${slot.windSpeed} m/s, humidity ${slot.humidity}%`
+      ).join('\n');
+
+    return weatherSummary;
+  } catch (error) {
+    console.error('Error fetching weather data:', error);
+    return "Weather data unavailable due to error";
+  }
+}
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) {
   console.warn("GEMINI_API_KEY is not set. AI trip search will not function.");
@@ -28,26 +98,6 @@ if (!GEMINI_API_KEY) {
 const genAI = GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
   : null;
-
-// Configuration for safety settings (adjust as needed)
-const safetySettings = [
-  {
-    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-  },
-];
 
 // Helper function to execute a single AI prompt with conversation context
 async function executeAIPromptWithConversation(
@@ -64,7 +114,6 @@ async function executeAIPromptWithConversation(
   const result = await genAI!.models.generateContent({
     model: modelName,
     contents: contents,
-    config: { safetySettings: safetySettings },
   });
 
   if (!result || typeof result.text !== "string") {
@@ -133,17 +182,61 @@ async function* progressiveTripSearchGenerator(
     return;
   }
 
-  const modelName = "gemma-3-27b-it";
+  const modelName = MODEL.GEMINI_PRO;
   console.log(`Using AI model: ${modelName} for progressive search`);
+
+  // Parse when field to get target date
+  const getTargetDate = (when: string) => {
+    const now = new Date();
+    switch (when) {
+      case "today":
+        return now;
+      case "tomorrow":
+        return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      case "this_weekend":
+        const daysUntilSaturday = 6 - now.getDay();
+        return new Date(
+          now.getTime() + daysUntilSaturday * 24 * 60 * 60 * 1000,
+        );
+      default:
+        try {
+          return new Date(when);
+        } catch {
+          return now;
+        }
+    }
+  };
+
+  const targetDate = getTargetDate(validatedData.when);
+
+  // Get weather forecast for the target location and date
+  const weatherData = await getWeatherDataForAI(
+    validatedData.location.latitude,
+    validatedData.location.longitude,
+    targetDate
+  );
 
   // Base criteria for all prompts
   const baseCriteria = `
     STRICT REQUIREMENTS:
     - Preferred activity type: ${validatedData.activity}
+    - Visit date: ${targetDate.toDateString()} (${
+    targetDate.toLocaleDateString("en-US", { weekday: "long" })
+  })
     - Maximum travel time to location: ${validatedData.distance} (ONE WAY)
     - Desired activity duration at location: ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}
     - Physical activity level: ${validatedData.activityLevel} (where 1 is very light and 5 is very strenuous)
     - Starting GPS location: latitude ${validatedData.location.latitude}, longitude ${validatedData.location.longitude}
+    
+    REAL-TIME WEATHER DATA:
+    ${weatherData}
+    
+    TIMING CONSIDERATIONS:
+    - Use the real-time weather forecast above to make specific timing recommendations
+    - Account for weekend vs weekday crowd levels and suggest timing accordingly
+    - Consider any potential public holidays or local events that might affect crowds
+    - Factor in weather conditions and recommend the best times to visit based on forecast
+    - Suggest alternative timing if weather conditions are poor
     
     CRITICAL: You must strictly adhere to the duration criteria. For activity duration of ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}:
     - If specified in hours: suggest activities that take between ${
@@ -172,6 +265,8 @@ async function* progressiveTripSearchGenerator(
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
     - whyRecommended: Brief explanation of why this fits the criteria and category
     - starRating: The star rating (3, 2, or 1)
+    - bestTimeToVisit: Recommended time range for optimal experience based on weather and crowds (e.g., "8:00 AM - 11:00 AM", "early morning", "afternoon after 2 PM")
+    - timeToAvoid: Times or conditions to avoid (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
     
     Return ONLY valid JSON array format: [{"name": "...", "description": "...", ...}]
   `;
@@ -488,6 +583,37 @@ export async function handleProgressiveTripSearchByStage(
 
   const modelName = "gemma-3-27b-it";
 
+  // Parse when field to get target date
+  const getTargetDate = (when: string) => {
+    const now = new Date();
+    switch (when) {
+      case "today":
+        return now;
+      case "tomorrow":
+        return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      case "this_weekend":
+        const daysUntilSaturday = 6 - now.getDay();
+        return new Date(
+          now.getTime() + daysUntilSaturday * 24 * 60 * 60 * 1000,
+        );
+      default:
+        try {
+          return new Date(when);
+        } catch {
+          return now;
+        }
+    }
+  };
+
+  const targetDate = getTargetDate(validatedData.when);
+
+  // Get weather forecast for the target location and date
+  const weatherData = await getWeatherDataForAI(
+    validatedData.location.latitude,
+    validatedData.location.longitude,
+    targetDate
+  );
+
   // Create special care requirements text
   const specialCareRequirements = [];
   if (validatedData.specialCare === "children") {
@@ -510,6 +636,9 @@ export async function handleProgressiveTripSearchByStage(
   const baseCriteria = `
     STRICT REQUIREMENTS:
     - Preferred activity type: ${validatedData.activity}
+    - Visit date: ${targetDate.toDateString()} (${
+    targetDate.toLocaleDateString("en-US", { weekday: "long" })
+  })
     - Maximum travel time to location: ${validatedData.distance} (ONE WAY)
     - Desired activity duration at location: ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}
     - Physical activity level: ${validatedData.activityLevel} (where 1 is very light and 5 is very strenuous)
@@ -522,6 +651,13 @@ export async function handleProgressiveTripSearchByStage(
     `
       : ""
   }
+    
+    TIMING CONSIDERATIONS:
+    - Please consider the visit date for seasonal activities, weather patterns, and accessibility
+    - Account for weekend vs weekday crowd levels and suggest timing accordingly
+    - Consider any potential public holidays or local events that might affect crowds
+    - Recommend seasonal activities appropriate for the time of year
+    - Factor in weather conditions typical for this season in the region
     
     CRITICAL: You must strictly adhere to the duration criteria. For activity duration of ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}:
     - If specified in hours: suggest activities that take between ${
@@ -556,6 +692,8 @@ export async function handleProgressiveTripSearchByStage(
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
     - whyRecommended: Brief explanation of why this fits the criteria and category
     - starRating: The star rating (3, 2, or 1)
+    - bestTimeToVisit: Recommended time range for optimal experience based on weather and crowds (e.g., "8:00 AM - 11:00 AM", "early morning", "afternoon after 2 PM")
+    - timeToAvoid: Times or conditions to avoid (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
     
     Return ONLY valid JSON array format: [{"name": "...", "description": "...", ...}]
   `;

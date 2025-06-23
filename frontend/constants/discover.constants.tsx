@@ -12,6 +12,9 @@ import {
   Footprints,
   Train,
   Car,
+  Calendar,
+  Clock,
+  CalendarDays,
 } from "lucide-react";
 
 // Form option types
@@ -55,6 +58,30 @@ export const ACTIVITY_OPTIONS: FormOptionWithIcon[] = [
     value: "other",
     label: "Other",
     icon: <Plus className="h-5 w-5" />,
+  },
+];
+
+// When options with icons
+export const WHEN_OPTIONS: FormOptionWithIcon[] = [
+  {
+    value: "today",
+    label: "Today",
+    icon: <Clock className="h-5 w-5" />,
+  },
+  {
+    value: "tomorrow",
+    label: "Tomorrow", 
+    icon: <Calendar className="h-5 w-5" />,
+  },
+  {
+    value: "this_weekend",
+    label: "This Weekend",
+    icon: <CalendarDays className="h-5 w-5" />,
+  },
+  {
+    value: "custom",
+    label: "Custom Date",
+    icon: <Calendar className="h-5 w-5" />,
   },
 ];
 

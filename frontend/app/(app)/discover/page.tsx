@@ -30,6 +30,8 @@ const formSchema = z
   .object({
     activity: z.string().min(1, { message: "Please select an activity." }),
     otherActivity: z.string().optional(),
+    when: z.string().min(1, { message: "Please select when you want to go." }),
+    customDate: z.date().optional(),
     specialCare: z
       .enum(["children", "lowMobility", "dogs"], {
         message: "Please select special care requirements.",
@@ -57,6 +59,18 @@ const formSchema = z
     {
       message: "Please describe your activity when 'Other' is selected.",
       path: ["otherActivity"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.when === "custom") {
+        return data.customDate && data.customDate > new Date();
+      }
+      return true;
+    },
+    {
+      message: "Please select a future date when 'Custom Date' is selected.",
+      path: ["customDate"],
     }
   );
 
@@ -86,6 +100,8 @@ export default function DiscoverPage() {
     defaultValues: {
       activity: "",
       otherActivity: "",
+      when: "",
+      customDate: undefined,
       specialCare: undefined,
       distance: "1 hour",
       transportType: "transit",
@@ -135,6 +151,8 @@ export default function DiscoverPage() {
           form.reset({
             activity: query.activity || "",
             otherActivity: "",
+            when: query.when || "today",
+            customDate: undefined,
             specialCare: query.specialCare || undefined,
             distance: query.distance || "1 hour",
             transportType: "transit", // Default transport type since it's not saved
@@ -193,8 +211,16 @@ export default function DiscoverPage() {
         values.activity === "other"
           ? values.otherActivity || ""
           : values.activity;
+      
+      // Convert when value to proper format for AI
+      let finalWhen = values.when;
+      if (values.when === "custom" && values.customDate) {
+        finalWhen = values.customDate.toISOString();
+      }
+
       const payload: SearchQuery = {
         activity: finalActivity,
+        when: finalWhen,
         specialCare: values.specialCare,
         distance: values.distance,
         activityLevel: values.activityLevel,
@@ -213,6 +239,7 @@ export default function DiscoverPage() {
         // Convert payload to the format expected by discover actions
         const actionPayload = {
           activity: finalActivity,
+          when: finalWhen,
           distance: values.distance,
           activityLevel: values.activityLevel,
           activityDurationValue: values.activityDurationValue,

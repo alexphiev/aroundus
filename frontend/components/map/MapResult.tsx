@@ -24,6 +24,14 @@ import {
   Sun,
   Loader2,
   Plus,
+  Footprints,
+  PawPrint,
+  Camera,
+  TentTree,
+  Bike,
+  Backpack,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo } from "react";
@@ -72,6 +80,8 @@ export interface TripResultItem {
   whyRecommended?: string;
   isOtherCategory?: boolean;
   starRating?: number;
+  bestTimeToVisit?: string;
+  timeToAvoid?: string;
   created_at?: string;
 }
 
@@ -226,17 +236,17 @@ export default function MapResult({
   const getActivityIcon = (activity?: string) => {
     switch (activity?.toLowerCase()) {
       case "hiking":
-        return <Mountain className="h-5 w-5" />;
+        return <Backpack className="h-5 w-5" />;
       case "biking":
-        return <TreePine className="h-5 w-5" />;
+        return <Bike className="h-5 w-5" />;
       case "camping":
-        return <Trees className="h-5 w-5" />;
+        return <TentTree className="h-5 w-5" />;
       case "photography":
-        return <Sun className="h-5 w-5" />;
+        return <Camera className="h-5 w-5" />;
       case "wildlife":
-        return <Flower2 className="h-5 w-5" />;
+        return <PawPrint className="h-5 w-5" />;
       case "walking":
-        return <TreePine className="h-5 w-5" />;
+        return <Footprints className="h-5 w-5" />;
       case "swimming":
         return <Waves className="h-5 w-5" />;
       default:
@@ -434,7 +444,7 @@ export default function MapResult({
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 pt-0 flex-1 flex flex-col">
-                          <CardDescription className="line-clamp-3 mb-3 flex-shrink-0">
+                          <CardDescription className="line-clamp-4 mb-3 flex-shrink-0">
                             {trip.description}
                           </CardDescription>
 
@@ -476,20 +486,33 @@ export default function MapResult({
                               </div>
                             )}
 
-                            {/* Why Recommended */}
-                            {trip.whyRecommended && (
-                              <p className="text-xs text-muted-foreground italic line-clamp-2">
-                                {trip.whyRecommended}
-                              </p>
+                            {/* Timing Information */}
+                            {(trip.bestTimeToVisit || trip.timeToAvoid) && (
+                              <div className="space-y-2">
+                                {trip.bestTimeToVisit && (
+                                  <div className="flex items-start gap-2">
+                                    <Clock className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-xs font-medium text-green-700">Best time:</p>
+                                      <p className="text-xs text-green-600 line-clamp-2">
+                                        {trip.bestTimeToVisit}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                                {trip.timeToAvoid && (
+                                  <div className="flex items-start gap-2">
+                                    <AlertTriangle className="h-3 w-3 text-orange-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-xs font-medium text-orange-700">Avoid:</p>
+                                      <p className="text-xs text-orange-600 line-clamp-2">
+                                        {trip.timeToAvoid}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             )}
-                          </div>
-
-                          {/* GPS Coordinates - Always at bottom */}
-                          <div className="flex items-center text-xs text-muted-foreground mt-auto pt-2 border-t">
-                            <MapPin className="mr-1 h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">
-                              GPS: {trip.lat.toFixed(4)}, {trip.long.toFixed(4)}
-                            </span>
                           </div>
                         </CardContent>
                       </Card>

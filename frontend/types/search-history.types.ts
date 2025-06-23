@@ -1,6 +1,7 @@
 // Search query types for search history (simplified)
 export interface SearchQuery {
   activity: string;
+  when: string; // "today", "tomorrow", "this_weekend", or ISO date string for custom
   specialCare?: "children" | "lowMobility" | "dogs";
   distance: string; // Now uses readable text like "1 hour", "30 minutes"
   activityLevel: number;
@@ -24,6 +25,8 @@ export interface SearchResult {
   estimatedTransportTime?: string;
   whyRecommended?: string;
   starRating?: number;
+  bestTimeToVisit?: string;
+  timeToAvoid?: string;
 }
 
 // Database search history record
@@ -53,6 +56,8 @@ export interface SaveSearchResponse {
 export interface FormValues {
   activity: string;
   otherActivity?: string;
+  when: string; // "today", "tomorrow", "this_weekend", or ISO date string for custom
+  customDate?: Date;
   specialCare?: "children" | "lowMobility" | "dogs";
   distance: string; // Now uses readable text like "1 hour", "30 minutes"
   transportType: "foot" | "bike" | "transit" | "car";
