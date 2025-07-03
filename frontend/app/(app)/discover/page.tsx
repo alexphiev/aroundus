@@ -1,8 +1,8 @@
 "use client";
 
-import DiscoveryResult from "@/components/discovery/DiscoveryResult";
+import DiscoveryResult from "@/components/discovery/result/DiscoveryResult";
 import { TripResultItem } from "@/types/result.types";
-import { SearchFormModal } from "@/components/discovery/DiscoverFormModal";
+import { SearchFormModal } from "@/components/discovery/form/DiscoverFormModal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
@@ -196,10 +196,10 @@ export default function DiscoverPage() {
 
   // Handle URL parameters for search query
   useEffect(() => {
-    const query = searchParams.get('q');
+    const query = searchParams.get("q");
     if (query) {
       // Set the additional info field with the search query
-      form.setValue('additionalInfo', decodeURIComponent(query));
+      form.setValue("additionalInfo", decodeURIComponent(query));
       // Open the search modal so user can complete the form
       setIsSearchOpen(true);
       // Get location if not already set

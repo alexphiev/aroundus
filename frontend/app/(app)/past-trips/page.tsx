@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import DiscoveryResult from "@/components/discovery/DiscoveryResult";
+import DiscoveryResult from "@/components/discovery/result/DiscoveryResult";
 import { getSavedTripsAction } from "@/actions/save-trip.actions";
 
 export default async function PastTripsPage() {
@@ -13,16 +13,17 @@ export default async function PastTripsPage() {
   }
 
   const savedTripsResult = await getSavedTripsAction();
-  const tripResults = savedTripsResult.success && savedTripsResult.data
-    ? savedTripsResult.data.map((trip: any) => ({
-        id: trip.id,
-        name: trip.name || "Unnamed Place",
-        description: trip.description || "",
-        lat: trip.lat || 0,
-        long: trip.long || 0,
-        created_at: trip.created_at,
-      }))
-    : null;
+  const tripResults =
+    savedTripsResult.success && savedTripsResult.data
+      ? savedTripsResult.data.map((trip: any) => ({
+          id: trip.id,
+          name: trip.name || "Unnamed Place",
+          description: trip.description || "",
+          lat: trip.lat || 0,
+          long: trip.long || 0,
+          created_at: trip.created_at,
+        }))
+      : null;
 
   return (
     <DiscoveryResult

@@ -11,9 +11,10 @@ import type {
 
 // Schema for search criteria
 const searchCriteriaSchema = z.object({
+  activity: z.string(),
+  when: z.string(),
   specialCare: z.enum(["children", "lowMobility", "dogs"]).optional(),
-  distanceValue: z.number(),
-  distanceUnit: z.enum(["minutes", "hours"]),
+  distance: z.string(),
   activityLevel: z.number().min(1).max(5),
   activityDurationValue: z.number(),
   activityDurationUnit: z.enum(["hours", "days"]),
@@ -21,6 +22,7 @@ const searchCriteriaSchema = z.object({
     latitude: z.number(),
     longitude: z.number(),
   }),
+  additionalInfo: z.string().optional(),
 });
 
 // Schema for search results
@@ -35,6 +37,8 @@ const searchResultSchema = z.object({
   estimatedTransportTime: z.string().optional(),
   whyRecommended: z.string().optional(),
   starRating: z.number().optional(),
+  bestTimeToVisit: z.string().optional(),
+  timeToAvoid: z.string().optional(),
 });
 
 // Save search to history
