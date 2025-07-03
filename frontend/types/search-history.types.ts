@@ -11,6 +11,7 @@ export interface SearchQuery {
     latitude: number;
     longitude: number;
   };
+  additionalInfo?: string; // User's direct input from homepage search
 }
 
 // Search result item type
@@ -64,5 +65,6 @@ export interface FormValues {
   activityLevel: number;
   activityDurationValue: number;
   activityDurationUnit: "hours" | "days";
+  additionalInfo?: string; // User's direct input from homepage search
 }
 

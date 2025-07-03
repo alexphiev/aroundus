@@ -20,6 +20,8 @@ const formSchema = z.object({
     longitude: z.number(),
   }),
   specialCare: z.enum(["children", "lowMobility", "dogs"]).optional(),
+  additionalInfo: z.string().optional(),
+  transportType: z.enum(["foot", "bike", "transit", "car"]).optional(),
 });
 
 type FormSchemaWithLocation = z.infer<typeof formSchema>;
@@ -251,6 +253,15 @@ async function* progressiveTripSearchGenerator(
     - Consider realistic travel methods (car, public transport, walking/biking for short distances)
     
     ACTIVITY FOCUS: Prioritize locations and experiences that align with "${validatedData.activity}" activities.
+    
+    ${validatedData.additionalInfo ? `
+    🔥 CRITICAL USER REQUEST - HIGHEST PRIORITY:
+    The user specifically searched for: "${validatedData.additionalInfo}"
+    
+    This is the user's direct input and represents their PRIMARY desire for this trip. 
+    You MUST prioritize this request above all other criteria. Every suggestion should strongly align with this user input.
+    Use this as the main filter and inspiration for your recommendations.
+    ` : ''}
   `;
 
   const responseFormat = `
@@ -632,6 +643,22 @@ export async function handleProgressiveTripSearchByStage(
     );
   }
 
+  // Create transport method description
+  const getTransportDescription = (transportType?: string) => {
+    switch (transportType) {
+      case "foot":
+        return "traveling on foot/walking";
+      case "bike":
+        return "traveling by bicycle";
+      case "transit":
+        return "using public transport (buses, trains, metro)";
+      case "car":
+        return "traveling by car";
+      default:
+        return "using any available transport method";
+    }
+  };
+
   // Base criteria for all prompts
   const baseCriteria = `
     STRICT REQUIREMENTS:
@@ -640,6 +667,7 @@ export async function handleProgressiveTripSearchByStage(
     targetDate.toLocaleDateString("en-US", { weekday: "long" })
   })
     - Maximum travel time to location: ${validatedData.distance} (ONE WAY)
+    - Preferred transport method: ${getTransportDescription(validatedData.transportType)}
     - Desired activity duration at location: ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}
     - Physical activity level: ${validatedData.activityLevel} (where 1 is very light and 5 is very strenuous)
     - Starting GPS location: latitude ${validatedData.location.latitude}, longitude ${validatedData.location.longitude}
@@ -651,6 +679,14 @@ export async function handleProgressiveTripSearchByStage(
     `
       : ""
   }
+    
+    TRANSPORT & ACCESSIBILITY:
+    - Consider destinations that are accessible via ${getTransportDescription(validatedData.transportType)}
+    - Factor in parking availability, public transport stops, or bike-friendly routes as appropriate
+    - Account for the practicality of reaching the destination with the chosen transport method
+    - For walking/biking: suggest closer destinations and consider trail access points
+    - For public transport: ensure destinations are near transit stops or accessible via transit
+    - For car travel: consider parking availability and road accessibility
     
     TIMING CONSIDERATIONS:
     - Please consider the visit date for seasonal activities, weather patterns, and accessibility
@@ -667,11 +703,21 @@ export async function handleProgressiveTripSearchByStage(
     Math.max(1, validatedData.activityDurationValue - 1)
   } and ${validatedData.activityDurationValue + 1} days
     
-    For travel distance of ${validatedData.distance}:
-    - Only suggest places that are within this travel time from the starting location
-    - Consider realistic travel methods (car, public transport, walking/biking for short distances)
+    For travel distance of ${validatedData.distance} via ${getTransportDescription(validatedData.transportType)}:
+    - Only suggest places that are realistically reachable within this travel time using the specified transport method
+    - Consider realistic routes and connections for the chosen transport method
+    - Factor in any transport-specific limitations (bike paths, transit schedules, parking requirements)
     
     ACTIVITY FOCUS: Prioritize locations and experiences that align with "${validatedData.activity}" activities.
+    
+    ${validatedData.additionalInfo ? `
+    🔥 CRITICAL USER REQUEST - HIGHEST PRIORITY:
+    The user specifically searched for: "${validatedData.additionalInfo}"
+    
+    This is the user's direct input and represents their PRIMARY desire for this trip. 
+    You MUST prioritize this request above all other criteria. Every suggestion should strongly align with this user input.
+    Use this as the main filter and inspiration for your recommendations.
+    ` : ''}
     
     ${
     specialCareRequirements.length > 0

@@ -6,6 +6,7 @@ import { SearchFormModal } from "@/components/discovery/DiscoverFormModal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -48,6 +49,7 @@ const formSchema = z
     activityDurationUnit: z.enum(["hours", "days"], {
       message: "Please select an activity duration unit.",
     }),
+    additionalInfo: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -77,6 +79,7 @@ const formSchema = z
 type FormSchemaType = FormValues;
 
 export default function DiscoverPage() {
+  const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false); // Start closed to prevent flash
   const [isPending, startTransition] = useTransition();
   const [isSaving, startSavingTransition] = useTransition();
@@ -108,6 +111,7 @@ export default function DiscoverPage() {
       activityLevel: 3,
       activityDurationValue: 4,
       activityDurationUnit: "hours",
+      additionalInfo: "",
     },
   });
 
@@ -159,6 +163,7 @@ export default function DiscoverPage() {
             activityLevel: query.activityLevel,
             activityDurationValue: query.activityDurationValue,
             activityDurationUnit: query.activityDurationUnit,
+            additionalInfo: query.additionalInfo || "",
           });
 
           // Set location and results
@@ -188,6 +193,21 @@ export default function DiscoverPage() {
 
     loadLatestSearch();
   }, []);
+
+  // Handle URL parameters for search query
+  useEffect(() => {
+    const query = searchParams.get('q');
+    if (query) {
+      // Set the additional info field with the search query
+      form.setValue('additionalInfo', decodeURIComponent(query));
+      // Open the search modal so user can complete the form
+      setIsSearchOpen(true);
+      // Get location if not already set
+      if (!userLocation) {
+        getLocation();
+      }
+    }
+  }, [searchParams, form, userLocation]);
 
   // Form submission handler with progressive search
   function onSubmit(values: FormSchemaType) {
@@ -230,6 +250,7 @@ export default function DiscoverPage() {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
         },
+        additionalInfo: values.additionalInfo,
       };
 
       let allResults: TripResult[] = [];
@@ -249,6 +270,8 @@ export default function DiscoverPage() {
             longitude: userLocation.longitude,
           },
           specialCare: values.specialCare,
+          additionalInfo: values.additionalInfo,
+          transportType: values.transportType,
         };
 
         // Stage 1: 3-star destinations

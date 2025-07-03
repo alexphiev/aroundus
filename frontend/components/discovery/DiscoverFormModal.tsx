@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -91,8 +92,21 @@ function SelectionGrid({
   onChange,
   columns = 3,
 }: SelectionGridProps) {
+  // Calculate grid layout based on number of options with max 6 per row
+  const maxCols = Math.min(6, options.length);
+  const gridColsClass = maxCols === 1 ? "grid-cols-1" : 
+                       maxCols === 2 ? "grid-cols-2" : 
+                       maxCols === 3 ? "grid-cols-3" : 
+                       maxCols === 4 ? "grid-cols-4" : 
+                       maxCols === 5 ? "grid-cols-5" : 
+                       "grid-cols-6";
+  
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className={cn(
+      "grid gap-3", 
+      gridColsClass,
+      options.length <= 3 && "max-w-md"
+    )}>
       {options.map((option) => {
         const isSelected = value === option.value;
         return (
@@ -100,15 +114,15 @@ function SelectionGrid({
             key={option.value}
             type="button"
             className={cn(
-              "flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all min-h-[80px] flex-1 min-w-[120px]",
+              "flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all h-20 min-w-0",
               isSelected
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-muted-foreground/20 bg-background hover:border-primary/50 hover:bg-primary/5"
             )}
             onClick={() => onChange(isSelected ? undefined : option.value)}
           >
-            <div className="mb-2">{option.icon}</div>
-            <span className="text-sm font-medium text-center">
+            <div className="mb-1.5 flex-shrink-0">{option.icon}</div>
+            <span className="text-xs font-medium text-center leading-tight">
               {option.label}
             </span>
           </button>
@@ -203,7 +217,7 @@ export function SearchFormModal({
 }: SearchFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[42rem] max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Plan Your Nature Trip</DialogTitle>
         </DialogHeader>
@@ -213,7 +227,7 @@ export function SearchFormModal({
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col flex-1 min-h-0"
           >
-            <div className="space-y-6 overflow-y-auto flex-1 pr-2 -mr-2">
+            <div className="space-y-8 overflow-y-auto flex-1 px-4 -mx-4 py-2 pr-6">
               {/* Location error message - only show if there's a problem */}
               {locationError && (
                 <div className="p-3 border border-destructive/50 rounded-lg bg-destructive/10">
@@ -421,7 +435,6 @@ export function SearchFormModal({
                                 date < new Date() ||
                                 date < new Date("1900-01-01")
                               }
-                              initialFocus
                             />
                           </PopoverContent>
                         </Popover>
@@ -439,7 +452,7 @@ export function SearchFormModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Max Distance From You</FormLabel>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 items-start">
                       <div>
                         <Select
                           onValueChange={field.onChange}
@@ -447,7 +460,7 @@ export function SearchFormModal({
                           disabled={isPending}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-10">
                               <SelectValue placeholder="Select distance" />
                             </SelectTrigger>
                           </FormControl>
@@ -468,7 +481,7 @@ export function SearchFormModal({
                         control={form.control}
                         name="transportType"
                         render={({ field }) => (
-                          <div className="flex items-center gap-2 justify-around p-2">
+                          <div className="flex items-center gap-2 justify-around h-10">
                             {TRANSPORT_OPTIONS.map((option) => (
                               <TransportOption
                                 key={option.value}
@@ -507,9 +520,33 @@ export function SearchFormModal({
                   )}
                 />
               </div>
+
+              {/* Additional Information */}
+              <FormField
+                control={form.control}
+                name="additionalInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Additional Information (Optional)</FormLabel>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Describe what you're looking for in your own words. This helps us find exactly what you want.
+                    </p>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g., peaceful waterfalls with swimming spots, challenging mountain trails with scenic views, family-friendly parks with picnic areas..."
+                        {...field}
+                        disabled={isPending}
+                        className="min-h-[4rem] resize-none"
+                        rows={2}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <div className="flex-shrink-0 pt-4 border-t border-muted">
+            <div className="flex-shrink-0 pt-6 border-t border-muted">
               <Button
                 type="submit"
                 className="w-full"
