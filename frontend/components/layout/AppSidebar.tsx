@@ -17,7 +17,7 @@ const navLinks = [
   },
   {
     label: "My Trips",
-    href: "/search-history",
+    href: "/past-trips",
     icon: <Map className="h-5 w-5" />,
   },
   {

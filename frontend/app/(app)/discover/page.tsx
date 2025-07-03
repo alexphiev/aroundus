@@ -1,8 +1,8 @@
 "use client";
 
-import MapResult, { TripResultItem } from "@/components/map/MapResult";
-import { SearchFormModal } from "@/components/discover/DiscoverFormModal";
-import { TripDetailsModal } from "@/components/discover/TripDetailsModal";
+import DiscoveryResult from "@/components/discovery/DiscoveryResult";
+import { TripResultItem } from "@/types/result.types";
+import { SearchFormModal } from "@/components/discovery/DiscoverFormModal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
@@ -211,7 +211,7 @@ export default function DiscoverPage() {
         values.activity === "other"
           ? values.otherActivity || ""
           : values.activity;
-      
+
       // Convert when value to proper format for AI
       let finalWhen = values.when;
       if (values.when === "custom" && values.customDate) {
@@ -416,7 +416,7 @@ export default function DiscoverPage() {
       />
 
       {/* Use the new MapResult component */}
-      <MapResult
+      <DiscoveryResult
         tripResults={tripResults as TripResultItem[] | null}
         title="Discover Nature Trips"
         subtitle="Find the perfect nature spot based on your preferences"
@@ -436,15 +436,6 @@ export default function DiscoverPage() {
           // Track user interaction when manually clicking on cards
           setActiveCardIndex(index);
         }}
-      />
-
-      {/* Trip Details Modal */}
-      <TripDetailsModal
-        selectedTrip={selectedTrip}
-        onClose={() => setSelectedTrip(null)}
-        userLocation={userLocation}
-        onSaveTrip={handleSaveTrip}
-        isSaving={isSaving}
       />
     </>
   );

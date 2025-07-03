@@ -5,6 +5,7 @@ import Link, { LinkProps } from "next/link";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 interface Links {
   label: string;
@@ -92,9 +93,9 @@ export const DesktopSidebar = ({
         "h-full px-4 py-4 hidden md:flex md:flex-col bg-neutral-100 dark:bg-neutral-800 flex-shrink-0 fixed left-0 top-0 z-50",
         className
       )}
-      initial={{ width: "60px" }}
+      initial={{ width: "3.75rem" }}
       animate={{
-        width: animate ? (open ? "300px" : "60px") : "60px",
+        width: animate ? (open ? "11rem" : "3.75rem") : "3.75rem",
       }}
       transition={{ duration: animate ? 0.2 : 0 }}
       onMouseEnter={() => setOpen(true)}
@@ -166,16 +167,27 @@ export const SidebarLink = ({
   props?: LinkProps;
 }) => {
   const { open, animate } = useSidebar();
+  const pathname = usePathname();
+  const isActive = pathname === link.href;
+  
   return (
     <Link
       href={link.href}
       className={cn(
-        "flex items-center justify-start gap-2 group/sidebar py-2",
+        "flex items-center justify-start gap-2 group/sidebar py-2 px-2 rounded-md transition-colors",
+        isActive 
+          ? "text-primary" 
+          : "hover:bg-neutral-150 dark:hover:bg-neutral-750 text-neutral-700 dark:text-neutral-200",
         className
       )}
       {...props}
     >
-      {link.icon}
+      <span className={cn(
+        "transition-colors",
+        isActive ? "text-primary" : "text-neutral-700 dark:text-neutral-200"
+      )}>
+        {link.icon}
+      </span>
       <motion.span
         initial={{ display: "none", opacity: 0 }}
         animate={{
@@ -183,7 +195,12 @@ export const SidebarLink = ({
           opacity: animate ? (open ? 1 : 0) : 0,
         }}
         transition={{ duration: animate ? 0.2 : 0 }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        className={cn(
+          "text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0",
+          isActive 
+            ? "text-primary font-medium" 
+            : "text-neutral-700 dark:text-neutral-200"
+        )}
       >
         {link.label}
       </motion.span>

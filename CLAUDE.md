@@ -90,3 +90,7 @@ Each AI request maintains conversation context to avoid duplicates and uses dedu
 - Supabase client/server utilities in `utils/supabase/`
 - TypeScript types auto-generated from database schema
 - Workspace dependency: `"database-types": "workspace:*"`
+
+### Styling Guidelines
+- **Unit Preference**: Use `rem` units for styling measurements when possible instead of `px`
+- `rem` units provide better scalability and accessibility
