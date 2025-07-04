@@ -29,6 +29,16 @@
     --chart-3: 350 89% 60%;
     --chart-4: 4 80% 63%;
     --chart-5: 42 94% 69%;
+    
+    /* Status colors for badges and states */
+    --status-info: 217 91% 95%;
+    --status-info-foreground: 217 91% 35%;
+    --status-warning: 45 93% 95%;
+    --status-warning-foreground: 45 93% 35%;
+    --status-success: 142 71% 95%;
+    --status-success-foreground: 142 71% 35%;
+    --status-error: 0 93% 95%;
+    --status-error-foreground: 0 93% 35%;
   }
 }
 
@@ -38,5 +48,132 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Card interaction patterns */
+  .card-interactive {
+    @apply cursor-pointer transition-all hover:shadow-lg;
+  }
+  
+  .card-active {
+    @apply ring-2 ring-primary;
+  }
+  
+  .card-layout {
+    @apply h-full flex flex-col;
+  }
+  
+  /* Icon container patterns */
+  .icon-container {
+    @apply bg-primary/10 p-1 rounded-full;
+  }
+  
+  .icon-container-sm {
+    @apply bg-primary/10 p-0.5 rounded-full;
+  }
+  
+  /* Status badge patterns */
+  .badge-info {
+    @apply bg-status-info text-status-info-foreground px-2 py-1 rounded text-xs;
+  }
+  
+  .badge-warning {
+    @apply bg-status-warning text-status-warning-foreground px-2 py-1 rounded text-xs;
+  }
+  
+  .badge-success {
+    @apply bg-status-success text-status-success-foreground px-2 py-1 rounded text-xs;
+  }
+  
+  .badge-error {
+    @apply bg-status-error text-status-error-foreground px-2 py-1 rounded text-xs;
+  }
+  
+  /* Typography patterns */
+  .text-card-title {
+    @apply text-lg font-medium line-clamp-2;
+  }
+  
+  .text-card-description {
+    @apply text-sm text-muted-foreground line-clamp-4;
+  }
+  
+  .text-meta {
+    @apply text-xs text-muted-foreground;
+  }
+  
+  .text-meta-bold {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+  
+  /* Layout patterns */
+  .layout-card-header {
+    @apply p-4 pb-2 flex-shrink-0;
+  }
+  
+  .layout-card-content {
+    @apply p-4 pt-0 flex-1 flex flex-col;
+  }
+  
+  .layout-flex-between {
+    @apply flex justify-between items-start;
+  }
+  
+  .layout-flex-center {
+    @apply flex items-center justify-center;
+  }
+  
+  .layout-flex-start {
+    @apply flex items-center gap-2;
+  }
+  
+  /* Skeleton patterns */
+  .skeleton-base {
+    @apply bg-muted animate-pulse rounded;
+  }
+  
+  .skeleton-text {
+    @apply skeleton-base h-4;
+  }
+  
+  .skeleton-title {
+    @apply skeleton-base h-6;
+  }
+  
+  .skeleton-icon {
+    @apply skeleton-base h-7 w-7 rounded-full;
+  }
+  
+  .skeleton-button {
+    @apply skeleton-base h-8 w-8 rounded-md;
+  }
+  
+  /* Spacing patterns */
+  .space-content {
+    @apply space-y-3;
+  }
+  
+  .space-tight {
+    @apply space-y-2;
+  }
+  
+  .space-loose {
+    @apply space-y-4;
+  }
+  
+  /* Focus patterns */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+  
+  /* Motion patterns */
+  .motion-card {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .motion-hover {
+    @apply transition-colors duration-200;
   }
 }

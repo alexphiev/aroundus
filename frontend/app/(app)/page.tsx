@@ -44,7 +44,7 @@ export default function HomePage() {
         {/* Title */}
         <div className="space-y-4 mb-16">
           <h1 className="text-3xl md:text-4xl text-primary font-regular tracking-wide">
-            Reconnect with nature all around us
+            Reconnect with nature around you
           </h1>
         </div>
 
