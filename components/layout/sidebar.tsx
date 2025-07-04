@@ -6,6 +6,7 @@ import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useNavigation } from "@/components/NavigationLoader";
 
 interface Links {
   label: string;
@@ -168,11 +169,19 @@ export const SidebarLink = ({
 }) => {
   const { open, animate } = useSidebar();
   const pathname = usePathname();
+  const { startLoading } = useNavigation();
   const isActive = pathname === link.href;
+  
+  const handleClick = () => {
+    if (pathname !== link.href) {
+      startLoading();
+    }
+  };
   
   return (
     <Link
       href={link.href}
+      onClick={handleClick}
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar py-2 px-2 rounded-md transition-colors",
         isActive 

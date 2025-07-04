@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm check-types` - Type checking across all packages
 - `pnpm format` - Format code with Prettier
 
+**IMPORTANT**: Never run `pnpm dev` or `pnpm build` at the end of tasks. The user will handle these checks manually.
+
 ### Database Types
 - `cd packages/database-types && pnpm generate-types` - Generate TypeScript types from Supabase
 
