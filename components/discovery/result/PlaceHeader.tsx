@@ -67,7 +67,7 @@ export default function PlaceHeader({
           </Button>
           {showSaveButton && (
             <Button
-              variant={isSaved ? "secondary" : "outline"}
+              variant={isSaved ? "secondary" : "outline-solid"}
               size="sm"
               onClick={handleSave}
             >

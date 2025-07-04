@@ -39,7 +39,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
       <div className="w-full max-w-2xl mx-auto text-center space-y-8">
         {/* Title */}
         <div className="space-y-4 mb-16">
@@ -56,7 +56,7 @@ export default function HomePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyPress}
-            className="w-full h-16 text-lg px-6 pr-14 rounded-2xl border-2 border-gray-200 focus:border-gray-400 focus:ring-0 shadow-sm bg-white/60 backdrop-blur-sm"
+            className="w-full h-16 text-lg px-6 pr-14 rounded-2xl border-2 border-gray-200 focus:border-gray-400 focus:ring-0 shadow-xs bg-white/60 backdrop-blur-xs"
           />
           <Button
             onClick={handleSearch}
@@ -72,7 +72,7 @@ export default function HomePage() {
           <Button
             variant="outline"
             onClick={() => handleShortcut("feeling-lucky")}
-            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-sm"
+            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
               <Sparkles className="h-6 w-6 text-purple-600 group-hover:scale-110 transition-transform" />
@@ -83,7 +83,7 @@ export default function HomePage() {
           <Button
             variant="outline"
             onClick={() => handleShortcut("exercise")}
-            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-sm"
+            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
               <Dumbbell className="h-6 w-6 text-orange-600 group-hover:scale-110 transition-transform" />
@@ -94,7 +94,7 @@ export default function HomePage() {
           <Button
             variant="outline"
             onClick={() => handleShortcut("relax")}
-            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-sm"
+            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
               <Leaf className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform" />
@@ -105,7 +105,7 @@ export default function HomePage() {
           <Button
             variant="outline"
             onClick={() => handleShortcut("something-new")}
-            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-sm"
+            className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
               <Compass className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform" />

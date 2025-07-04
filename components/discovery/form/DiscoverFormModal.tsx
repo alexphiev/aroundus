@@ -217,7 +217,7 @@ export function SearchFormModal({
 }: SearchFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[42rem] max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Plan Your Nature Trip</DialogTitle>
         </DialogHeader>
@@ -536,7 +536,7 @@ export function SearchFormModal({
                         placeholder="e.g., peaceful waterfalls with swimming spots, challenging mountain trails with scenic views, family-friendly parks with picnic areas..."
                         {...field}
                         disabled={isPending}
-                        className="min-h-[4rem] resize-none"
+                        className="min-h-16 resize-none"
                         rows={2}
                       />
                     </FormControl>

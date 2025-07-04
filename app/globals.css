@@ -1,6 +1,237 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-status-info: hsl(var(--status-info));
+  --color-status-info-foreground: hsl(var(--status-info-foreground));
+  --color-status-warning: hsl(var(--status-warning));
+  --color-status-warning-foreground: hsl(var(--status-warning-foreground));
+  --color-status-success: hsl(var(--status-success));
+  --color-status-success-foreground: hsl(var(--status-success-foreground));
+  --color-status-error: hsl(var(--status-error));
+  --color-status-error-foreground: hsl(var(--status-error-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility card-interactive {
+  /* Card interaction patterns */
+  @apply cursor-pointer transition-all hover:shadow-lg;
+}
+
+@utility card-active {
+  @apply ring-2 ring-primary;
+}
+
+@utility card-layout {
+  @apply h-full flex flex-col;
+}
+
+@utility icon-container {
+  /* Icon container patterns */
+  @apply bg-primary/10 p-1 rounded-full;
+}
+
+@utility icon-container-sm {
+  @apply bg-primary/10 p-0.5 rounded-full;
+}
+
+@utility badge-info {
+  /* Status badge patterns */
+  @apply bg-status-info text-status-info-foreground px-2 py-1 rounded text-xs;
+}
+
+@utility badge-warning {
+  @apply bg-status-warning text-status-warning-foreground px-2 py-1 rounded text-xs;
+}
+
+@utility badge-success {
+  @apply bg-status-success text-status-success-foreground px-2 py-1 rounded text-xs;
+}
+
+@utility badge-error {
+  @apply bg-status-error text-status-error-foreground px-2 py-1 rounded text-xs;
+}
+
+@utility text-card-title {
+  /* Typography patterns */
+  @apply text-lg font-medium line-clamp-2;
+}
+
+@utility text-card-description {
+  @apply text-sm text-muted-foreground line-clamp-4;
+}
+
+@utility text-meta {
+  @apply text-xs text-muted-foreground;
+}
+
+@utility text-meta-bold {
+  @apply text-xs font-medium text-muted-foreground;
+}
+
+@utility layout-card-header {
+  /* Layout patterns */
+  @apply p-4 pb-2 flex-shrink-0;
+}
+
+@utility layout-card-content {
+  @apply p-4 pt-0 flex-1 flex flex-col;
+}
+
+@utility layout-flex-between {
+  @apply flex justify-between items-start;
+}
+
+@utility layout-flex-center {
+  @apply flex items-center justify-center;
+}
+
+@utility layout-flex-start {
+  @apply flex items-center gap-2;
+}
+
+@utility skeleton-base {
+  /* Skeleton patterns */
+  @apply bg-muted animate-pulse rounded;
+}
+
+@utility skeleton-text {
+  @apply skeleton-base h-4;
+}
+
+@utility skeleton-title {
+  @apply skeleton-base h-6;
+}
+
+@utility skeleton-icon {
+  @apply skeleton-base h-7 w-7 rounded-full;
+}
+
+@utility skeleton-button {
+  @apply skeleton-base h-8 w-8 rounded-md;
+}
+
+@utility space-content {
+  /* Spacing patterns */
+  @apply space-y-3;
+}
+
+@utility space-tight {
+  @apply space-y-2;
+}
+
+@utility space-loose {
+  @apply space-y-4;
+}
+
+@utility focus-ring {
+  /* Focus patterns */
+  @apply focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+}
+
+@utility motion-card {
+  /* Motion patterns */
+  @apply transition-all duration-300 ease-out;
+}
+
+@utility motion-hover {
+  @apply transition-colors duration-200;
+}
 
 @layer base {
   :root {
@@ -48,132 +279,5 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@layer components {
-  /* Card interaction patterns */
-  .card-interactive {
-    @apply cursor-pointer transition-all hover:shadow-lg;
-  }
-  
-  .card-active {
-    @apply ring-2 ring-primary;
-  }
-  
-  .card-layout {
-    @apply h-full flex flex-col;
-  }
-  
-  /* Icon container patterns */
-  .icon-container {
-    @apply bg-primary/10 p-1 rounded-full;
-  }
-  
-  .icon-container-sm {
-    @apply bg-primary/10 p-0.5 rounded-full;
-  }
-  
-  /* Status badge patterns */
-  .badge-info {
-    @apply bg-status-info text-status-info-foreground px-2 py-1 rounded text-xs;
-  }
-  
-  .badge-warning {
-    @apply bg-status-warning text-status-warning-foreground px-2 py-1 rounded text-xs;
-  }
-  
-  .badge-success {
-    @apply bg-status-success text-status-success-foreground px-2 py-1 rounded text-xs;
-  }
-  
-  .badge-error {
-    @apply bg-status-error text-status-error-foreground px-2 py-1 rounded text-xs;
-  }
-  
-  /* Typography patterns */
-  .text-card-title {
-    @apply text-lg font-medium line-clamp-2;
-  }
-  
-  .text-card-description {
-    @apply text-sm text-muted-foreground line-clamp-4;
-  }
-  
-  .text-meta {
-    @apply text-xs text-muted-foreground;
-  }
-  
-  .text-meta-bold {
-    @apply text-xs font-medium text-muted-foreground;
-  }
-  
-  /* Layout patterns */
-  .layout-card-header {
-    @apply p-4 pb-2 flex-shrink-0;
-  }
-  
-  .layout-card-content {
-    @apply p-4 pt-0 flex-1 flex flex-col;
-  }
-  
-  .layout-flex-between {
-    @apply flex justify-between items-start;
-  }
-  
-  .layout-flex-center {
-    @apply flex items-center justify-center;
-  }
-  
-  .layout-flex-start {
-    @apply flex items-center gap-2;
-  }
-  
-  /* Skeleton patterns */
-  .skeleton-base {
-    @apply bg-muted animate-pulse rounded;
-  }
-  
-  .skeleton-text {
-    @apply skeleton-base h-4;
-  }
-  
-  .skeleton-title {
-    @apply skeleton-base h-6;
-  }
-  
-  .skeleton-icon {
-    @apply skeleton-base h-7 w-7 rounded-full;
-  }
-  
-  .skeleton-button {
-    @apply skeleton-base h-8 w-8 rounded-md;
-  }
-  
-  /* Spacing patterns */
-  .space-content {
-    @apply space-y-3;
-  }
-  
-  .space-tight {
-    @apply space-y-2;
-  }
-  
-  .space-loose {
-    @apply space-y-4;
-  }
-  
-  /* Focus patterns */
-  .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
-  }
-  
-  /* Motion patterns */
-  .motion-card {
-    @apply transition-all duration-300 ease-out;
-  }
-  
-  .motion-hover {
-    @apply transition-colors duration-200;
   }
 }

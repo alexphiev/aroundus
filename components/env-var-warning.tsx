@@ -5,14 +5,14 @@ import { Button } from "./ui/button";
 export function EnvVarWarning() {
   return (
     <div className="flex gap-4 items-center">
-      <Badge variant={"outline"} className="font-normal">
+      <Badge variant={"outline-solid"} className="font-normal">
         Supabase environment variables required
       </Badge>
       <div className="flex gap-2">
         <Button
           asChild
           size="sm"
-          variant={"outline"}
+          variant={"outline-solid"}
           disabled
           className="opacity-75 cursor-none pointer-events-none"
         >
