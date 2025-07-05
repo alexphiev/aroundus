@@ -50,7 +50,30 @@ export async function getSavedTripsAction() {
       return { error: `Failed to get saved trips: ${error.message}` };
     }
 
-    return { success: true, data: data || [] };
+    // Map snake_case fields from database to camelCase for frontend
+    const mappedData = data?.map((place) => ({
+      id: place.id,
+      name: place.name,
+      description: place.description,
+      lat: place.lat,
+      long: place.long,
+      landscape: place.landscape,
+      activity: place.activity,
+      estimatedActivityDuration: place.estimated_activity_duration,
+      estimatedTransportTime: place.estimated_transport_time,
+      whyRecommended: place.why_recommended,
+      starRating: place.star_rating,
+      bestTimeToVisit: place.best_time_to_visit,
+      timeToAvoid: place.time_to_avoid,
+      googleMapsLink: place.google_maps_link,
+      operatingHours: place.operating_hours,
+      entranceFee: place.entrance_fee,
+      parkingInfo: place.parking_info,
+      currentConditions: place.current_conditions,
+      created_at: place.created_at,
+    })) || [];
+
+    return { success: true, data: mappedData };
   } catch (e: any) {
     console.error("Unexpected error getting saved trips:", e);
     return { error: `An unexpected error occurred: ${e.message || "Unknown error"}` };
@@ -110,17 +133,17 @@ export async function saveTripAction(tripData: TripToSave) {
           long,
           landscape,
           activity,
-          estimatedActivityDuration,
-          estimatedTransportTime,
-          whyRecommended,
-          starRating,
-          bestTimeToVisit,
-          timeToAvoid,
-          googleMapsLink,
-          operatingHours,
-          entranceFee,
-          parkingInfo,
-          currentConditions,
+          estimated_activity_duration: estimatedActivityDuration,
+          estimated_transport_time: estimatedTransportTime,
+          why_recommended: whyRecommended,
+          star_rating: starRating,
+          best_time_to_visit: bestTimeToVisit,
+          time_to_avoid: timeToAvoid,
+          google_maps_link: googleMapsLink,
+          operating_hours: operatingHours,
+          entrance_fee: entranceFee,
+          parking_info: parkingInfo,
+          current_conditions: currentConditions,
         },
       ])
       .select();

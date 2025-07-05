@@ -157,10 +157,10 @@ function TransportOption({
           <button
             type="button"
             className={cn(
-              "p-2 rounded-full transition-all",
+              "p-2 rounded-full transition-all cursor-pointer hover:scale-105",
               isSelected
                 ? "bg-primary/10 text-primary ring-2 ring-primary"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                : "bg-muted text-muted-foreground hover:bg-primary/5 hover:text-primary/80"
             )}
             onClick={() => onChange(value)}
           >
@@ -174,6 +174,7 @@ function TransportOption({
     </TooltipProvider>
   );
 }
+
 
 // Get activity level icon based on the selected level
 const getActivityLevelIcon = (level: number) => {
@@ -203,6 +204,7 @@ interface SearchFormModalProps {
   locationError: string | null;
   onRetryLocation: () => void;
   userLocation: { latitude: number; longitude: number } | null;
+  isLoadingAIFilters?: boolean;
 }
 
 export function SearchFormModal({
@@ -214,6 +216,7 @@ export function SearchFormModal({
   locationError,
   onRetryLocation,
   userLocation,
+  isLoadingAIFilters = false,
 }: SearchFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -228,7 +231,19 @@ export function SearchFormModal({
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="space-y-8 overflow-y-auto flex-1 px-4 -mx-4 py-2 pr-6">
-              {/* Location error message - only show if there's a problem */}
+              {isLoadingAIFilters ? (
+                /* AI Loading State */
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                    <p className="text-sm text-muted-foreground">
+                      Analyzing your search and pre-filling the form...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Location error message - only show if there's a problem */}
               {locationError && (
                 <div className="p-3 border border-destructive/50 rounded-lg bg-destructive/10">
                   <p className="text-sm text-destructive">{locationError}</p>
@@ -544,6 +559,8 @@ export function SearchFormModal({
                   </FormItem>
                 )}
               />
+                </>
+              )}
             </div>
 
             <div className="flex-shrink-0 pt-6 border-t border-muted">

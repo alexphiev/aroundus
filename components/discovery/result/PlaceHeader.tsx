@@ -2,12 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { TripResultItem } from "@/types/result.types";
-import {
-  ArrowLeft,
-  Bookmark,
-  Share2,
-  Star,
-} from "lucide-react";
+import { ArrowLeft, Bookmark, Share2, Star } from "lucide-react";
 
 interface PlaceHeaderProps {
   place: TripResultItem;
@@ -26,19 +21,6 @@ export default function PlaceHeader({
   isSaved = false,
   showSaveButton = true,
 }: PlaceHeaderProps) {
-  // Get star rating label
-  const getStarRatingLabel = (rating?: number) => {
-    switch (rating) {
-      case 3:
-        return "Must-Visit";
-      case 2:
-        return "Excellent";
-      case 1:
-        return "Hidden Gem";
-      default:
-        return "Place";
-    }
-  };
 
   // Handle save action
   const handleSave = async () => {
@@ -67,7 +49,7 @@ export default function PlaceHeader({
           </Button>
           {showSaveButton && (
             <Button
-              variant={isSaved ? "secondary" : "outline-solid"}
+              variant={isSaved ? "secondary" : "outline"}
               size="sm"
               onClick={handleSave}
             >
@@ -86,15 +68,16 @@ export default function PlaceHeader({
           <h1 className="text-3xl font-bold">{place.name}</h1>
           {place.starRating && (
             <div className="flex items-center gap-1">
-              {Array.from({ length: place.starRating }, (_, i) => (
+              {Array.from({ length: 3 }, (_, i) => (
                 <Star
                   key={i}
-                  className="h-5 w-5 fill-yellow-400 text-yellow-400"
+                  className={`h-5 w-5 ${
+                    i < (place.starRating || 0)
+                      ? "fill-yellow-400 text-yellow-400"
+                      : "text-gray-300"
+                  }`}
                 />
               ))}
-              <span className="text-sm font-medium text-muted-foreground ml-1">
-                {getStarRatingLabel(place.starRating)}
-              </span>
             </div>
           )}
         </div>

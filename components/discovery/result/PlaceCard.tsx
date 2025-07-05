@@ -74,7 +74,7 @@ export default function TripResultCard({
       >
         <CardHeader className="layout-card-header">
           <div className="layout-flex-between">
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
               {trip.landscape && (
                 <TooltipProvider>
                   <Tooltip>
@@ -104,6 +104,22 @@ export default function TripResultCard({
                   </Tooltip>
                 </TooltipProvider>
               )}
+
+              {/* Star Rating */}
+              {trip.starRating && (
+                <div className="flex items-center gap-0.5 ml-2">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-3 w-3 ${
+                        i < (trip.starRating || 0)
+                          ? "fill-primary text-primary"
+                          : "text-muted-foreground/30"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {showSaveButton && (
@@ -120,25 +136,14 @@ export default function TripResultCard({
               </Button>
             )}
           </div>
-          <CardTitle className="text-card-title mt-2">
-            {trip.name}
-          </CardTitle>
+          <CardTitle className="text-card-title mt-2">{trip.name}</CardTitle>
         </CardHeader>
         <CardContent className="layout-card-content">
-          {/* Why Recommended with Tooltip */}
+          {/* Why Recommended */}
           {trip.whyRecommended ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CardDescription className="text-card-description mb-3 flex-shrink-0 cursor-help">
-                    {trip.whyRecommended}
-                  </CardDescription>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-sm p-3">
-                  <p className="text-sm">{trip.whyRecommended}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <CardDescription className="text-card-description mb-3 flex-shrink-0">
+              {trip.whyRecommended}
+            </CardDescription>
           ) : (
             <CardDescription className="text-card-description mb-3 flex-shrink-0">
               {trip.description}
@@ -146,23 +151,6 @@ export default function TripResultCard({
           )}
 
           <div className="flex-1 space-content">
-            {/* Star Rating Badge */}
-            {trip.starRating && (
-              <div className="flex items-center gap-1">
-                {Array.from({ length: trip.starRating }, (_, i) => (
-                  <Star
-                    key={i}
-                    className="h-3 w-3 fill-yellow-400 text-yellow-400"
-                  />
-                ))}
-                <span className="text-meta ml-1">
-                  {trip.starRating === 3 && "Must-Visit"}
-                  {trip.starRating === 2 && "Excellent"}
-                  {trip.starRating === 1 && "Hidden Gem"}
-                </span>
-              </div>
-            )}
-
             {/* Duration Information - Single Row */}
             {(trip.estimatedActivityDuration ||
               trip.estimatedTransportTime) && (

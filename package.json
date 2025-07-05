@@ -5,7 +5,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate-types": "npx supabase gen types --lang=typescript --project-id \"ydtttobvqajzglvdcqas\" --schema public > types/supabase.ts"
   },
   "dependencies": {
     "@google/genai": "^1.0.1",

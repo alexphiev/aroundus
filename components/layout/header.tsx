@@ -299,6 +299,3 @@ export function MobileUserMenu() {
     </div>
   );
 }
-
-// Using the same MountainIcon from sidebar for consistency
-// function MountainIcon(props: React.SVGProps<SVGSVGElement>) { ... } // Assuming it's available or defined elsewhere

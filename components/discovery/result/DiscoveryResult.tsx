@@ -23,8 +23,9 @@ interface Props {
   isLoading?: boolean;
   className?: string;
   onSaveTrip?: (trip: TripResultItem) => Promise<void>;
-  progressiveStage?: string;
-  isProgressiveComplete?: boolean;
+  hasMoreResults?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
   onNewSearch?: () => void;
   showNewSearchButton?: boolean;
   onCardClick?: (index: number) => void;
@@ -41,8 +42,9 @@ export default function DiscoveryResult({
   isLoading = false,
   className = "",
   onSaveTrip,
-  progressiveStage,
-  isProgressiveComplete = true,
+  hasMoreResults = false,
+  isLoadingMore = false,
+  onLoadMore,
   onNewSearch,
   onCardClick,
 }: Props) {
@@ -124,6 +126,19 @@ export default function DiscoveryResult({
         description: trip.description,
         lat: trip.lat,
         long: trip.long,
+        landscape: trip.landscape,
+        activity: trip.activity,
+        estimatedActivityDuration: trip.estimatedActivityDuration,
+        estimatedTransportTime: trip.estimatedTransportTime,
+        whyRecommended: trip.whyRecommended,
+        starRating: trip.starRating,
+        bestTimeToVisit: trip.bestTimeToVisit,
+        timeToAvoid: trip.timeToAvoid,
+        googleMapsLink: (trip as any).googleMapsLink,
+        operatingHours: (trip as any).operatingHours,
+        entranceFee: (trip as any).entranceFee,
+        parkingInfo: (trip as any).parkingInfo,
+        currentConditions: (trip as any).currentConditions,
       };
 
       const result = await saveTripAction(tripToSave);
@@ -193,8 +208,9 @@ export default function DiscoveryResult({
                     savedTripNames={savedTripNames}
                     showSaveButton={showSaveButton}
                     isSaving={isSaving}
-                    isProgressiveComplete={isProgressiveComplete}
-                    progressiveStage={progressiveStage}
+                    hasMoreResults={hasMoreResults}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={onLoadMore}
                     onCardClick={handleCardClick}
                     onSaveTrip={handleSaveTrip}
                   />
@@ -225,7 +241,7 @@ export default function DiscoveryResult({
           activeMarkerIndex={activeCardIndex}
           className="h-full"
           shouldUpdateBounds={true}
-          isProgressiveSearch={!isProgressiveComplete}
+          isProgressiveSearch={isLoadingMore}
           onMarkerClick={handleMarkerClick}
           onPopupClose={handlePopupClose}
         />

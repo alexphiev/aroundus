@@ -3,8 +3,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { TripResultItem } from "@/types/result.types";
 import TripResultCard from "./PlaceCard";
-import SkeletonCard from "./SkeletonCard";
-import ProgressiveSearchIndicator from "./ProgressiveSearchIndicator";
+import { Button } from "@/components/ui/button";
+import { Loader2, Plus } from "lucide-react";
 
 interface Props {
   tripResults: TripResultItem[];
@@ -12,8 +12,9 @@ interface Props {
   savedTripNames: Set<string>;
   showSaveButton: boolean;
   isSaving: boolean;
-  isProgressiveComplete: boolean;
-  progressiveStage?: string;
+  hasMoreResults: boolean;
+  isLoadingMore: boolean;
+  onLoadMore?: () => void;
   onCardClick: (index: number, trip: TripResultItem) => void;
   onSaveTrip: (trip: TripResultItem) => void;
 }
@@ -24,19 +25,14 @@ export default function PlaceResultsGrid({
   savedTripNames,
   showSaveButton,
   isSaving,
-  isProgressiveComplete,
-  progressiveStage,
+  hasMoreResults,
+  isLoadingMore,
+  onLoadMore,
   onCardClick,
   onSaveTrip,
 }: Props) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        {!isProgressiveComplete && progressiveStage && (
-          <ProgressiveSearchIndicator stage={progressiveStage} />
-        )}
-      </div>
-
+    <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <AnimatePresence>
           {tripResults.map((trip, index) => (
@@ -55,30 +51,33 @@ export default function PlaceResultsGrid({
               }}
             />
           ))}
-
-          {/* Show skeleton cards during progressive search */}
-          {!isProgressiveComplete && (
-            <>
-              {Array.from({ length: 4 }, (_, index) => (
-                <motion.div
-                  key={`skeleton-${index}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: (tripResults.length + index) * 0.1,
-                    ease: "easeOut",
-                  }}
-                  layout
-                >
-                  <SkeletonCard />
-                </motion.div>
-              ))}
-            </>
-          )}
         </AnimatePresence>
       </div>
+
+      {/* Load More Button */}
+      {hasMoreResults && onLoadMore && (
+        <div className="flex justify-center pt-4">
+          <Button
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+            variant="outline"
+            size="lg"
+            className="min-w-32"
+          >
+            {isLoadingMore ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Load More
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,12 +10,13 @@ import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
-import { handleProgressiveTripSearchByStage } from "../../../actions/discover.actions";
+import { handleTripSearchBatch } from "../../../actions/discover.actions";
 import { saveTripAction } from "../../../actions/place.actions";
 import {
   getLatestSearchFromHistory,
   saveSearchToHistory,
 } from "../../../actions/history.actions";
+import { mapSearchToFormFilters } from "../../../actions/map-search-to-form.actions";
 import type {
   SearchQuery,
   SearchResult,
@@ -92,10 +93,16 @@ export default function DiscoverPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number>(-1); // No card selected by default
   const [selectedTrip, setSelectedTrip] = useState<TripResult | null>(null);
-  const [searchStage, setSearchStage] = useState<string>(""); // Track current search stage
   const [hasInitialResults, setHasInitialResults] = useState<boolean>(false); // Track if we have any results yet
   const [isNewSearch, setIsNewSearch] = useState<boolean>(false); // Track if this is a new search or loaded from history
   const [isLoadingHistory, setIsLoadingHistory] = useState(true); // Track if we're loading search history
+  const [isLoadingAIFilters, setIsLoadingAIFilters] = useState(false); // Track if we're loading AI-mapped filters
+  const [hasProcessedQuery, setHasProcessedQuery] = useState(false); // Track if we've already processed the URL query
+  const [hasPerformedSearch, setHasPerformedSearch] = useState(false); // Track if user has performed a search
+  const [conversationHistory, setConversationHistory] = useState<any[]>([]); // Track AI conversation for context
+  const [currentBatch, setCurrentBatch] = useState<number>(1); // Track current batch number
+  const [hasMoreResults, setHasMoreResults] = useState<boolean>(false); // Track if more results are available
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false); // Track if loading more results
 
   // Initialize form
   const form = useForm<FormSchemaType>({
@@ -146,40 +153,52 @@ export default function DiscoverPage() {
     async function loadLatestSearch() {
       setIsLoadingHistory(true);
       try {
-        const result = await getLatestSearchFromHistory();
-        if (result.success && result.data) {
-          const historyRecord = result.data as SearchHistoryRecord;
-          const { query, results } = historyRecord;
-
-          // Set form values from saved search
-          form.reset({
-            activity: query.activity || "",
-            otherActivity: "",
-            when: query.when || "today",
-            customDate: undefined,
-            specialCare: query.specialCare || undefined,
-            distance: query.distance || "1 hour",
-            transportType: "transit", // Default transport type since it's not saved
-            activityLevel: query.activityLevel,
-            activityDurationValue: query.activityDurationValue,
-            activityDurationUnit: query.activityDurationUnit,
-            additionalInfo: query.additionalInfo || "",
-          });
-
-          // Set location and results
-          setUserLocation({
-            latitude: query.location.latitude,
-            longitude: query.location.longitude,
-          });
-          setTripResults(results);
-          setHasInitialResults(true);
-
-          // Don't open search modal if we have previous results
-          setIsSearchOpen(false);
-        } else {
-          // No previous search, get location and show search modal
+        // Check if we have URL parameters - if so, don't load history
+        const query = searchParams.get("q");
+        const shortcut = searchParams.get("shortcut");
+        
+        if (query || shortcut) {
+          // User came from homepage with search params, start fresh
           getLocation();
-          setIsSearchOpen(true);
+          setIsSearchOpen(false); // Will be opened by the URL params effect
+        } else {
+          // Normal page load, try to load previous search
+          const result = await getLatestSearchFromHistory();
+          if (result.success && result.data) {
+            const historyRecord = result.data as SearchHistoryRecord;
+            const { query, results } = historyRecord;
+
+            // Set form values from saved search
+            form.reset({
+              activity: query.activity || "",
+              otherActivity: "",
+              when: query.when || "today",
+              customDate: undefined,
+              specialCare: query.specialCare || undefined,
+              distance: query.distance || "1 hour",
+              transportType: "transit", // Default transport type since it's not saved
+              activityLevel: query.activityLevel,
+              activityDurationValue: query.activityDurationValue,
+              activityDurationUnit: query.activityDurationUnit,
+              additionalInfo: query.additionalInfo || "",
+            });
+
+            // Set location and results
+            setUserLocation({
+              latitude: query.location.latitude,
+              longitude: query.location.longitude,
+            });
+            setTripResults(results);
+            setHasInitialResults(true);
+            setHasPerformedSearch(true); // Mark that we have previous search results
+
+            // Don't open search modal if we have previous results
+            setIsSearchOpen(false);
+          } else {
+            // No previous search, get location and show search modal
+            getLocation();
+            setIsSearchOpen(true);
+          }
         }
       } catch (error) {
         console.error("Error loading latest search:", error);
@@ -192,22 +211,74 @@ export default function DiscoverPage() {
     }
 
     loadLatestSearch();
-  }, []);
+  }, [searchParams]);
 
-  // Handle URL parameters for search query
+  // Handle URL parameters for search query and shortcuts
   useEffect(() => {
     const query = searchParams.get("q");
-    if (query) {
-      // Set the additional info field with the search query
-      form.setValue("additionalInfo", decodeURIComponent(query));
-      // Open the search modal so user can complete the form
+    const shortcut = searchParams.get("shortcut");
+    
+    // Only process if we have a query/shortcut and haven't processed it yet
+    if ((query || shortcut) && !hasProcessedQuery && !isLoadingHistory) {
+      // Use AI to map search query or shortcut to form filters
+      const processSearchQuery = async () => {
+        setIsLoadingAIFilters(true);
+        setHasProcessedQuery(true); // Mark as processed immediately to prevent duplicates
+        
+        try {
+          const result = await mapSearchToFormFilters(
+            query ? decodeURIComponent(query) : "",
+            shortcut || undefined
+          );
+          
+          if (result.success && result.data) {
+            const mappedData = result.data;
+            
+            // Update form with AI-mapped values
+            form.reset({
+              activity: mappedData.activity || "",
+              otherActivity: "",
+              when: mappedData.when || "today",
+              customDate: undefined,
+              specialCare: mappedData.specialCare || undefined,
+              distance: mappedData.distance || "1 hour",
+              transportType: mappedData.transportType || "transit",
+              activityLevel: mappedData.activityLevel || 3,
+              activityDurationValue: mappedData.activityDurationValue || 4,
+              activityDurationUnit: mappedData.activityDurationUnit || "hours",
+              additionalInfo: mappedData.additionalInfo || (query ? decodeURIComponent(query) : ""),
+            });
+            
+            toast.success("Search preferences pre-filled based on your query!");
+          } else {
+            // Fallback to original behavior
+            if (query) {
+              form.setValue("additionalInfo", decodeURIComponent(query));
+            }
+            toast.info("Complete the form to search for trips");
+          }
+        } catch (error) {
+          console.error("Error mapping search query:", error);
+          // Fallback to original behavior
+          if (query) {
+            form.setValue("additionalInfo", decodeURIComponent(query));
+          }
+          toast.info("Complete the form to search for trips");
+        } finally {
+          setIsLoadingAIFilters(false);
+        }
+      };
+      
+      processSearchQuery();
+      
+      // Open the search modal so user can review and complete the form
       setIsSearchOpen(true);
       // Get location if not already set
       if (!userLocation) {
         getLocation();
       }
     }
-  }, [searchParams, form, userLocation]);
+  }, [searchParams, hasProcessedQuery, isLoadingHistory]);
 
   // Form submission handler with progressive search
   function onSubmit(values: FormSchemaType) {
@@ -221,9 +292,12 @@ export default function DiscoverPage() {
     setIsSearchOpen(false);
     setIsLoading(true);
     setTripResults(null); // Clear previous results
-    setSearchStage("");
     setHasInitialResults(false);
     setIsNewSearch(true);
+    setHasPerformedSearch(true); // Mark that a search is being performed
+    setConversationHistory([]); // Reset conversation history for new search
+    setCurrentBatch(1); // Reset to first batch
+    setHasMoreResults(false); // Reset more results flag
 
     startTransition(async () => {
       // Create payload for search (simplified - no encoding/decoding needed)
@@ -253,9 +327,6 @@ export default function DiscoverPage() {
         additionalInfo: values.additionalInfo,
       };
 
-      let allResults: TripResult[] = [];
-      let conversationHistory: any[] = [];
-
       try {
         // Convert payload to the format expected by discover actions
         const actionPayload = {
@@ -274,98 +345,44 @@ export default function DiscoverPage() {
           transportType: values.transportType,
         };
 
-        // Stage 1: 3-star destinations
-        setSearchStage("iconic");
-        const threeStarResult = await handleProgressiveTripSearchByStage(
+        // Get first batch of results
+        const batchResult = await handleTripSearchBatch(
           actionPayload,
-          "3-star",
-          conversationHistory
+          1,
+          []
         );
 
-        if (threeStarResult?.error) {
-          toast.error(threeStarResult.error);
-        } else if (threeStarResult?.data && threeStarResult.success) {
-          const threeStarPlaces = Array.isArray(threeStarResult.data)
-            ? threeStarResult.data
+        if (batchResult?.error) {
+          toast.error(batchResult.error);
+          setTripResults([]);
+        } else if (batchResult?.data && batchResult.success) {
+          const batchPlaces = Array.isArray(batchResult.data)
+            ? batchResult.data
             : [];
-          allResults = [...allResults, ...threeStarPlaces];
-          conversationHistory = threeStarResult.conversationHistory || [];
-
-          // Update UI with 3-star results immediately
-          setTripResults([...allResults] as TripResult[]);
-          setHasInitialResults(true); // We now have initial results to show
-          if (threeStarPlaces.length > 0) {
+          
+          // Update UI with first batch results
+          setTripResults(batchPlaces as TripResult[]);
+          setHasInitialResults(true);
+          setConversationHistory(batchResult.conversationHistory || []);
+          setCurrentBatch(1);
+          setHasMoreResults(batchResult.hasMore || false);
+          
+          if (batchPlaces.length > 0) {
             toast.success(
-              `Found ${threeStarPlaces.length} iconic destinations!`
+              `Found ${batchPlaces.length} great destinations!`
             );
+            
+            // Save search to history
+            try {
+              await saveSearchToHistory(payload, batchPlaces);
+              console.log("Search saved to history successfully");
+            } catch (error) {
+              console.error("Failed to save search to history:", error);
+              // Don't show error to user as this is not critical
+            }
+          } else {
+            toast.info("No trips found matching your criteria.");
           }
-        }
-
-        // Stage 2: 2-star destinations
-        setSearchStage("local");
-        const twoStarResult = await handleProgressiveTripSearchByStage(
-          actionPayload,
-          "2-star",
-          conversationHistory
-        );
-
-        if (twoStarResult?.error) {
-          toast.error(twoStarResult.error);
-        } else if (twoStarResult?.data && twoStarResult.success) {
-          const twoStarPlaces = Array.isArray(twoStarResult.data)
-            ? twoStarResult.data
-            : [];
-          allResults = [...allResults, ...twoStarPlaces];
-          conversationHistory = twoStarResult.conversationHistory || [];
-
-          // Update UI with 2-star results immediately
-          setTripResults([...allResults] as TripResult[]);
-          if (twoStarPlaces.length > 0) {
-            toast.success(
-              `Found ${twoStarPlaces.length} additional great spots!`
-            );
-          }
-        }
-
-        // Stage 3: 1-star destinations
-        setSearchStage("hidden gems");
-        const oneStarResult = await handleProgressiveTripSearchByStage(
-          actionPayload,
-          "1-star",
-          conversationHistory
-        );
-
-        if (oneStarResult?.error) {
-          toast.error(oneStarResult.error);
-        } else if (oneStarResult?.data && oneStarResult.success) {
-          const oneStarPlaces = Array.isArray(oneStarResult.data)
-            ? oneStarResult.data
-            : [];
-          allResults = [...allResults, ...oneStarPlaces];
-
-          // Final update with all results
-          setTripResults([...allResults] as TripResult[]);
-          if (oneStarPlaces.length > 0) {
-            toast.success(`Found ${oneStarPlaces.length} hidden gems!`);
-          }
-        }
-
-        // Final summary and save to history
-        if (allResults.length > 0) {
-          toast.success(
-            `Search complete! Found ${allResults.length} total destinations.`
-          );
-
-          // Save search to history
-          try {
-            await saveSearchToHistory(payload, allResults);
-            console.log("Search saved to history successfully");
-          } catch (error) {
-            console.error("Failed to save search to history:", error);
-            // Don't show error to user as this is not critical
-          }
-        } else {
-          toast.info("No trips found matching your criteria.");
         }
       } catch (error) {
         console.error("Error fetching trip results:", error);
@@ -373,7 +390,6 @@ export default function DiscoverPage() {
         setTripResults([]);
       } finally {
         setIsLoading(false);
-        setSearchStage("");
       }
     });
   }
@@ -387,6 +403,19 @@ export default function DiscoverPage() {
         description: trip.description,
         lat: trip.lat,
         long: trip.long,
+        landscape: trip.landscape,
+        activity: trip.activity,
+        estimatedActivityDuration: trip.estimatedActivityDuration,
+        estimatedTransportTime: trip.estimatedTransportTime,
+        whyRecommended: trip.whyRecommended,
+        starRating: trip.starRating,
+        bestTimeToVisit: trip.bestTimeToVisit,
+        timeToAvoid: trip.timeToAvoid,
+        googleMapsLink: (trip as any).googleMapsLink,
+        operatingHours: (trip as any).operatingHours,
+        entranceFee: (trip as any).entranceFee,
+        parkingInfo: (trip as any).parkingInfo,
+        currentConditions: (trip as any).currentConditions,
       };
       const result = await saveTripAction(tripToSave);
       if (result.success) {
@@ -395,6 +424,71 @@ export default function DiscoverPage() {
         toast.error(result.error || "Failed to save trip. Please try again.");
       }
     });
+  };
+
+  // Load more results handler
+  const handleLoadMore = async () => {
+    if (!userLocation || !tripResults || isLoadingMore || !hasMoreResults) {
+      return;
+    }
+
+    setIsLoadingMore(true);
+    
+    try {
+      const formValues = form.getValues();
+      const finalActivity = formValues.activity === "other" ? formValues.otherActivity || "" : formValues.activity;
+      let finalWhen = formValues.when;
+      if (formValues.when === "custom" && formValues.customDate) {
+        finalWhen = formValues.customDate.toISOString();
+      }
+
+      const actionPayload = {
+        activity: finalActivity,
+        when: finalWhen,
+        distance: formValues.distance,
+        activityLevel: formValues.activityLevel,
+        activityDurationValue: formValues.activityDurationValue,
+        activityDurationUnit: formValues.activityDurationUnit,
+        location: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        },
+        specialCare: formValues.specialCare,
+        additionalInfo: formValues.additionalInfo,
+        transportType: formValues.transportType,
+      };
+
+      const nextBatch = currentBatch + 1;
+      const batchResult = await handleTripSearchBatch(
+        actionPayload,
+        nextBatch,
+        conversationHistory
+      );
+
+      if (batchResult?.error) {
+        toast.error(batchResult.error);
+      } else if (batchResult?.data && batchResult.success) {
+        const newPlaces = Array.isArray(batchResult.data) ? batchResult.data : [];
+        
+        if (newPlaces.length > 0) {
+          // Append new results to existing ones
+          setTripResults(prev => prev ? [...prev, ...newPlaces] : newPlaces);
+          setConversationHistory(batchResult.conversationHistory || conversationHistory);
+          setCurrentBatch(nextBatch);
+          setHasMoreResults(batchResult.hasMore || false);
+          
+          toast.success(`Found ${newPlaces.length} more destinations!`);
+        } else {
+          setHasMoreResults(false);
+          toast.info("No more destinations found.");
+        }
+      }
+    } catch (error) {
+      console.error("Error loading more results:", error);
+      toast.error("Failed to load more results. Please try again.");
+    } finally {
+      setIsLoadingMore(false);
+    }
   };
 
   // Show loading state while checking for search history
@@ -436,6 +530,7 @@ export default function DiscoverPage() {
         locationError={locationError}
         onRetryLocation={getLocation}
         userLocation={userLocation}
+        isLoadingAIFilters={isLoadingAIFilters}
       />
 
       {/* Use the new MapResult component */}
@@ -446,10 +541,11 @@ export default function DiscoverPage() {
         userLocation={userLocation}
         isLoading={isLoading && (!tripResults || tripResults.length === 0)}
         onSearchClick={() => setIsSearchOpen(true)}
-        emptyStateMessage="No trips found matching your criteria"
+        emptyStateMessage={hasPerformedSearch ? "No trips found matching your criteria" : "Discover places around you"}
         onSaveTrip={handleSaveTrip}
-        progressiveStage={searchStage}
-        isProgressiveComplete={!isLoading}
+        hasMoreResults={hasMoreResults}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={handleLoadMore}
         onNewSearch={() => {
           // Only open the modal, don't clear results until search is submitted
           setIsNewSearch(true);

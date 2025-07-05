@@ -136,7 +136,8 @@ async function executeAIPromptWithConversation(
   console.log("Full result structure:", JSON.stringify(result, null, 2));
 
   // Check if result has candidates and extract text from first candidate
-  let responseText: string;
+  let responseText: string = "";
+
   if (result.candidates && result.candidates.length > 0) {
     const candidate = result.candidates[0];
     if (
@@ -144,33 +145,228 @@ async function executeAIPromptWithConversation(
       candidate.content.parts.length > 0
     ) {
       responseText = candidate.content.parts[0].text || "";
-    } else if (result.text) {
-      responseText = result.text;
-    } else {
-      throw new Error("AI response missing text content");
     }
-  } else if (result.text) {
+  }
+
+  // Fallback methods for different response structures
+  if (!responseText && result.text) {
     responseText = result.text;
-  } else {
-    throw new Error("AI response missing or has unexpected format");
+  }
+
+  // Additional fallback - try to get text from response property if available
+  if (!responseText && (result as any).response) {
+    const response = (result as any).response;
+    if (response.text && typeof response.text === "function") {
+      responseText = response.text();
+    } else if (response.candidates && response.candidates.length > 0) {
+      const candidate = response.candidates[0];
+      if (
+        candidate.content && candidate.content.parts &&
+        candidate.content.parts.length > 0
+      ) {
+        responseText = candidate.content.parts[0].text || "";
+      }
+    }
+  }
+
+  if (!responseText) {
+    console.error(
+      "Full result structure for debugging:",
+      JSON.stringify(result, null, 2),
+    );
+    throw new Error(
+      "AI response missing text content - check console for full structure",
+    );
   }
 
   console.log("Extracted text:", responseText);
 
-  // Clean and parse JSON response
+  // Clean and parse JSON response - robust extraction with fallback
   let cleanedJsonText = responseText.trim();
-  if (cleanedJsonText.startsWith("```json")) {
-    cleanedJsonText = cleanedJsonText.substring(7);
-    if (cleanedJsonText.endsWith("```")) {
-      cleanedJsonText = cleanedJsonText.substring(
-        0,
-        cleanedJsonText.length - 3,
+  let parsedResponse;
+
+  // Try multiple extraction methods
+  try {
+    // Method 1: Look for JSON block markers
+    const jsonStartMarkers = ["```json\n", "```json", "```\n", "```"];
+    const jsonEndMarker = "```";
+
+    let jsonStart = -1;
+    for (const marker of jsonStartMarkers) {
+      const index = cleanedJsonText.indexOf(marker);
+      if (index !== -1) {
+        jsonStart = index + marker.length;
+        break;
+      }
+    }
+
+    if (jsonStart !== -1) {
+      const jsonEnd = cleanedJsonText.indexOf(jsonEndMarker, jsonStart);
+      if (jsonEnd !== -1) {
+        cleanedJsonText = cleanedJsonText.substring(jsonStart, jsonEnd);
+      } else {
+        cleanedJsonText = cleanedJsonText.substring(jsonStart);
+      }
+    } else {
+      // Method 2: Find JSON array/object directly
+      const arrayStart = cleanedJsonText.indexOf("[");
+      const objectStart = cleanedJsonText.indexOf("{");
+
+      if (
+        arrayStart !== -1 && (objectStart === -1 || arrayStart < objectStart)
+      ) {
+        cleanedJsonText = cleanedJsonText.substring(arrayStart);
+        let bracketCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < cleanedJsonText.length; i++) {
+          if (cleanedJsonText[i] === "[") bracketCount++;
+          if (cleanedJsonText[i] === "]") bracketCount--;
+          if (bracketCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+        if (endIndex !== -1) {
+          cleanedJsonText = cleanedJsonText.substring(0, endIndex);
+        }
+      } else if (objectStart !== -1) {
+        cleanedJsonText = cleanedJsonText.substring(objectStart);
+        let braceCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < cleanedJsonText.length; i++) {
+          if (cleanedJsonText[i] === "{") braceCount++;
+          if (cleanedJsonText[i] === "}") braceCount--;
+          if (braceCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+        if (endIndex !== -1) {
+          cleanedJsonText = cleanedJsonText.substring(0, endIndex);
+        }
+      }
+    }
+
+    cleanedJsonText = cleanedJsonText.trim();
+
+    // Try to parse the extracted content
+    if (
+      cleanedJsonText &&
+      (cleanedJsonText.startsWith("[") || cleanedJsonText.startsWith("{"))
+    ) {
+      parsedResponse = JSON.parse(cleanedJsonText);
+    } else {
+      throw new Error("No valid JSON found, attempting fallback");
+    }
+  } catch (error) {
+    // Fallback: Make a new request specifically asking for JSON format
+    console.log(
+      "JSON extraction failed, attempting fallback request for JSON format",
+    );
+
+    const fallbackPrompt = `
+    The previous response contained good information but was not in the required JSON format.
+    Please convert the destination information from your previous response into a strict JSON array format.
+    
+    Return ONLY a JSON array with NO additional text, explanations, or markdown formatting.
+    Each destination should have this exact structure:
+    
+    [
+      {
+        "name": "destination name",
+        "description": "detailed description",
+        "lat": latitude_number,
+        "long": longitude_number,
+        "landscape": "landscape_type",
+        "activity": "activity_type",
+        "estimatedActivityDuration": "duration",
+        "estimatedTransportTime": "transport_time",
+        "whyRecommended": "reason",
+        "starRating": star_number,
+        "bestTimeToVisit": "timing_info",
+        "timeToAvoid": "timing_to_avoid"
+      }
+    ]
+    
+    Convert the destinations you mentioned in your previous response to this exact JSON format.
+    `;
+
+    try {
+      const fallbackResult = await genAI!.models.generateContent({
+        model: modelName,
+        contents: [{ role: "user", parts: [{ text: fallbackPrompt }] }],
+      });
+      let fallbackText = "";
+
+      if (fallbackResult.candidates && fallbackResult.candidates.length > 0) {
+        const candidate = fallbackResult.candidates[0];
+        if (
+          candidate.content && candidate.content.parts &&
+          candidate.content.parts.length > 0
+        ) {
+          fallbackText = candidate.content.parts[0].text || "";
+        }
+      }
+
+      // Additional fallback handling for different response structures
+      if (!fallbackText && (fallbackResult as any).response) {
+        const response = (fallbackResult as any).response;
+        if (response.text && typeof response.text === "function") {
+          fallbackText = response.text();
+        } else if (response.candidates && response.candidates.length > 0) {
+          const candidate = response.candidates[0];
+          if (
+            candidate.content && candidate.content.parts &&
+            candidate.content.parts.length > 0
+          ) {
+            fallbackText = candidate.content.parts[0].text || "";
+          }
+        }
+      }
+
+      fallbackText = fallbackText.trim();
+
+      // Try to extract JSON from fallback response
+      let fallbackJson = fallbackText;
+      if (fallbackJson.startsWith("```json")) {
+        fallbackJson = fallbackJson.replace(/^```json\s*/, "").replace(
+          /\s*```$/,
+          "",
+        );
+      } else if (fallbackJson.startsWith("```")) {
+        fallbackJson = fallbackJson.replace(/^```\s*/, "").replace(
+          /\s*```$/,
+          "",
+        );
+      }
+
+      const arrayStart = fallbackJson.indexOf("[");
+      if (arrayStart !== -1) {
+        fallbackJson = fallbackJson.substring(arrayStart);
+        let bracketCount = 0;
+        let endIndex = -1;
+        for (let i = 0; i < fallbackJson.length; i++) {
+          if (fallbackJson[i] === "[") bracketCount++;
+          if (fallbackJson[i] === "]") bracketCount--;
+          if (bracketCount === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+        if (endIndex !== -1) {
+          fallbackJson = fallbackJson.substring(0, endIndex);
+        }
+      }
+
+      parsedResponse = JSON.parse(fallbackJson.trim());
+      console.log("Successfully parsed fallback JSON response");
+    } catch (fallbackError) {
+      console.error("Fallback JSON extraction also failed:", fallbackError);
+      throw new Error(
+        "Unable to extract valid JSON from AI response after multiple attempts",
       );
     }
   }
-  cleanedJsonText = cleanedJsonText.trim();
-
-  const parsedResponse = JSON.parse(cleanedJsonText);
 
   // Update conversation history with both user prompt and AI response
   const updatedHistory = [
@@ -182,441 +378,10 @@ async function executeAIPromptWithConversation(
   return { response: parsedResponse, updatedHistory };
 }
 
-// Progressive search function that yields results as they come in (for server-side use)
-async function* progressiveTripSearchGenerator(
+// Server action for batch search that gets 4 results at a time
+export async function handleTripSearchBatch(
   data: FormSchemaWithLocation,
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.error("User not authenticated for trip search:", userError);
-    yield { error: "User not authenticated. Please sign in again." };
-    return;
-  }
-
-  // Validate incoming data again on the server (optional but good practice)
-  const parseResult = formSchema.safeParse(data);
-  if (!parseResult.success) {
-    console.error("Invalid data for trip search:", parseResult.error.flatten());
-    yield {
-      error: "Invalid search criteria provided.",
-      details: parseResult.error.flatten(),
-    };
-    return;
-  }
-
-  const validatedData = parseResult.data;
-
-  console.log("Authenticated user:", user.id);
-  console.log("Received validated search criteria:", validatedData);
-
-  if (!genAI) {
-    yield { error: "AI service is not configured. Missing API key." };
-    return;
-  }
-
-  const modelName = MODEL.GEMINI_FLASH;
-  console.log(`Using AI model: ${modelName} for progressive search`);
-
-  // Parse when field to get target date
-  const getTargetDate = (when: string) => {
-    const now = new Date();
-    switch (when) {
-      case "today":
-        return now;
-      case "tomorrow":
-        return new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      case "this_weekend":
-        const daysUntilSaturday = 6 - now.getDay();
-        return new Date(
-          now.getTime() + daysUntilSaturday * 24 * 60 * 60 * 1000,
-        );
-      default:
-        try {
-          return new Date(when);
-        } catch {
-          return now;
-        }
-    }
-  };
-
-  const targetDate = getTargetDate(validatedData.when);
-
-  // Get weather forecast for the target location and date
-  const weatherData = await getWeatherDataForAI(
-    validatedData.location.latitude,
-    validatedData.location.longitude,
-    targetDate,
-  );
-
-  // Base criteria for all prompts
-  const baseCriteria = `
-    STRICT REQUIREMENTS:
-    - Preferred activity type: ${validatedData.activity}
-    - Visit date: ${targetDate.toDateString()} (${
-    targetDate.toLocaleDateString("en-US", { weekday: "long" })
-  })
-    - Maximum travel time to location: ${validatedData.distance} (ONE WAY)
-    - Desired activity duration at location: ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}
-    - Physical activity level: ${validatedData.activityLevel} (where 1 is very light and 5 is very strenuous)
-    - Starting GPS location: latitude ${validatedData.location.latitude}, longitude ${validatedData.location.longitude}
-    
-    REAL-TIME WEATHER DATA:
-    ${weatherData}
-    
-    TIMING CONSIDERATIONS:
-    - Use the real-time weather forecast above to make specific timing recommendations
-    - Account for weekend vs weekday crowd levels and suggest timing accordingly
-    - Consider any potential public holidays or local events that might affect crowds
-    - Factor in weather conditions and recommend the best times to visit based on forecast
-    - Suggest alternative timing if weather conditions are poor
-    
-    CRITICAL: You must strictly adhere to the duration criteria. For activity duration of ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}:
-    - If specified in hours: suggest activities that take between ${
-    Math.max(1, validatedData.activityDurationValue - 1)
-  } and ${validatedData.activityDurationValue + 1} hours
-    - If specified in days: suggest activities that take between ${
-    Math.max(1, validatedData.activityDurationValue - 1)
-  } and ${validatedData.activityDurationValue + 1} days
-    
-    For travel distance of ${validatedData.distance}:
-    - Only suggest places that are within this travel time from the starting location
-    - Consider realistic travel methods (car, public transport, walking/biking for short distances)
-    
-    ACTIVITY FOCUS: Prioritize locations and experiences that align with "${validatedData.activity}" activities.
-    
-    ${
-    validatedData.additionalInfo
-      ? `
-    🔥 CRITICAL USER REQUEST - HIGHEST PRIORITY:
-    The user specifically searched for: "${validatedData.additionalInfo}"
-    
-    This is the user's direct input and represents their PRIMARY desire for this trip. 
-    You MUST prioritize this request above all other criteria. Every suggestion should strongly align with this user input.
-    Use this as the main filter and inspiration for your recommendations.
-    `
-      : ""
-  }
-  `;
-
-  const responseFormat = `
-    For each suggestion, provide these details:
-    - name: A catchy and descriptive name for the spot/activity
-    - description: A brief, engaging description (2-3 sentences) including specific activities and how to get there
-    - lat: The precise latitude of the starting point of the activity (use Google Search to find exact coordinates with full precision, e.g., 40.594721)
-    - long: The precise longitude of the starting point of the activity (use Google Search to find exact coordinates with full precision, e.g., -4.156937)
-    - landscape: Must be ONE of: "mountain", "forest", "lake", "beach", "river", "park", "wetland", "desert"
-    - activity: Must be ONE of: "hiking", "biking", "camping", "photography", "wildlife", "walking", "swimming"
-    - estimatedActivityDuration: The estimated time for the activity (e.g., "3 hours", "1 day")
-    - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
-    - whyRecommended: Brief explanation of why this fits the criteria and category
-    - starRating: The star rating (3, 2, or 1)
-    - bestTimeToVisit: Recommended time range for optimal experience based on weather and crowds (e.g., "8:00 AM - 11:00 AM", "early morning", "afternoon after 2 PM")
-    - timeToAvoid: Times or conditions to avoid (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
-    - googleMapsLink: Direct Google Maps URL for the location (use Google Search to find the exact maps link)
-    - operatingHours: Current operating hours or seasonal availability (use Google Search for up-to-date info)
-    - entranceFee: Cost information if applicable (use Google Search for current pricing)
-    - parkingInfo: Parking availability and details (use Google Search for current parking info)
-    - currentConditions: Recent trail conditions, closures, or important updates (use Google Search for latest info)
-    
-    CRITICAL: For coordinates, use Google Search to find the exact latitude and longitude of each location. 
-    Provide coordinates with full precision (6 decimal places minimum) - do not round or truncate them.
-    
-    ENHANCED DATA: Use Google Search to find:
-    - Exact Google Maps links for each location
-    - Current operating hours and seasonal schedules
-    - Up-to-date entrance fees and parking costs
-    - Recent trail conditions and any closures
-    - Current accessibility information
-    
-    Return ONLY valid JSON array format: [{"name": "...", "description": "...", ...}]
-  `;
-
-  const allResults: any[] = [];
-  let conversationHistory: any[] = [];
-
-  try {
-    // 1. THREE STARS: Must-go iconic places
-    const threeStarPrompt = `
-      You are an expert nature concierge like the French Routard guide. Find the most ICONIC and MUST-VISIT nature destinations.
-      
-      ${baseCriteria}
-      
-      Focus on: 
-      - Famous, well-known natural landmarks and destinations
-      - Places that locals and tourists consider absolute must-sees
-      - Iconic viewpoints, waterfalls, beaches, mountains that are renowned
-      - Places featured in travel guides and photography
-      - Destinations that define the natural beauty of the region
-      
-      Find 2-3 THREE-STAR (★★★) destinations that are unmissable classics.
-      ${responseFormat}
-    `;
-
-    console.log("Searching for 3-star destinations...");
-    const { response: threeStarData, updatedHistory } =
-      await executeAIPromptWithConversation(
-        threeStarPrompt,
-        modelName,
-        conversationHistory,
-      );
-    conversationHistory = updatedHistory;
-
-    if (Array.isArray(threeStarData)) {
-      const threeStarPlaces = threeStarData.map((place) => ({
-        ...place,
-        starRating: 3,
-      }));
-      allResults.push(...threeStarPlaces);
-      console.log(`Found ${threeStarPlaces.length} three-star destinations`);
-
-      const sortedPlaces = allResults.sort((a, b) =>
-        (b.starRating || 0) - (a.starRating || 0)
-      );
-
-      // Yield first batch of results
-      yield { data: sortedPlaces, isComplete: false, stage: "3-star" };
-    }
-
-    // 2. TWO STARS: Very good but less popular places
-    const twoStarPrompt = `
-      Now find VERY GOOD nature destinations that are less crowded but still excellent. 
-      
-      IMPORTANT: Based on our previous conversation where I found 3-star destinations, please avoid suggesting any similar or nearby places.
-      
-      ${baseCriteria}
-      
-      Focus on:
-      - Beautiful natural places that are known to locals but not tourist hotspots
-      - Places with rich biodiversity and natural beauty
-      - Scenic spots that offer great experiences without the crowds
-      - Regional parks, lesser-known trails, quiet beaches
-      - Places that nature enthusiasts appreciate but aren't mainstream famous
-      
-      AVOID:
-      - Any places you already suggested in the 3-star recommendations
-      - Places that are very famous or iconic (those are 3-star)
-      - Locations too close to the 3-star destinations you already mentioned
-      
-      Find 2-3 TWO-STAR (★★) destinations that offer excellent nature experiences and are DIFFERENT from your previous suggestions.
-      ${responseFormat}
-    `;
-
-    console.log("Searching for 2-star destinations...");
-    const { response: twoStarData, updatedHistory: updatedHistory2 } =
-      await executeAIPromptWithConversation(
-        twoStarPrompt,
-        modelName,
-        conversationHistory,
-      );
-    conversationHistory = updatedHistory2;
-    if (Array.isArray(twoStarData)) {
-      const twoStarPlaces = twoStarData.map((place) => ({
-        ...place,
-        starRating: 2,
-      }));
-
-      // Filter out duplicates before adding to results
-      const filteredTwoStarPlaces = twoStarPlaces.filter((newPlace) => {
-        return !allResults.some((existing) => {
-          const latDiff = Math.abs(existing.lat - newPlace.lat);
-          const longDiff = Math.abs(existing.long - newPlace.long);
-          const isLocationSimilar = latDiff < 0.01 && longDiff < 0.01;
-
-          const extractMainName = (name: string) => {
-            return name
-              .toLowerCase()
-              .replace(
-                /\b(trail|walk|hike|photography|picnic|camping|swimming|biking|vista|viewpoint|lookout)\b/g,
-                "",
-              )
-              .replace(/\s+/g, " ")
-              .trim();
-          };
-
-          const existingMainName = extractMainName(existing.name);
-          const newMainName = extractMainName(newPlace.name);
-          const isNameSimilar = existingMainName === newMainName ||
-            existingMainName.includes(newMainName) ||
-            newMainName.includes(existingMainName);
-
-          return isLocationSimilar || isNameSimilar;
-        });
-      });
-
-      allResults.push(...filteredTwoStarPlaces);
-      console.log(
-        `Found ${filteredTwoStarPlaces.length} new two-star destinations (${
-          twoStarPlaces.length - filteredTwoStarPlaces.length
-        } duplicates filtered)`,
-      );
-
-      // Yield second batch of results
-      const sortedPlaces = allResults.sort((a, b) =>
-        (b.starRating || 0) - (a.starRating || 0)
-      );
-      yield { data: sortedPlaces, isComplete: false, stage: "2-star" };
-    }
-
-    // 3. ONE STAR: Hidden gems and original discoveries
-    const oneStarPrompt = `
-      Finally, find HIDDEN GEMS and SECRET SPOTS that are truly off the beaten path.
-      
-      IMPORTANT: Based on our entire conversation where I found 3-star and 2-star destinations, please suggest completely different and unique places.
-      
-      ${baseCriteria}
-      
-      Focus on:
-      - Hidden, unknown, or secret natural spots
-      - Places that only locals or nature experts know about
-      - Unique, original, or quirky natural features
-      - Off-the-beaten-path discoveries
-      - Small natural wonders that are worth the adventure
-      - Places that feel like personal discoveries
-      
-      AVOID:
-      - Any places you already suggested in the 3-star or 2-star recommendations
-      - Famous places or even moderately known spots
-      - Locations near any of the destinations you previously mentioned
-      
-      Find 1-2 ONE-STAR (★) hidden gems that are completely ORIGINAL and different from all your previous suggestions.
-      ${responseFormat}
-    `;
-
-    console.log("Searching for 1-star hidden gems...");
-    const { response: oneStarData, updatedHistory: updatedHistory3 } =
-      await executeAIPromptWithConversation(
-        oneStarPrompt,
-        modelName,
-        conversationHistory,
-      );
-    conversationHistory = updatedHistory3;
-    if (Array.isArray(oneStarData)) {
-      const oneStarPlaces = oneStarData.map((place) => ({
-        ...place,
-        starRating: 1,
-      }));
-
-      // Filter out duplicates before adding to results
-      const filteredOneStarPlaces = oneStarPlaces.filter((newPlace) => {
-        return !allResults.some((existing) => {
-          const latDiff = Math.abs(existing.lat - newPlace.lat);
-          const longDiff = Math.abs(existing.long - newPlace.long);
-          const isLocationSimilar = latDiff < 0.01 && longDiff < 0.01;
-
-          const extractMainName = (name: string) => {
-            return name
-              .toLowerCase()
-              .replace(
-                /\b(trail|walk|hike|photography|picnic|camping|swimming|biking|vista|viewpoint|lookout)\b/g,
-                "",
-              )
-              .replace(/\s+/g, " ")
-              .trim();
-          };
-
-          const existingMainName = extractMainName(existing.name);
-          const newMainName = extractMainName(newPlace.name);
-          const isNameSimilar = existingMainName === newMainName ||
-            existingMainName.includes(newMainName) ||
-            newMainName.includes(existingMainName);
-
-          return isLocationSimilar || isNameSimilar;
-        });
-      });
-
-      allResults.push(...filteredOneStarPlaces);
-      console.log(
-        `Found ${filteredOneStarPlaces.length} new one-star hidden gems (${
-          oneStarPlaces.length - filteredOneStarPlaces.length
-        } duplicates filtered)`,
-      );
-    }
-
-    // Final results with all data (already filtered for duplicates)
-    const sortedPlaces = allResults.sort((a, b) =>
-      (b.starRating || 0) - (a.starRating || 0)
-    );
-
-    console.log(
-      `Final results: ${sortedPlaces.length} unique places across all categories`,
-    );
-
-    yield { data: sortedPlaces, isComplete: true, stage: "complete" };
-  } catch (apiError: any) {
-    console.error("Progressive AI search error:", apiError);
-    let errorMessage = "Failed to get trip suggestions from AI.";
-    if (apiError.message) {
-      errorMessage += ` Details: ${apiError.message}`;
-    }
-    yield { error: errorMessage };
-  }
-}
-
-// Server action for progressive search that can be called from client
-export async function handleProgressiveSearch(
-  data: FormSchemaWithLocation,
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.error("User not authenticated for trip search:", userError);
-    return { error: "User not authenticated. Please sign in again." };
-  }
-
-  // Validate incoming data again on the server (optional but good practice)
-  const parseResult = formSchema.safeParse(data);
-  if (!parseResult.success) {
-    console.error("Invalid data for trip search:", parseResult.error.flatten());
-    return {
-      error: "Invalid search criteria provided.",
-      details: parseResult.error.flatten(),
-    };
-  }
-
-  const validatedData = parseResult.data;
-
-  console.log("Authenticated user:", user.id);
-  console.log("Received validated search criteria:", validatedData);
-
-  if (!genAI) {
-    return { error: "AI service is not configured. Missing API key." };
-  }
-
-  // Return the complete search results (simplified for now)
-  try {
-    const results = [];
-    for await (const result of progressiveTripSearchGenerator(validatedData)) {
-      if (result.error) {
-        return { error: result.error };
-      }
-      if (result.data && result.isComplete) {
-        return {
-          data: result.data,
-          isComplete: true,
-          stage: "complete",
-        };
-      }
-    }
-    return { data: [], isComplete: true, stage: "complete" };
-  } catch (error: any) {
-    console.error("Progressive search error:", error);
-    return { error: "Failed to get trip suggestions from AI." };
-  }
-}
-
-// Server action for progressive search that executes each stage separately
-export async function handleProgressiveTripSearchByStage(
-  data: FormSchemaWithLocation,
-  stage: "3-star" | "2-star" | "1-star",
+  batchNumber: number = 1,
   conversationHistory: any[] = [],
 ) {
   const supabase = await createClient();
@@ -713,7 +478,20 @@ export async function handleProgressiveTripSearchByStage(
     }
   };
 
-  // Base criteria for all prompts
+  // Create conversation context from previous batches to avoid duplicates
+  const avoidanceCriteria = conversationHistory.length > 0 
+    ? `
+    IMPORTANT DUPLICATION AVOIDANCE:
+    Based on our conversation history, please avoid suggesting any places that are:
+    - Too similar to previously mentioned destinations
+    - Located too close to previously suggested locations (at least 10km apart)
+    - Of the same exact type/category as previous suggestions
+    
+    Focus on providing DIVERSE and DIFFERENT types of nature experiences from what we've already discussed.
+    `
+    : "";
+
+  // Base criteria for all prompts  
   const baseCriteria = `
     STRICT REQUIREMENTS:
     - Preferred activity type: ${validatedData.activity}
@@ -764,8 +542,9 @@ export async function handleProgressiveTripSearchByStage(
     For travel distance of ${validatedData.distance} via ${
     getTransportDescription(validatedData.transportType)
   }:
-    - Only suggest places that are realistically reachable within this travel time using the specified transport method
-    - Consider realistic routes and connections for the chosen transport method
+    - ONLY suggest places that are realistically reachable within ${validatedData.distance} travel time from the GPS coordinates (${validatedData.location.latitude}, ${validatedData.location.longitude}) using ${getTransportDescription(validatedData.transportType)}
+    - Use Google Search to verify actual travel times from the starting location to ensure destinations are within the specified time limit
+    - Consider realistic routes, traffic patterns, and connections for the chosen transport method
     - Factor in any transport-specific limitations (bike paths, transit schedules, parking requirements)
     
     ACTIVITY FOCUS: Prioritize locations and experiences that align with "${validatedData.activity}" activities.
@@ -782,6 +561,8 @@ export async function handleProgressiveTripSearchByStage(
     `
       : ""
   }
+    
+    ${avoidanceCriteria}
     
     ${
     specialCareRequirements.length > 0
@@ -800,140 +581,86 @@ export async function handleProgressiveTripSearchByStage(
     - activity: Must be ONE of: "hiking", "biking", "camping", "photography", "wildlife", "walking", "swimming"
     - estimatedActivityDuration: The estimated time for the activity (e.g., "3 hours", "1 day")
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
-    - whyRecommended: Brief explanation of why this fits the criteria and category
-    - starRating: The star rating (3, 2, or 1)
+    - whyRecommended: Brief explanation of why this fits the criteria
+    - starRating: Rate from 1-3 stars based on how well this destination fulfills the user's specific request (3 = perfect match and must-go, 2 = very good match, 1 = good option but less ideal)
     - bestTimeToVisit: Recommended time range for optimal experience based on weather and crowds (e.g., "8:00 AM - 11:00 AM", "early morning", "afternoon after 2 PM")
     - timeToAvoid: Times or conditions to avoid (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
-    - googleMapsLink: Direct Google Maps URL for the location (use Google Search to find the exact maps link)
-    - operatingHours: Current operating hours or seasonal availability (use Google Search for up-to-date info)
-    - entranceFee: Cost information if applicable (use Google Search for current pricing)
-    - parkingInfo: Parking availability and details (use Google Search for current parking info)
-    - currentConditions: Recent trail conditions, closures, or important updates (use Google Search for latest info)
     
     CRITICAL: For coordinates, use Google Search to find the exact latitude and longitude of each location. 
     Provide coordinates with full precision (6 decimal places minimum) - do not round or truncate them.
     
-    ENHANCED DATA: Use Google Search to find:
-    - Exact Google Maps links for each location
-    - Current operating hours and seasonal schedules
-    - Up-to-date entrance fees and parking costs
-    - Recent trail conditions and any closures
-    - Current accessibility information
-    
-    Return ONLY valid JSON array format: [{"name": "...", "description": "...", ...}]
+    CRITICAL: Return ONLY a valid JSON array with NO additional text, explanations, introductions, or markdown formatting.
+    Start your response immediately with [ and end with ].
+    Format: [{"name": "...", "description": "...", ...}]
   `;
 
   try {
-    let prompt = "";
-    let starRating = 1;
+    // Create a simpler prompt that requests 4 high-quality destinations
+    const prompt = `
+      You are an expert nature concierge. Find 4 excellent nature destinations that match the user's criteria.
+      
+      ${baseCriteria}
+      
+      Focus on finding diverse, high-quality destinations that offer great nature experiences. 
+      Mix different types of locations (mountains, forests, lakes, etc.) to provide variety.
+      Prioritize places that are accessible, safe, and offer the type of experience the user is looking for.
+      
+      RANKING CRITERIA:
+      Rate each destination 1-3 stars based on how well it fulfills the user's specific request:
+      - 3 stars: Perfect match for user's request, must-go destination that exactly meets their criteria
+      - 2 stars: Very good match, strongly aligns with user's preferences 
+      - 1 star: Good option that meets basic criteria but may be less ideal for this specific request
+      
+      Consider the user's activity preferences, timing, distance, transport method, and especially their additional search info when rating.
+      
+      Return exactly 4 destinations.
+      ${responseFormat}
+    `;
 
-    if (stage === "3-star") {
-      starRating = 3;
-      prompt = `
-        You are an expert nature concierge like the French Routard guide. Find the most ICONIC and MUST-VISIT nature destinations.
-        
-        ${baseCriteria}
-        
-        Focus on: 
-        - Famous, well-known natural landmarks and destinations
-        - Places that locals and tourists consider absolute must-sees
-        - Iconic viewpoints, waterfalls, beaches, mountains that are renowned
-        - Places featured in travel guides and photography
-        - Destinations that define the natural beauty of the region
-        
-        Find 2-3 THREE-STAR (★★★) destinations that are unmissable classics.
-        ${responseFormat}
-      `;
-    } else if (stage === "2-star") {
-      starRating = 2;
-      prompt = `
-        Now find VERY GOOD nature destinations that are less crowded but still excellent.
-        
-        IMPORTANT: Based on our previous conversation where I found 3-star destinations, please avoid suggesting any similar or nearby places.
-        
-        ${baseCriteria}
-        
-        Focus on:
-        - Beautiful natural places that are known to locals but not tourist hotspots
-        - Places with rich biodiversity and natural beauty
-        - Scenic spots that offer great experiences without the crowds
-        - Regional parks, lesser-known trails, quiet beaches
-        - Places that nature enthusiasts appreciate but aren't mainstream famous
-        
-        AVOID:
-        - Any places you already suggested in the 3-star recommendations
-        - Places that are very famous or iconic (those are 3-star)
-        - Locations too close to the 3-star destinations you already mentioned
-        
-        Find 2-3 TWO-STAR (★★) destinations that offer excellent nature experiences and are DIFFERENT from your previous suggestions.
-        ${responseFormat}
-      `;
-    } else if (stage === "1-star") {
-      starRating = 1;
-      prompt = `
-        Finally, find HIDDEN GEMS and SECRET SPOTS that are truly off the beaten path.
-        
-        IMPORTANT: Based on our entire conversation where I found 3-star and 2-star destinations, please suggest completely different and unique places.
-        
-        ${baseCriteria}
-        
-        Focus on:
-        - Hidden, unknown, or secret natural spots
-        - Places that only locals or nature experts know about
-        - Unique, original, or quirky natural features
-        - Off-the-beaten-path discoveries
-        - Small natural wonders that are worth the adventure
-        - Places that feel like personal discoveries
-        
-        AVOID:
-        - Any places you already suggested in the 3-star or 2-star recommendations
-        - Famous places or even moderately known spots
-        - Locations near any of the destinations you previously mentioned
-        
-        Find 1-2 ONE-STAR (★) hidden gems that are completely ORIGINAL and different from all your previous suggestions.
-        ${responseFormat}
-      `;
-    }
-
-    console.log(`Searching for ${stage} destinations...`);
-    const { response: stageData, updatedHistory } =
+    console.log(`Searching for batch ${batchNumber} destinations...`);
+    const { response: batchData, updatedHistory } =
       await executeAIPromptWithConversation(
         prompt,
         modelName,
         conversationHistory,
       );
 
-    if (Array.isArray(stageData)) {
-      const stageResults = stageData.map((place) => ({
+    if (Array.isArray(batchData)) {
+      // Add a generated ID to each result if not present
+      const batchResults = batchData.map((place, index) => ({
         ...place,
-        starRating: starRating,
+        id: place.id || `batch-${batchNumber}-${index}`,
+        starRating: place.starRating || 2, // Default star rating
       }));
 
       return {
-        data: stageResults,
+        data: batchResults,
         conversationHistory: updatedHistory,
-        stage: stage,
+        batchNumber: batchNumber,
         success: true,
+        hasMore: true, // Always assume there could be more results
       };
     } else {
       return {
         data: [],
         conversationHistory: conversationHistory,
-        stage: stage,
+        batchNumber: batchNumber,
         success: false,
+        hasMore: false,
         error: "Invalid response format from AI",
       };
     }
   } catch (apiError: any) {
-    console.error(`${stage} AI search error:`, apiError);
-    let errorMessage = `Failed to get ${stage} trip suggestions from AI.`;
+    console.error(`Batch ${batchNumber} AI search error:`, apiError);
+    let errorMessage = `Failed to get trip suggestions from AI.`;
     if (apiError.message) {
       errorMessage += ` Details: ${apiError.message}`;
     }
     return {
       error: errorMessage,
-      stage: stage,
+      batchNumber: batchNumber,
       success: false,
+      hasMore: false,
       conversationHistory: conversationHistory,
     };
   }

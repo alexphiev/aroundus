@@ -21,12 +21,12 @@ export default function HomePage() {
   };
 
   const handleShortcut = (type: string) => {
-    // Navigate to discover page with predefined search based on type
+    // Navigate to discover page with shortcut type
     const shortcuts = {
-      "feeling-lucky": "/discover?q=feeling%20lucky",
-      exercise: "/discover?q=exercise",
-      relax: "/discover?q=relax",
-      "something-new": "/discover?q=something%20new",
+      "feeling-lucky": "/discover?shortcut=feeling-lucky",
+      exercise: "/discover?shortcut=exercise",
+      relax: "/discover?shortcut=relax",
+      "something-new": "/discover?shortcut=something-new",
     };
 
     router.push(shortcuts[type as keyof typeof shortcuts] || "/discover");
