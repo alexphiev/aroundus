@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bookmark, Star, Clock, AlertTriangle } from "lucide-react";
+import { Bookmark, Star } from "lucide-react";
 import {
   TooltipProvider,
   Tooltip,
@@ -20,6 +20,7 @@ import { TripResultItem } from "@/types/result.types";
 import {
   getLandscapeIcon,
   getActivityIcon,
+  getTransportIcon,
 } from "@/components/discovery/utils/iconUtils";
 
 interface TripResultCardProps {
@@ -162,32 +163,22 @@ export default function TripResultCard({
                   </span>
                 )}
                 {trip.estimatedTransportTime && (
-                  <span className="badge-warning">
-                    Travel: {abbreviateDuration(trip.estimatedTransportTime)}
+                  <span className="badge-warning flex items-center gap-1">
+                    {getTransportIcon(trip.transportMode)}
+                    {abbreviateDuration(trip.estimatedTransportTime)}
                   </span>
                 )}
               </div>
             )}
 
-            {/* Best Time to Visit & Times to Avoid */}
-            {(trip.bestTimeToVisit || trip.timeToAvoid) && (
+            {/* Best Time to Visit - Bottom with 3-line limit */}
+            {trip.bestTimeToVisit && (
               <div className="space-tight">
-                {trip.bestTimeToVisit && (
-                  <div className="layout-flex-start p-2 bg-status-success rounded-md">
-                    <Clock className="h-3 w-3 text-status-success-foreground flex-shrink-0" />
-                    <p className="text-xs text-status-success-foreground line-clamp-1">
-                      Best: {trip.bestTimeToVisit}
-                    </p>
-                  </div>
-                )}
-                {trip.timeToAvoid && (
-                  <div className="layout-flex-start p-2 bg-status-error rounded-md">
-                    <AlertTriangle className="h-3 w-3 text-status-error-foreground flex-shrink-0" />
-                    <p className="text-xs text-status-error-foreground line-clamp-1">
-                      Avoid: {trip.timeToAvoid}
-                    </p>
-                  </div>
-                )}
+                <div className="p-2 bg-status-success rounded-md">
+                  <p className="text-xs text-status-success-foreground leading-relaxed line-clamp-3">
+                    Best: {trip.bestTimeToVisit}
+                  </p>
+                </div>
               </div>
             )}
           </div>

@@ -12,6 +12,8 @@ import {
   Camera,
   PawPrint,
   Footprints,
+  Car,
+  Train,
 } from "lucide-react";
 
 // Get landscape icon based on type
@@ -57,5 +59,21 @@ export const getActivityIcon = (activity?: string) => {
       return <Waves className="h-5 w-5" />;
     default:
       return <Mountain className="h-5 w-5" />;
+  }
+};
+
+// Get transport mode icon based on type
+export const getTransportIcon = (transportMode?: string) => {
+  switch (transportMode?.toLowerCase()) {
+    case "foot":
+      return <Footprints className="h-4 w-4" />;
+    case "bike":
+      return <Bike className="h-4 w-4" />;
+    case "transit":
+      return <Train className="h-4 w-4" />;
+    case "car":
+      return <Car className="h-4 w-4" />;
+    default:
+      return <Car className="h-4 w-4" />;
   }
 };

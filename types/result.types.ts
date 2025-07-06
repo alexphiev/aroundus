@@ -26,6 +26,7 @@ export interface TripResultItem {
     | string;
   estimatedActivityDuration?: string;
   estimatedTransportTime?: string;
+  transportMode?: "foot" | "bike" | "transit" | "car";
   whyRecommended?: string;
   isOtherCategory?: boolean;
   starRating?: number;

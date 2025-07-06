@@ -281,6 +281,7 @@ async function executeAIPromptWithConversation(
         "activity": "activity_type",
         "estimatedActivityDuration": "duration",
         "estimatedTransportTime": "transport_time",
+        "transportMode": "transport_mode",
         "whyRecommended": "reason",
         "starRating": star_number,
         "bestTimeToVisit": "timing_info",
@@ -579,8 +580,9 @@ export async function handleTripSearchBatch(
     - long: The precise longitude of the starting point of the activity (use Google Search to find exact coordinates with full precision, e.g., -4.156937)
     - landscape: Must be ONE of: "mountain", "forest", "lake", "beach", "river", "park", "wetland", "desert"
     - activity: Must be ONE of: "hiking", "biking", "camping", "photography", "wildlife", "walking", "swimming"
-    - estimatedActivityDuration: The estimated time for the activity (e.g., "3 hours", "1 day")
+    - estimatedActivityDuration: The estimated time range for the activity (e.g., "1-4 hours", "2-3 days")
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
+    - transportMode: The primary transport mode used (must be one of: "foot", "bike", "transit", "car")
     - whyRecommended: Brief explanation of why this fits the criteria
     - starRating: Rate from 1-3 stars based on how well this destination fulfills the user's specific request (3 = perfect match and must-go, 2 = very good match, 1 = good option but less ideal)
     - bestTimeToVisit: Recommended time range for optimal experience based on weather and crowds (e.g., "8:00 AM - 11:00 AM", "early morning", "afternoon after 2 PM")
@@ -591,7 +593,7 @@ export async function handleTripSearchBatch(
     
     CRITICAL: Return ONLY a valid JSON array with NO additional text, explanations, introductions, or markdown formatting.
     Start your response immediately with [ and end with ].
-    Format: [{"name": "...", "description": "...", ...}]
+    Format: [{"name": "...", "description": "...", "transportMode": "...", ...}]
   `;
 
   try {
@@ -631,6 +633,7 @@ export async function handleTripSearchBatch(
         ...place,
         id: place.id || `batch-${batchNumber}-${index}`,
         starRating: place.starRating || 2, // Default star rating
+        transportMode: place.transportMode || validatedData.transportType || "car", // Use user's selected transport type as fallback
       }));
 
       return {
