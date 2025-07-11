@@ -83,7 +83,6 @@ export async function reverseGeocode(
     }
 
     const data: NominatimResponse = await response.json()
-    console.log('Nominatim API response:', JSON.stringify(data, null, 2))
 
     if (data.error) {
       console.error('Nominatim API error:', data.error)

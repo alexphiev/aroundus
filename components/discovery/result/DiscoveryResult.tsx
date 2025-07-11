@@ -83,13 +83,6 @@ export default function DiscoveryResult({
 
   // Handle card clicks to open detail view
   const handleCardClick = (index: number, place: PlaceResultItem) => {
-    console.log(
-      'handleCardClick called with index:',
-      index,
-      'place:',
-      place.name
-    )
-
     // Always set state - let React handle optimization
     setActiveCardIndex(index)
     setSelectedPlace(place)
@@ -109,8 +102,6 @@ export default function DiscoveryResult({
 
   // Handle back to cards view (from UI button)
   const handleBackToCards = () => {
-    console.log('handleBackToCards called')
-
     setSelectedPlace(null)
     setActiveCardIndex(-1)
     if (onCardClick) {
@@ -142,14 +133,8 @@ export default function DiscoveryResult({
   // Handle browser back button
   useEffect(() => {
     const handlePopstate = () => {
-      console.log(
-        'popstate event triggered, selectedPlace:',
-        selectedPlace?.name
-      )
-
       // Only handle if we're in detail view and this is a real back navigation
       if (selectedPlace) {
-        console.log('Closing detail view due to browser back')
         setSelectedPlace(null)
         setActiveCardIndex(-1)
         if (onCardClick) {

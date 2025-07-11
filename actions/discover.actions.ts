@@ -83,8 +83,6 @@ async function executeDiscoverPrompt(
     )
   }
 
-  console.log('Extracted text:', responseText)
-
   // Clean and parse JSON response - robust extraction with fallback
   let cleanedJsonText = responseText.trim()
   let parsedResponse
@@ -165,7 +163,7 @@ async function executeDiscoverPrompt(
     }
   } catch {
     // Fallback: Make a new request specifically asking for JSON format
-    console.log(
+    console.error(
       'JSON extraction failed, attempting fallback request for JSON format'
     )
 
@@ -248,7 +246,6 @@ async function executeDiscoverPrompt(
       }
 
       parsedResponse = JSON.parse(fallbackJson.trim())
-      console.log('Successfully parsed fallback JSON response')
     } catch (fallbackError) {
       console.error('Fallback JSON extraction also failed:', fallbackError)
       throw new Error(
@@ -343,8 +340,6 @@ function generateUserContext(context: OptimizedSearchContext): string {
     preferenceGuidance += `
     - **LEARNED CONSTRAINTS FROM NEGATIVE FEEDBACK:** The user disliked ${dislikedExamples}. Infer the underlying disliked attributes (e.g., crowded, touristy, noisy, specific landscapes) and avoid places with those characteristics when relevant only.`
   }
-
-  console.log({ preferenceGuidance })
 
   // --- 3. Explicit Instructions for Exploration & Diversity ---
   const explorationInstructions = `
@@ -644,7 +639,6 @@ export async function handlePlaceSearchBatch(
       ${responseFormat}
     `
 
-    console.log(`Searching for batch ${batchNumber} destinations...`)
     const batchData = await executeDiscoverPrompt(prompt, modelName)
 
     if (Array.isArray(batchData)) {

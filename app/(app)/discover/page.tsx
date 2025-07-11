@@ -16,7 +16,7 @@ import {
   discoveryFormSchema,
   type DiscoveryFormValues,
 } from '@/schemas/form.schema'
-import { PlaceResultItem, OptimizedSearchContext } from '@/types/result.types'
+import { OptimizedSearchContext, PlaceResultItem } from '@/types/result.types'
 import type {
   FormValues,
   SearchHistoryRecord,
@@ -25,7 +25,13 @@ import type {
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState, useTransition, Suspense } from 'react'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  useTransition,
+} from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
@@ -46,13 +52,23 @@ function reconstructSearchContext(
 
   // Extract user preferences (for future use with like/dislike functionality)
   const likedPlaces = previousPlaces.filter((p) => p.userFeedback === 'liked')
-  const dislikedPlaces = previousPlaces.filter((p) => p.userFeedback === 'disliked')
+  const dislikedPlaces = previousPlaces.filter(
+    (p) => p.userFeedback === 'disliked'
+  )
 
   const userPreferences = {
-    likedLandscapes: [...new Set(likedPlaces.map((p) => p.landscape).filter(Boolean))],
-    dislikedLandscapes: [...new Set(dislikedPlaces.map((p) => p.landscape).filter(Boolean))],
-    likedActivities: [...new Set(likedPlaces.map((p) => p.activity).filter(Boolean))],
-    dislikedActivities: [...new Set(dislikedPlaces.map((p) => p.activity).filter(Boolean))],
+    likedLandscapes: [
+      ...new Set(likedPlaces.map((p) => p.landscape).filter(Boolean)),
+    ],
+    dislikedLandscapes: [
+      ...new Set(dislikedPlaces.map((p) => p.landscape).filter(Boolean)),
+    ],
+    likedActivities: [
+      ...new Set(likedPlaces.map((p) => p.activity).filter(Boolean)),
+    ],
+    dislikedActivities: [
+      ...new Set(dislikedPlaces.map((p) => p.activity).filter(Boolean)),
+    ],
     likedPlaces,
     dislikedPlaces,
   }
@@ -66,13 +82,8 @@ function reconstructSearchContext(
 
 function DiscoverPageContent() {
   const searchParams = useSearchParams()
-  const {
-    userLocation,
-    locationInfo,
-    isLoadingLocation,
-    locationError,
-    setUserLocation,
-  } = useLocationContext()
+  const { userLocation, locationInfo, locationError, setUserLocation } =
+    useLocationContext()
   const [isSearchOpen, setIsSearchOpen] = useState(false) // Start closed to prevent flash
   const [isPending, startTransition] = useTransition()
   const [placeResults, setPlaceResults] = useState<PlaceResultItem[] | null>(
@@ -89,7 +100,8 @@ function DiscoverPageContent() {
   const [currentSearchQuery, setCurrentSearchQuery] =
     useState<FormValues | null>(null) // Track current search filters
   const [generatedTitle, setGeneratedTitle] = useState<string | null>(null) // Track AI-generated search title
-  const [searchContext, setSearchContext] = useState<OptimizedSearchContext | null>(null) // Track search context for iterations
+  const [searchContext, setSearchContext] =
+    useState<OptimizedSearchContext | null>(null) // Track search context for iterations
 
   // Initialize form
   const form = useForm<DiscoveryFormValues>({
@@ -111,7 +123,7 @@ function DiscoverPageContent() {
   })
 
   // Get user location using the context
-  const getLocation = () => {
+  const getLocation = useCallback(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -129,7 +141,7 @@ function DiscoverPageContent() {
     } else {
       toast.error('Geolocation not supported.')
     }
-  }
+  }, [setUserLocation])
 
   // Load latest search from history on component mount
   useEffect(() => {
@@ -212,28 +224,22 @@ function DiscoverPageContent() {
             const currentBatch = historyRecord.current_batch || 1
             const hasMoreResults = historyRecord.has_more_results || false
             const savedTitle = historyRecord.title
-            
+
             setCurrentBatch(currentBatch)
             setHasMoreResults(hasMoreResults)
-            
-            console.log('Restored search session state:', {
-              currentBatch,
-              hasMoreResults,
-              totalResults: results.length,
-              savedTitle
-            })
-            
+
             // Restore generated title if available
             if (savedTitle) {
               setGeneratedTitle(savedTitle)
-              console.log('Restored generated title:', savedTitle)
             }
 
             // Reconstruct search context from saved results for continued diversity
             if (results.length > 0) {
-              const reconstructedContext = reconstructSearchContext(results, currentBatch + 1)
+              const reconstructedContext = reconstructSearchContext(
+                results,
+                currentBatch + 1
+              )
               setSearchContext(reconstructedContext)
-              console.log('Reconstructed search context from history:', reconstructedContext)
             }
 
             // Don't open search modal if we have previous results
@@ -255,7 +261,7 @@ function DiscoverPageContent() {
     }
 
     loadLatestSearch()
-  }, [form, searchParams])
+  }, [form, getLocation, searchParams, setUserLocation])
 
   // Handle URL parameters for search query and shortcuts
   useEffect(() => {
@@ -358,7 +364,14 @@ function DiscoverPageContent() {
         getLocation()
       }
     }
-  }, [searchParams, hasProcessedQuery, isLoadingHistory, userLocation, form])
+  }, [
+    searchParams,
+    hasProcessedQuery,
+    isLoadingHistory,
+    userLocation,
+    form,
+    getLocation,
+  ])
 
   // Form submission handler with progressive search
   function onSubmit(values: DiscoveryFormValues) {
@@ -414,9 +427,12 @@ function DiscoverPageContent() {
 
       try {
         // Only generate title if one doesn't already exist
-        const titleGenerationPromise = generatedTitle 
+        const titleGenerationPromise = generatedTitle
           ? Promise.resolve(generatedTitle)
-          : generateSearchTitle({...values, locationName: locationInfo?.locationName})
+          : generateSearchTitle({
+              ...values,
+              locationName: locationInfo?.locationName,
+            })
               .then((titleResult) => {
                 if (titleResult.success && titleResult.data?.title) {
                   setGeneratedTitle(titleResult.data.title)
@@ -462,7 +478,7 @@ function DiscoverPageContent() {
           setPlaceResults(batchPlaces as PlaceResultItem[])
           setCurrentBatch(1)
           setHasMoreResults(batchResult.hasMore || false)
-          
+
           // Store search context for subsequent iterations
           if (batchResult.searchContext) {
             setSearchContext(batchResult.searchContext)
@@ -475,13 +491,12 @@ function DiscoverPageContent() {
             try {
               const generatedTitle = await titleGenerationPromise
               await saveSearchToHistory(
-                payload, 
-                batchPlaces, 
-                batchResult.hasMore || false, 
+                payload,
+                batchPlaces,
+                batchResult.hasMore || false,
                 1,
                 generatedTitle || undefined
               )
-              console.log('Search saved to history successfully with title:', generatedTitle)
             } catch (error) {
               console.error('Failed to save search to history:', error)
               // Don't show error to user as this is not critical
@@ -548,7 +563,11 @@ function DiscoverPageContent() {
       }
 
       const nextBatch = currentBatch + 1
-      const batchResult = await handlePlaceSearchBatch(actionPayload, nextBatch, searchContext)
+      const batchResult = await handlePlaceSearchBatch(
+        actionPayload,
+        nextBatch,
+        searchContext
+      )
 
       if (batchResult?.error) {
         toast.error(batchResult.error)
@@ -559,11 +578,13 @@ function DiscoverPageContent() {
 
         if (newPlaces.length > 0) {
           // Append new results to existing ones
-          const updatedResults = placeResults ? [...placeResults, ...newPlaces] : newPlaces
+          const updatedResults = placeResults
+            ? [...placeResults, ...newPlaces]
+            : newPlaces
           setPlaceResults(updatedResults)
           setCurrentBatch(nextBatch)
           setHasMoreResults(batchResult.hasMore || false)
-          
+
           // Update search context with new places
           if (batchResult.searchContext) {
             setSearchContext(batchResult.searchContext)
@@ -572,11 +593,10 @@ function DiscoverPageContent() {
           // Update search history with all results
           try {
             await updateSearchHistoryResults(
-              updatedResults, 
-              batchResult.hasMore || false, 
+              updatedResults,
+              batchResult.hasMore || false,
               nextBatch
             )
-            console.log('Search history updated with additional results')
           } catch (error) {
             console.error('Failed to update search history:', error)
             // Don't show error to user as this is not critical
@@ -599,7 +619,7 @@ function DiscoverPageContent() {
   // Handle title editing
   const handleTitleEdit = async (newTitle: string) => {
     setGeneratedTitle(newTitle)
-    
+
     // Update search history with new title
     if (placeResults && placeResults.length > 0) {
       try {
@@ -609,7 +629,6 @@ function DiscoverPageContent() {
           currentBatch,
           newTitle
         )
-        console.log('Search history updated with new title:', newTitle)
       } catch (error) {
         console.error('Failed to update search history with new title:', error)
       }

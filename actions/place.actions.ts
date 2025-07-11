@@ -72,10 +72,10 @@ export async function getSavedPlacesAction() {
       })) || []
 
     return { success: true, data: mappedData }
-  } catch (e: any) {
-    console.error('Unexpected error getting saved trips:', e)
+  } catch (error) {
+    console.error('Unexpected error getting saved trips:', error)
     return {
-      error: `An unexpected error occurred: ${e.message || 'Unknown error'}`,
+      error: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
@@ -167,12 +167,11 @@ export async function savePlaceAction(placeData: PlaceToSave) {
       }
     }
 
-    console.log('Place saved successfully:', data)
     return { success: true, data }
-  } catch (e: any) {
-    console.error('Unexpected error saving place:', e)
+  } catch (error) {
+    console.error('Unexpected error saving place:', error)
     return {
-      error: `An unexpected error occurred: ${e.message || 'Unknown error'}`,
+      error: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
     }
   }
 }
