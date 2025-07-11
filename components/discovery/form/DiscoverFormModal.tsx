@@ -114,7 +114,7 @@ function SelectionGrid({
             key={option.value}
             type="button"
             className={cn(
-              "flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all h-20 min-w-0",
+              "flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all h-20 min-w-0 cursor-pointer",
               isSelected
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-muted-foreground/20 bg-background hover:border-primary/50 hover:bg-primary/5"

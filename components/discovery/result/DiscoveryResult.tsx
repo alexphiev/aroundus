@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import TripMap from "@/components/discovery/result/Map";
 import PlaceDetailView from "@/components/discovery/result/PlaceDetailView";
 import LoadingState from "@/components/discovery/result/LoadingState";
@@ -48,6 +49,7 @@ export default function DiscoveryResult({
   onNewSearch,
   onCardClick,
 }: Props) {
+  const router = useRouter();
   const [activeCardIndex, setActiveCardIndex] = useState<number>(-1);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [savedTripNames, setSavedTripNames] = useState<Set<string>>(new Set());
@@ -73,20 +75,34 @@ export default function DiscoveryResult({
 
   // Handle card clicks to open detail view
   const handleCardClick = (index: number, place: TripResultItem) => {
+    console.log("handleCardClick called with index:", index, "place:", place.name);
+    
+    // Always set state - let React handle optimization
     setActiveCardIndex(index);
     setSelectedPlace(place);
+    
+    // Always call onCardClick to ensure map updates
     if (onCardClick) {
       onCardClick(index);
     }
+    
+    // Add to browser history for back button support
+    window.history.pushState({ detailView: true, index, placeName: place.name }, "", window.location.href);
   };
 
-  // Handle back to cards view
+  // Handle back to cards view (from UI button)
   const handleBackToCards = () => {
+    console.log("handleBackToCards called");
+    
     setSelectedPlace(null);
     setActiveCardIndex(-1);
     if (onCardClick) {
       onCardClick(-1);
     }
+    
+    // Replace current history entry instead of going back
+    // This removes the detail view entry without triggering popstate
+    window.history.replaceState(null, "", window.location.href);
   };
 
   // Load saved trips on component mount
@@ -105,6 +121,29 @@ export default function DiscoveryResult({
 
     loadSavedTrips();
   }, []);
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopstate = () => {
+      console.log("popstate event triggered, selectedPlace:", selectedPlace?.name);
+      
+      // Only handle if we're in detail view and this is a real back navigation
+      if (selectedPlace) {
+        console.log("Closing detail view due to browser back");
+        setSelectedPlace(null);
+        setActiveCardIndex(-1);
+        if (onCardClick) {
+          onCardClick(-1);
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopstate);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopstate);
+    };
+  }, [selectedPlace, onCardClick]);
 
   // Save trip handler
   const handleSaveTrip = async (trip: TripResultItem) => {

@@ -10,18 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bookmark, Star } from "lucide-react";
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import { TripResultItem } from "@/types/result.types";
-import {
-  getLandscapeIcon,
-  getActivityIcon,
-  getTransportIcon,
-} from "@/components/discovery/utils/iconUtils";
+import { getTransportIcon } from "@/components/discovery/utils/iconUtils";
+import PlaceIcons from "./PlaceIcons";
 
 interface TripResultCardProps {
   trip: TripResultItem;
@@ -76,35 +67,7 @@ export default function TripResultCard({
         <CardHeader className="layout-card-header">
           <div className="layout-flex-between">
             <div className="flex gap-1 items-center">
-              {trip.landscape && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="icon-container">
-                        {getLandscapeIcon(trip.landscape)}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="capitalize">{trip.landscape}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
-              {trip.activity && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="icon-container">
-                        {getActivityIcon(trip.activity)}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="capitalize">{trip.activity}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
+              <PlaceIcons landscape={trip.landscape} activity={trip.activity} />
 
               {/* Star Rating */}
               {trip.starRating && (
