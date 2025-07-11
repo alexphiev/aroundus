@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
 export default function SkeletonCard() {
   return (
@@ -40,5 +40,5 @@ export default function SkeletonCard() {
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

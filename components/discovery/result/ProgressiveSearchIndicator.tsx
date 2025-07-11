@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { Loader2 } from "lucide-react";
+import { Loader2 } from 'lucide-react'
 
 interface ProgressiveSearchIndicatorProps {
-  stage: string;
+  stage: string
 }
 
 export default function ProgressiveSearchIndicator({
@@ -14,5 +14,5 @@ export default function ProgressiveSearchIndicator({
       <Loader2 className="h-4 w-4 animate-spin" />
       <span>Finding {stage} destinations...</span>
     </div>
-  );
+  )
 }

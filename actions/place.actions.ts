@@ -1,10 +1,10 @@
-"use server";
+'use server'
 
-import { createClient } from "@/utils/supabase/server";
-import { z } from "zod";
+import { authenticateUser, getSupabaseClient } from '@/lib/auth.service'
+import { z } from 'zod'
 
 // Define the structure of a trip to be saved, matching the TripResult and table schema
-const TripDataSchema = z.object({
+const PlaceDataSchema = z.object({
   name: z.string(),
   description: z.string(),
   lat: z.number(),
@@ -23,89 +23,86 @@ const TripDataSchema = z.object({
   entranceFee: z.string().optional(),
   parkingInfo: z.string().optional(),
   currentConditions: z.string().optional(),
-});
+})
 
-export type TripToSave = z.infer<typeof TripDataSchema>;
+export type PlaceToSave = z.infer<typeof PlaceDataSchema>
 
-export async function getSavedTripsAction() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.error("User not authenticated to get saved trips:", userError);
-    return { error: "Authentication required to get saved trips." };
+export async function getSavedPlacesAction() {
+  // Check authentication
+  const authResult = await authenticateUser()
+  if (authResult.error) {
+    return { error: authResult.error }
   }
+
+  const supabase = await getSupabaseClient()
 
   try {
     const { data, error } = await supabase
-      .from("saved_places")
-      .select("*")
-      .eq("user_id", user.id);
+      .from('saved_places')
+      .select('*')
+      .eq('user_id', authResult.user!.id)
 
     if (error) {
-      console.error("Supabase error getting saved trips:", error);
-      return { error: `Failed to get saved trips: ${error.message}` };
+      console.error('Supabase error getting saved places:', error)
+      return { error: `Failed to get saved places: ${error.message}` }
     }
 
     // Map snake_case fields from database to camelCase for frontend
-    const mappedData = data?.map((place) => ({
-      id: place.id,
-      name: place.name,
-      description: place.description,
-      lat: place.lat,
-      long: place.long,
-      landscape: place.landscape,
-      activity: place.activity,
-      estimatedActivityDuration: place.estimated_activity_duration,
-      estimatedTransportTime: place.estimated_transport_time,
-      whyRecommended: place.why_recommended,
-      starRating: place.star_rating,
-      bestTimeToVisit: place.best_time_to_visit,
-      timeToAvoid: place.time_to_avoid,
-      googleMapsLink: place.google_maps_link,
-      operatingHours: place.operating_hours,
-      entranceFee: place.entrance_fee,
-      parkingInfo: place.parking_info,
-      currentConditions: place.current_conditions,
-      created_at: place.created_at,
-    })) || [];
+    const mappedData =
+      data?.map((place) => ({
+        id: place.id,
+        name: place.name,
+        description: place.description,
+        lat: place.lat,
+        long: place.long,
+        landscape: place.landscape,
+        activity: place.activity,
+        estimatedActivityDuration: place.estimated_activity_duration,
+        estimatedTransportTime: place.estimated_transport_time,
+        whyRecommended: place.why_recommended,
+        starRating: place.star_rating,
+        bestTimeToVisit: place.best_time_to_visit,
+        timeToAvoid: place.time_to_avoid,
+        googleMapsLink: place.google_maps_link,
+        operatingHours: place.operating_hours,
+        entranceFee: place.entrance_fee,
+        parkingInfo: place.parking_info,
+        currentConditions: place.current_conditions,
+        created_at: place.created_at,
+      })) || []
 
-    return { success: true, data: mappedData };
+    return { success: true, data: mappedData }
   } catch (e: any) {
-    console.error("Unexpected error getting saved trips:", e);
-    return { error: `An unexpected error occurred: ${e.message || "Unknown error"}` };
+    console.error('Unexpected error getting saved trips:', e)
+    return {
+      error: `An unexpected error occurred: ${e.message || 'Unknown error'}`,
+    }
   }
 }
 
-export async function saveTripAction(tripData: TripToSave) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.error("User not authenticated to save trip:", userError);
-    return { error: "Authentication required to save trips." };
+export async function savePlaceAction(placeData: PlaceToSave) {
+  // Check authentication
+  const authResult = await authenticateUser()
+  if (authResult.error) {
+    return { error: authResult.error }
   }
 
-  const parseResult = TripDataSchema.safeParse(tripData);
+  const supabase = await getSupabaseClient()
+
+  const parseResult = PlaceDataSchema.safeParse(placeData)
   if (!parseResult.success) {
-    console.error("Invalid trip data for saving:", parseResult.error.flatten());
+    console.error('Invalid place data for saving:', parseResult.error.flatten())
     return {
-      error: "Invalid trip data provided.",
+      error: 'Invalid place data provided.',
       details: parseResult.error.flatten(),
-    };
+    }
   }
 
-  const { 
-    name, 
-    description, 
-    lat, 
-    long, 
+  const {
+    name,
+    description,
+    lat,
+    long,
     landscape,
     activity,
     estimatedActivityDuration,
@@ -118,15 +115,15 @@ export async function saveTripAction(tripData: TripToSave) {
     operatingHours,
     entranceFee,
     parkingInfo,
-    currentConditions
-  } = parseResult.data;
+    currentConditions,
+  } = parseResult.data
 
   try {
     const { data, error } = await supabase
-      .from("saved_places")
+      .from('saved_places')
       .insert([
         {
-          user_id: user.id,
+          user_id: authResult.user!.id,
           name,
           description,
           lat,
@@ -146,36 +143,36 @@ export async function saveTripAction(tripData: TripToSave) {
           current_conditions: currentConditions,
         },
       ])
-      .select();
+      .select()
 
     if (error) {
-      console.error("Supabase error saving trip:", error);
-      if (error.code === "23503" && error.message?.includes("auth.users")) {
+      console.error('Supabase error saving place:', error)
+      if (error.code === '23503' && error.message?.includes('auth.users')) {
         return {
           error:
-            "Failed to save trip due to a user reference issue. Please try again.",
-        };
+            'Failed to save place due to a user reference issue. Please try again.',
+        }
       }
-      if (error.code === "42501") {
+      if (error.code === '42501') {
         // RLS violation
         return {
           error:
-            "You don't have permission to save this trip. Please ensure you are logged in.",
-        };
+            "You don't have permission to save this place. Please ensure you are logged in.",
+        }
       }
       return {
-        error: `Failed to save trip: ${
-          error.message || "Unknown Supabase error"
+        error: `Failed to save place: ${
+          error.message || 'Unknown Supabase error'
         }`,
-      };
+      }
     }
 
-    console.log("Trip saved successfully:", data);
-    return { success: true, data };
+    console.log('Place saved successfully:', data)
+    return { success: true, data }
   } catch (e: any) {
-    console.error("Unexpected error saving trip:", e);
+    console.error('Unexpected error saving place:', e)
     return {
-      error: `An unexpected error occurred: ${e.message || "Unknown error"}`,
-    };
+      error: `An unexpected error occurred: ${e.message || 'Unknown error'}`,
+    }
   }
 }

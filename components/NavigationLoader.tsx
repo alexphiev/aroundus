@@ -1,47 +1,55 @@
-"use client";
+'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from 'react'
+import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface NavigationContextType {
-  isLoading: boolean;
-  startLoading: () => void;
+  isLoading: boolean
+  startLoading: () => void
 }
 
-const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
+const NavigationContext = createContext<NavigationContextType | undefined>(
+  undefined
+)
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const pathname = usePathname();
+  const [isLoading, setIsLoading] = useState(false)
+  const pathname = usePathname()
 
   const startLoading = () => {
-    setIsLoading(true);
-  };
+    setIsLoading(true)
+  }
 
   // Reset loading state when pathname changes
   useEffect(() => {
-    setIsLoading(false);
-  }, [pathname]);
+    setIsLoading(false)
+  }, [pathname])
 
   return (
     <NavigationContext.Provider value={{ isLoading, startLoading }}>
       {children}
       <NavigationLoader />
     </NavigationContext.Provider>
-  );
+  )
 }
 
 export function useNavigation() {
-  const context = useContext(NavigationContext);
+  const context = useContext(NavigationContext)
   if (!context) {
-    throw new Error("useNavigation must be used within a NavigationProvider");
+    throw new Error('useNavigation must be used within a NavigationProvider')
   }
-  return context;
+  return context
 }
 
 function NavigationLoader() {
-  const { isLoading } = useNavigation();
+  const { isLoading } = useNavigation()
 
   return (
     <AnimatePresence>
@@ -54,13 +62,13 @@ function NavigationLoader() {
           className="fixed top-0 left-0 w-full h-0.5 bg-neutral-200 dark:bg-neutral-700 z-50"
         >
           <motion.div
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+            initial={{ width: '0%' }}
+            animate={{ width: '100%' }}
+            transition={{ duration: 1.5, ease: 'easeInOut' }}
             className="h-full bg-neutral-400 dark:bg-neutral-500"
           />
         </motion.div>
       )}
     </AnimatePresence>
-  );
+  )
 }

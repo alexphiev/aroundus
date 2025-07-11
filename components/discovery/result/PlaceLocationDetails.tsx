@@ -1,31 +1,33 @@
-"use client";
+'use client'
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TripResultItem } from "@/types/result.types";
-import { MapPin, Navigation } from "lucide-react";
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PlaceResultItem } from '@/types/result.types'
+import { MapPin, Navigation } from 'lucide-react'
 
 interface PlaceLocationDetailsProps {
-  place: TripResultItem;
+  place: PlaceResultItem
 }
 
-export default function PlaceLocationDetails({ place }: PlaceLocationDetailsProps) {
+export default function PlaceLocationDetails({
+  place,
+}: PlaceLocationDetailsProps) {
   // Handle get directions
   const handleGetDirections = () => {
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.long}`;
-    window.open(googleMapsUrl, "_blank");
-  };
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.long}`
+    window.open(googleMapsUrl, '_blank')
+  }
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <MapPin className="h-5 w-5" />
           Location Details
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <span className="font-medium">Coordinates:</span>
           <Badge variant="outline" className="font-mono text-sm">
@@ -38,5 +40,5 @@ export default function PlaceLocationDetails({ place }: PlaceLocationDetailsProp
         </Button>
       </CardContent>
     </Card>
-  );
+  )
 }

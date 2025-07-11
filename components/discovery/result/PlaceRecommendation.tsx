@@ -1,16 +1,18 @@
-"use client";
+'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Info } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Info } from 'lucide-react'
 
 interface PlaceRecommendationProps {
-  whyRecommended: string;
+  whyRecommended: string
 }
 
-export default function PlaceRecommendation({ whyRecommended }: PlaceRecommendationProps) {
+export default function PlaceRecommendation({
+  whyRecommended,
+}: PlaceRecommendationProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Info className="h-5 w-5" />
           Why We Recommend This Place
@@ -22,5 +24,5 @@ export default function PlaceRecommendation({ whyRecommended }: PlaceRecommendat
         </p>
       </CardContent>
     </Card>
-  );
+  )
 }

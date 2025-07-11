@@ -1,32 +1,32 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { handleSignIn } from "./actions"; // We will create this
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { handleSignIn } from './actions' // We will create this
 
 export default function SignInPage() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
+    event.preventDefault()
+    setError(null)
     startTransition(async () => {
-      const result = await handleSignIn({ email, password });
+      const result = await handleSignIn({ email, password })
       if (result?.error) {
-        setError(result.error);
+        setError(result.error)
       } else {
-        router.push("/"); // Redirect to home on success
-        router.refresh(); // Refresh server components
+        router.push('/') // Redirect to home on success
+        router.refresh() // Refresh server components
       }
-    });
-  };
+    })
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -65,15 +65,15 @@ export default function SignInPage() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Signing In..." : "Sign In"}
+            {isPending ? 'Signing In...' : 'Sign In'}
           </Button>
         </form>
         <p className="text-sm text-center text-muted-foreground">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{' '}
           <Button
             variant="link"
             className="p-0 h-auto"
-            onClick={() => router.push("/sign-up")}
+            onClick={() => router.push('/sign-up')}
             disabled={isPending}
           >
             Sign Up
@@ -81,5 +81,5 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
-  );
+  )
 }

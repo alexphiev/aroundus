@@ -1,10 +1,10 @@
-"use client";
+'use client'
 
-import "../globals.css";
-import { SidebarProvider } from "@/components/layout/sidebar";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import { Toaster } from "@/components/ui/toaster";
-import { NavigationProvider } from "@/components/NavigationLoader";
+import '../globals.css'
+import { SidebarProvider } from '@/components/layout/sidebar'
+import { AppSidebar } from '@/components/layout/AppSidebar'
+import { Toaster } from '@/components/ui/sonner'
+import { NavigationProvider } from '@/components/NavigationLoader'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,5 +21,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Toaster />
       </div>
     </NavigationProvider>
-  );
+  )
 }

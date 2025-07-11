@@ -1,44 +1,44 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { handleSignUp } from "./actions"; // We will create this
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { handleSignUp } from './actions' // We will create this
 
 export default function SignUpPage() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    event.preventDefault()
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
+      setError('Passwords do not match.')
+      return
     }
-    setError(null);
-    setMessage(null);
+    setError(null)
+    setMessage(null)
     startTransition(async () => {
-      const result = await handleSignUp({ email, password });
+      const result = await handleSignUp({ email, password })
       if (result?.error) {
-        setError(result.error);
+        setError(result.error)
       } else {
         setMessage(
           result.message ||
-            "Check your email for a confirmation link to complete your sign up."
-        );
+            'Check your email for a confirmation link to complete your sign up.'
+        )
         // Optionally, redirect to a page saying "check your email" or to sign-in page
         // For now, just shows a message.
         // router.push('/sign-in');
       }
-    });
-  };
+    })
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -92,15 +92,15 @@ export default function SignUpPage() {
             <p className="text-sm text-foreground">{message}</p> // Using foreground for general messages
           )}
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Signing Up..." : "Sign Up"}
+            {isPending ? 'Signing Up...' : 'Sign Up'}
           </Button>
         </form>
         <p className="text-sm text-center text-muted-foreground">
-          Already have an account?{" "}
+          Already have an account?{' '}
           <Button
             variant="link"
             className="p-0 h-auto"
-            onClick={() => router.push("/sign-in")}
+            onClick={() => router.push('/sign-in')}
             disabled={isPending}
           >
             Sign In
@@ -108,5 +108,5 @@ export default function SignUpPage() {
         </p>
       </div>
     </div>
-  );
+  )
 }

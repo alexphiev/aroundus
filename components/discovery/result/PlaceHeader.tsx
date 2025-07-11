@@ -1,16 +1,16 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
-import { TripResultItem } from "@/types/result.types";
-import { ArrowLeft, Bookmark, Share2, Star } from "lucide-react";
+import { Button } from '@/components/ui/button'
+import { PlaceResultItem } from '@/types/result.types'
+import { ArrowLeft, Bookmark, Share2, Star } from 'lucide-react'
 
 interface PlaceHeaderProps {
-  place: TripResultItem;
-  onBack: () => void;
-  onSave?: (place: TripResultItem) => Promise<void>;
-  onShare: () => void;
-  isSaved?: boolean;
-  showSaveButton?: boolean;
+  place: PlaceResultItem
+  onBack: () => void
+  onSave?: (place: PlaceResultItem) => Promise<void>
+  onShare: () => void
+  isSaved?: boolean
+  showSaveButton?: boolean
 }
 
 export default function PlaceHeader({
@@ -21,13 +21,12 @@ export default function PlaceHeader({
   isSaved = false,
   showSaveButton = true,
 }: PlaceHeaderProps) {
-
   // Handle save action
   const handleSave = async () => {
     if (onSave) {
-      await onSave(place);
+      await onSave(place)
     }
-  };
+  }
 
   return (
     <div className="flex-shrink-0 p-6 pb-4 bg-background border-b">
@@ -49,14 +48,14 @@ export default function PlaceHeader({
           </Button>
           {showSaveButton && (
             <Button
-              variant={isSaved ? "secondary" : "outline"}
+              variant={isSaved ? 'secondary' : 'outline'}
               size="sm"
               onClick={handleSave}
             >
               <Bookmark
-                className={`h-4 w-4 mr-2 ${isSaved ? "fill-current" : ""}`}
+                className={`h-4 w-4 mr-2 ${isSaved ? 'fill-current' : ''}`}
               />
-              {isSaved ? "Saved" : "Save"}
+              {isSaved ? 'Saved' : 'Save'}
             </Button>
           )}
         </div>
@@ -73,8 +72,8 @@ export default function PlaceHeader({
                   key={i}
                   className={`h-5 w-5 ${
                     i < (place.starRating || 0)
-                      ? "fill-yellow-400 text-yellow-400"
-                      : "text-gray-300"
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'text-gray-300'
                   }`}
                 />
               ))}
@@ -83,5 +82,5 @@ export default function PlaceHeader({
         </div>
       </div>
     </div>
-  );
+  )
 }

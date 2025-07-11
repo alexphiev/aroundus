@@ -1,24 +1,112 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Plus, Edit2, Check, X } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 
 interface ResultsHeaderProps {
-  title: string;
-  subtitle: string;
-  onNewSearch?: () => void;
+  title: string
+  subtitle: string
+  onNewSearch?: () => void
+  isGeneratedTitle?: boolean
+  onTitleEdit?: (newTitle: string) => void
 }
 
 export default function ResultsHeader({
   title,
   subtitle,
   onNewSearch,
+  isGeneratedTitle = false,
+  onTitleEdit,
 }: ResultsHeaderProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState(title)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setEditTitle(title)
+  }, [title])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  const handleStartEdit = () => {
+    setEditTitle(title)
+    setIsEditing(true)
+  }
+
+  const handleSaveEdit = () => {
+    if (editTitle.trim() && editTitle !== title) {
+      onTitleEdit?.(editTitle.trim())
+    }
+    setIsEditing(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditTitle(title)
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit()
+    } else if (e.key === 'Escape') {
+      handleCancelEdit()
+    }
+  }
+
   return (
     <div className="flex-shrink-0 pt-6 pb-4 bg-background">
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{title}</h1>
+        <div className="flex-1 mr-4">
+          {isEditing ? (
+            <div className="flex items-center gap-2 mb-2">
+              <Input
+                ref={inputRef}
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="text-3xl font-bold h-auto py-1 px-2 border-2 border-primary"
+                placeholder="Enter title..."
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSaveEdit}
+                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelEdit}
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold">{title}</h1>
+              {isGeneratedTitle && onTitleEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleStartEdit}
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  title="Edit title"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          )}
           <p className="text-muted-foreground">{subtitle}</p>
         </div>
         <Button
@@ -31,5 +119,5 @@ export default function ResultsHeader({
         </Button>
       </div>
     </div>
-  );
+  )
 }

@@ -1,21 +1,21 @@
-"use client";
+'use client'
 
-import { TripResultItem } from "@/types/result.types";
-import { motion } from "framer-motion";
-import PlaceHeader from "./PlaceHeader";
-import PlaceDescription from "./PlaceDescription";
-import PlaceInfoGrid from "./PlaceInfoGrid";
-import PlaceTimingInfo from "./PlaceTimingInfo";
-import PlaceRecommendation from "./PlaceRecommendation";
-import WeatherForecast from "./WeatherForecast";
-import PlaceLocationDetails from "./PlaceLocationDetails";
+import { PlaceResultItem } from '@/types/result.types'
+import { motion } from 'framer-motion'
+import PlaceDescription from './PlaceDescription'
+import PlaceHeader from './PlaceHeader'
+import PlaceInfoGrid from './PlaceInfoGrid'
+import PlaceLocationDetails from './PlaceLocationDetails'
+import PlaceRecommendation from './PlaceRecommendation'
+import PlaceTimingInfo from './PlaceTimingInfo'
+import WeatherForecast from './WeatherForecast'
 
 interface PlaceDetailViewProps {
-  place: TripResultItem;
-  onBack: () => void;
-  onSave?: (place: TripResultItem) => Promise<void>;
-  isSaved?: boolean;
-  showSaveButton?: boolean;
+  place: PlaceResultItem
+  onBack: () => void
+  onSave?: (place: PlaceResultItem) => Promise<void>
+  isSaved?: boolean
+  showSaveButton?: boolean
 }
 
 export default function PlaceDetailView({
@@ -27,24 +27,24 @@ export default function PlaceDetailView({
 }: PlaceDetailViewProps) {
   // Handle share
   const handleShare = async () => {
-    const shareText = `${place.name}: ${place.description}\n\nLocation: ${place.lat}, ${place.long}${place.googleMapsLink ? `\n\nGoogle Maps: ${place.googleMapsLink}` : ''}`;
-    
+    const shareText = `${place.name}: ${place.description}\n\nLocation: ${place.lat}, ${place.long}${place.googleMapsLink ? `\n\nGoogle Maps: ${place.googleMapsLink}` : ''}`
+
     if (navigator.share) {
       try {
         await navigator.share({
           title: place.name,
           text: shareText,
           url: place.googleMapsLink || window.location.href,
-        });
-      } catch (error) {
+        })
+      } catch {
         // Fallback to clipboard
-        navigator.clipboard.writeText(shareText);
+        navigator.clipboard.writeText(shareText)
       }
     } else {
       // Fallback to clipboard
-      navigator.clipboard.writeText(shareText);
+      navigator.clipboard.writeText(shareText)
     }
-  };
+  }
 
   return (
     <motion.div
@@ -87,5 +87,5 @@ export default function PlaceDetailView({
         <PlaceLocationDetails place={place} />
       </div>
     </motion.div>
-  );
+  )
 }

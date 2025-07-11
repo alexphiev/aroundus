@@ -1,14 +1,6 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, MountainIcon, UserCircle2 } from "lucide-react";
-import Link from "next/link";
-import { Sidebar } from "./sidebar"; // Import the sidebar content
-import { createClient } from "@/utils/supabase/client";
-import { useEffect, useState } from "react";
-import { type User } from "@supabase/supabase-js";
-import { useRouter, usePathname } from "next/navigation";
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,31 +8,38 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { createClient } from '@/utils/supabase/client'
+import { type User } from '@supabase/supabase-js'
+import { Menu, MountainIcon, UserCircle2 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export function AppHeader() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const supabase = createClient(); // Create client once
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClient() // Create client once
 
   useEffect(() => {
     const getUser = async () => {
       const {
         data: { user: currentUser },
-      } = await supabase.auth.getUser();
-      setUser(currentUser);
-      setIsLoading(false);
-    };
-    getUser();
-  }, [supabase.auth]);
+      } = await supabase.auth.getUser()
+      setUser(currentUser)
+      setIsLoading(false)
+    }
+    getUser()
+  }, [supabase.auth])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push("/sign-in");
-    router.refresh(); // to update server components and middleware
-  };
+    await supabase.auth.signOut()
+    setUser(null)
+    router.push('/sign-in')
+    router.refresh() // to update server components and middleware
+  }
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 justify-between">
@@ -49,14 +48,14 @@ export function AppHeader() {
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="md:hidden">
-              {" "}
+              {' '}
               {/* Hidden on md and larger screens */}
               <Menu className="h-5 w-5" />
               <span className="sr-only">Toggle navigation menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 sm:w-80 md:hidden">
-            {" "}
+            {' '}
             {/* Ensure content is also hidden on larger screens if only for drawer */}
             {/* Reuse AppSidebar content here for the drawer */}
             {/* We need to pass setIsOpen or handle it differently for drawer if AppSidebar manages its own state */}
@@ -111,7 +110,7 @@ export function AppHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
-                {user.email || "My Account"}
+                {user.email || 'My Account'}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {/* <DropdownMenuItem onClick={() => router.push('/profile')}>Profile</DropdownMenuItem> */}
@@ -123,45 +122,45 @@ export function AppHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Button onClick={() => router.push("/sign-in")} variant="outline">
+          <Button onClick={() => router.push('/sign-in')} variant="outline">
             Sign In
           </Button>
         )}
       </div>
     </header>
-  );
+  )
 }
 
 export function MobileSidebar() {
-  const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const supabase = createClient(); // Create client once
+  const pathname = usePathname()
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClient() // Create client once
 
   useEffect(() => {
     const getUser = async () => {
       const {
         data: { user: currentUser },
-      } = await supabase.auth.getUser();
-      setUser(currentUser);
-      setIsLoading(false);
-    };
-    getUser();
-  }, [supabase.auth]);
+      } = await supabase.auth.getUser()
+      setUser(currentUser)
+      setIsLoading(false)
+    }
+    getUser()
+  }, [supabase.auth])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push("/sign-in");
-    router.refresh(); // to update server components and middleware
-  };
+    await supabase.auth.signOut()
+    setUser(null)
+    router.push('/sign-in')
+    router.refresh() // to update server components and middleware
+  }
 
   const navItems = [
-    { href: "/", label: "Dashboard (Map)" },
-    { href: "/history", label: "Search History" },
+    { href: '/', label: 'Dashboard (Map)' },
+    { href: '/history', label: 'Search History' },
     // Add more items later
-  ];
+  ]
 
   return (
     <div className="md:hidden">
@@ -183,7 +182,7 @@ export function MobileSidebar() {
               {navItems.map((item) => (
                 <Button
                   key={item.label}
-                  variant={pathname === item.href ? "secondary" : "ghost"}
+                  variant={pathname === item.href ? 'secondary' : 'ghost'}
                   className="justify-start text-left h-auto py-2.5 px-3"
                   asChild
                 >
@@ -209,12 +208,12 @@ export function MobileSidebar() {
                           className="w-full justify-start gap-2"
                         >
                           <UserCircle2 className="h-5 w-5" />
-                          <span>{user.email || "My Account"}</span>
+                          <span>{user.email || 'My Account'}</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>
-                          {user.email || "My Account"}
+                          {user.email || 'My Account'}
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleSignOut}>
@@ -224,7 +223,7 @@ export function MobileSidebar() {
                     </DropdownMenu>
                   ) : (
                     <Button
-                      onClick={() => router.push("/sign-in")}
+                      onClick={() => router.push('/sign-in')}
                       variant="outline"
                       className="w-full"
                     >
@@ -238,34 +237,34 @@ export function MobileSidebar() {
         </SheetContent>
       </Sheet>
     </div>
-  );
+  )
 }
 
 // This component is now only used for the mobile user menu at the top right
 // The sidebar handles the main navigation
 export function MobileUserMenu() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     const getUser = async () => {
       const {
         data: { user: currentUser },
-      } = await supabase.auth.getUser();
-      setUser(currentUser);
-      setIsLoading(false);
-    };
-    getUser();
-  }, [supabase.auth]);
+      } = await supabase.auth.getUser()
+      setUser(currentUser)
+      setIsLoading(false)
+    }
+    getUser()
+  }, [supabase.auth])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push("/sign-in");
-    router.refresh();
-  };
+    await supabase.auth.signOut()
+    setUser(null)
+    router.push('/sign-in')
+    router.refresh()
+  }
 
   return (
     <div className="md:hidden">
@@ -280,7 +279,7 @@ export function MobileUserMenu() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user.email || "My Account"}</DropdownMenuLabel>
+            <DropdownMenuLabel>{user.email || 'My Account'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               Sign Out
@@ -289,7 +288,7 @@ export function MobileUserMenu() {
         </DropdownMenu>
       ) : (
         <Button
-          onClick={() => router.push("/sign-in")}
+          onClick={() => router.push('/sign-in')}
           variant="outline"
           size="sm"
         >
@@ -297,5 +296,5 @@ export function MobileUserMenu() {
         </Button>
       )}
     </div>
-  );
+  )
 }

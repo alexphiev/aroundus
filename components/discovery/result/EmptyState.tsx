@@ -1,15 +1,15 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui/button";
-import { Filter } from "lucide-react";
+import { Button } from '@/components/ui/button'
+import { Filter } from 'lucide-react'
 
 interface EmptyStateProps {
-  message?: string;
-  onSearchClick?: () => void;
+  message?: string
+  onSearchClick?: () => void
 }
 
 export default function EmptyState({
-  message = "No trips to display",
+  message = 'No trips to display',
   onSearchClick,
 }: EmptyStateProps) {
   return (
@@ -22,5 +22,5 @@ export default function EmptyState({
         </Button>
       )}
     </div>
-  );
+  )
 }

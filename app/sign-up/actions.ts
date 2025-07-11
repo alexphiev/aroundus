@@ -1,19 +1,19 @@
-"use server";
+'use server'
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from '@/utils/supabase/server'
 
 export async function handleSignUp(data: {
-  email?: string;
-  password?: string;
+  email?: string
+  password?: string
 }) {
-  const email = data.email;
-  const password = data.password;
+  const email = data.email
+  const password = data.password
 
   if (!email || !password) {
-    return { error: "Email and password are required for sign-up." };
+    return { error: 'Email and password are required for sign-up.' }
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient()
 
   // Supabase Auth by default has email confirmation enabled.
   // The user will be sent a confirmation email.
@@ -26,11 +26,11 @@ export async function handleSignUp(data: {
       // You can specify a different redirect path here if needed after confirmation.
       // emailRedirectTo: `${new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').origin}/auth/callback`
     },
-  });
+  })
 
   if (error) {
-    console.error("Sign-up error:", error.message);
-    return { error: error.message || "Could not sign up user." };
+    console.error('Sign-up error:', error.message)
+    return { error: error.message || 'Could not sign up user.' }
   }
 
   if (
@@ -42,8 +42,8 @@ export async function handleSignUp(data: {
     // where the user is created but not yet confirmed or active.
     return {
       message:
-        "Sign up successful, but please check your email for a confirmation link or wait for admin approval.",
-    };
+        'Sign up successful, but please check your email for a confirmation link or wait for admin approval.',
+    }
   }
 
   // If user object exists and has an ID, it usually means sign-up initiated successfully.
@@ -51,9 +51,9 @@ export async function handleSignUp(data: {
   if (signUpData.user) {
     return {
       message:
-        "Sign up successful! Please check your email for a confirmation link.",
-    };
+        'Sign up successful! Please check your email for a confirmation link.',
+    }
   }
 
-  return { error: "An unexpected error occurred during sign up." };
+  return { error: 'An unexpected error occurred during sign up.' }
 }

@@ -1,42 +1,42 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
-import { Sparkles, Dumbbell, Leaf, Compass, Search } from "lucide-react";
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Compass, Dumbbell, Leaf, Search, Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 export default function HomePage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('')
+  const router = useRouter()
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
       // Navigate to discover page with search query
-      router.push(`/discover?q=${encodeURIComponent(searchQuery)}`);
+      router.push(`/discover?q=${encodeURIComponent(searchQuery)}`)
     } else {
       // Navigate to discover page
-      router.push("/discover");
+      router.push('/discover')
     }
-  };
+  }
 
   const handleShortcut = (type: string) => {
     // Navigate to discover page with shortcut type
     const shortcuts = {
-      "feeling-lucky": "/discover?shortcut=feeling-lucky",
-      exercise: "/discover?shortcut=exercise",
-      relax: "/discover?shortcut=relax",
-      "something-new": "/discover?shortcut=something-new",
-    };
+      'feeling-lucky': '/discover?shortcut=feeling-lucky',
+      exercise: '/discover?shortcut=exercise',
+      relax: '/discover?shortcut=relax',
+      'something-new': '/discover?shortcut=something-new',
+    }
 
-    router.push(shortcuts[type as keyof typeof shortcuts] || "/discover");
-  };
+    router.push(shortcuts[type as keyof typeof shortcuts] || '/discover')
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
+    if (e.key === 'Enter') {
+      handleSearch()
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
@@ -71,7 +71,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
           <Button
             variant="outline"
-            onClick={() => handleShortcut("feeling-lucky")}
+            onClick={() => handleShortcut('feeling-lucky')}
             className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
@@ -82,7 +82,7 @@ export default function HomePage() {
 
           <Button
             variant="outline"
-            onClick={() => handleShortcut("exercise")}
+            onClick={() => handleShortcut('exercise')}
             className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
@@ -93,18 +93,18 @@ export default function HomePage() {
 
           <Button
             variant="outline"
-            onClick={() => handleShortcut("relax")}
+            onClick={() => handleShortcut('relax')}
             className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
               <Leaf className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform" />
-              <span className="font-medium">Let's Relax</span>
+              <span className="font-medium">Let&apos;s Relax</span>
             </div>
           </Button>
 
           <Button
             variant="outline"
-            onClick={() => handleShortcut("something-new")}
+            onClick={() => handleShortcut('something-new')}
             className="h-16 rounded-2xl border-2 hover:shadow-md transition-all group bg-white/60 backdrop-blur-xs"
           >
             <div className="flex flex-col items-center gap-2">
@@ -115,5 +115,5 @@ export default function HomePage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

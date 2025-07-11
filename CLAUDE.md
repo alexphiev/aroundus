@@ -42,7 +42,7 @@ This is a Next.js 15 application using App Router with the following key directo
 - **Supabase Auth** with SSR support
 - **Middleware** (`middleware.ts`) handles route protection:
   - Root path (`/`) requires authentication
-  - Protected routes: `/discover`, `/past-trips`, `/protected`
+  - Protected routes: `/discover`, `/past-places`, `/protected`
   - Unauthenticated users redirected to `/sign-in`
 - Auth utilities in `utils/supabase/` handle client/server contexts
 
@@ -50,7 +50,7 @@ This is a Next.js 15 application using App Router with the following key directo
 
 #### UI Patterns
 
-- **Radix UI + shadcn/ui**: Consistent component library
+- **Radix UI + shadcn/ui**: Consistent component library > Never make updates to the shadcn/ui library in 'components/ui' directory. if needed, create a custom version in 'components/ui/custom' directory.
 - **Framer Motion**: Page transitions and loading animations
 - **Loading States**: Random WebP animations from `public/animated/`
 - **Form Validation**: React Hook Form + Zod schemas
@@ -59,9 +59,9 @@ This is a Next.js 15 application using App Router with the following key directo
 
 #### Key Server Actions
 
-- `discover.actions.ts` - AI trip search with batch loading
+- `discover.actions.ts` - AI places search with batch loading
 - `history.actions.ts` - Search history management
-- `place.actions.ts` - Saved trips functionality
+- `place.actions.ts` - Saved places functionality
 - `weather.actions.ts` - Weather forecast integration
 - `map-search-to-form.actions.ts` - AI-powered form pre-filling
 

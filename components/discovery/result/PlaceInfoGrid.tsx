@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TripResultItem } from "@/types/result.types";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PlaceResultItem } from '@/types/result.types'
 import {
   Backpack,
   Bike,
@@ -24,64 +24,64 @@ import {
   TreePine,
   Trees,
   Waves,
-} from "lucide-react";
+} from 'lucide-react'
 
 interface PlaceInfoGridProps {
-  place: TripResultItem;
+  place: PlaceResultItem
 }
 
 export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
   // Get landscape icon based on type
   const getLandscapeIcon = (landscape?: string) => {
     switch (landscape?.toLowerCase()) {
-      case "mountain":
-        return <Mountain className="h-6 w-6" />;
-      case "forest":
-        return <Trees className="h-6 w-6" />;
-      case "lake":
-        return <Waves className="h-6 w-6" />;
-      case "beach":
-        return <Sun className="h-6 w-6" />;
-      case "river":
-        return <Droplets className="h-6 w-6" />;
-      case "park":
-        return <Flower2 className="h-6 w-6" />;
-      case "wetland":
-        return <Droplets className="h-6 w-6" />;
-      case "desert":
-        return <Sun className="h-6 w-6" />;
+      case 'mountain':
+        return <Mountain className="h-6 w-6" />
+      case 'forest':
+        return <Trees className="h-6 w-6" />
+      case 'lake':
+        return <Waves className="h-6 w-6" />
+      case 'beach':
+        return <Sun className="h-6 w-6" />
+      case 'river':
+        return <Droplets className="h-6 w-6" />
+      case 'park':
+        return <Flower2 className="h-6 w-6" />
+      case 'wetland':
+        return <Droplets className="h-6 w-6" />
+      case 'desert':
+        return <Sun className="h-6 w-6" />
       default:
-        return <TreePine className="h-6 w-6" />;
+        return <TreePine className="h-6 w-6" />
     }
-  };
+  }
 
   // Get activity icon based on type
   const getActivityIcon = (activity?: string) => {
     switch (activity?.toLowerCase()) {
-      case "hiking":
-        return <Backpack className="h-6 w-6" />;
-      case "biking":
-        return <Bike className="h-6 w-6" />;
-      case "camping":
-        return <TentTree className="h-6 w-6" />;
-      case "photography":
-        return <Camera className="h-6 w-6" />;
-      case "wildlife":
-        return <PawPrint className="h-6 w-6" />;
-      case "walking":
-        return <Footprints className="h-6 w-6" />;
-      case "swimming":
-        return <Waves className="h-6 w-6" />;
+      case 'hiking':
+        return <Backpack className="h-6 w-6" />
+      case 'biking':
+        return <Bike className="h-6 w-6" />
+      case 'camping':
+        return <TentTree className="h-6 w-6" />
+      case 'photography':
+        return <Camera className="h-6 w-6" />
+      case 'wildlife':
+        return <PawPrint className="h-6 w-6" />
+      case 'walking':
+        return <Footprints className="h-6 w-6" />
+      case 'swimming':
+        return <Waves className="h-6 w-6" />
       default:
-        return <Mountain className="h-6 w-6" />;
+        return <Mountain className="h-6 w-6" />
     }
-  };
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Environment & Activity */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader>
           <CardTitle className="text-lg">Environment & Activity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -92,7 +92,7 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
             <div>
               <p className="font-medium">Environment</p>
               <p className="text-sm text-muted-foreground capitalize">
-                {place.landscape || "Natural area"}
+                {place.landscape || 'Natural area'}
               </p>
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
             <div>
               <p className="font-medium">Activity Type</p>
               <p className="text-sm text-muted-foreground capitalize">
-                {place.activity || "Outdoor activity"}
+                {place.activity || 'Outdoor activity'}
               </p>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
 
       {/* Duration & Travel */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader>
           <CardTitle className="text-lg">Duration & Travel</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -142,9 +142,12 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
       </Card>
 
       {/* Location Details */}
-      {(place.googleMapsLink || place.operatingHours || place.entranceFee || place.parkingInfo) && (
+      {(place.googleMapsLink ||
+        place.operatingHours ||
+        place.entranceFee ||
+        place.parkingInfo) && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader>
             <CardTitle className="text-lg">Location Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -153,9 +156,9 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
                 <MapPin className="h-6 w-6 text-blue-600" />
                 <div className="flex-1">
                   <p className="font-medium">Google Maps</p>
-                  <a 
-                    href={place.googleMapsLink} 
-                    target="_blank" 
+                  <a
+                    href={place.googleMapsLink}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                   >
@@ -204,7 +207,7 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
       {/* Current Conditions */}
       {place.currentConditions && (
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader>
             <CardTitle className="text-lg">Current Conditions</CardTitle>
           </CardHeader>
           <CardContent>
@@ -221,5 +224,5 @@ export default function PlaceInfoGrid({ place }: PlaceInfoGridProps) {
         </Card>
       )}
     </div>
-  );
+  )
 }

@@ -1,32 +1,34 @@
-"use client";
+'use client'
 
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Bookmark, Star } from "lucide-react";
-import { TripResultItem } from "@/types/result.types";
-import { getTransportIcon } from "@/components/discovery/utils/iconUtils";
-import PlaceIcons from "./PlaceIcons";
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Bookmark, Star, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { PlaceResultItem } from '@/types/result.types'
+import { getTransportIcon } from '@/components/discovery/utils/iconUtils'
+import PlaceIcons from './PlaceIcons'
+import { abbreviateDuration } from '@/lib/utils'
 
-interface TripResultCardProps {
-  trip: TripResultItem;
-  index: number;
-  isActive: boolean;
-  isSaved: boolean;
-  showSaveButton: boolean;
-  isSaving: boolean;
-  onClick: () => void;
-  onSave: (e: React.MouseEvent) => void;
+interface PlaceCardProps {
+  place: PlaceResultItem
+  index: number
+  isActive: boolean
+  isSaved: boolean
+  showSaveButton: boolean
+  isSaving: boolean
+  onClick: () => void
+  onSave: (e: React.MouseEvent) => void
+  onFeedback?: (feedback: 'liked' | 'disliked' | null) => void
 }
 
-export default function TripResultCard({
-  trip,
+export default function PlaceCard({
+  place,
   index,
   isActive,
   isSaved,
@@ -34,51 +36,44 @@ export default function TripResultCard({
   isSaving,
   onClick,
   onSave,
-}: TripResultCardProps) {
-  // Helper function to abbreviate duration strings
-  const abbreviateDuration = (duration: string) => {
-    return duration
-      .replace(/hours?/gi, "h")
-      .replace(/minutes?/gi, "m")
-      .replace(/days?/gi, "d")
-      .replace(/weeks?/gi, "w")
-      .replace(/\s+/g, " ")
-      .trim();
-  };
-
+  onFeedback,
+}: PlaceCardProps) {
   return (
     <motion.div
-      key={trip.id || index}
+      key={place.id || index}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
         duration: 0.3,
         delay: index * 0.1,
-        ease: "easeOut",
+        ease: 'easeOut',
       }}
       layout
     >
       <Card
         className={`card-interactive card-layout ${
-          isActive ? "card-active" : ""
+          isActive ? 'card-active' : ''
         }`}
         onClick={onClick}
       >
-        <CardHeader className="layout-card-header">
-          <div className="layout-flex-between">
+        <CardHeader className="flex-shrink-0">
+          <div className="flex justify-between items-start">
             <div className="flex gap-1 items-center">
-              <PlaceIcons landscape={trip.landscape} activity={trip.activity} />
+              <PlaceIcons
+                landscape={place.landscape}
+                activity={place.activity}
+              />
 
               {/* Star Rating */}
-              {trip.starRating && (
+              {place.starRating && (
                 <div className="flex items-center gap-0.5 ml-2">
                   {Array.from({ length: 3 }, (_, i) => (
                     <Star
                       key={i}
                       className={`h-3 w-3 ${
-                        i < (trip.starRating || 0)
-                          ? "fill-primary text-primary"
-                          : "text-muted-foreground/30"
+                        i < (place.starRating || 0)
+                          ? 'fill-primary text-primary'
+                          : 'text-muted-foreground/30'
                       }`}
                     />
                   ))}
@@ -86,60 +81,103 @@ export default function TripResultCard({
               )}
             </div>
 
-            {showSaveButton && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 ${isSaved ? "text-primary" : ""}`}
-                disabled={isSaving}
-                onClick={onSave}
-              >
-                <Bookmark
-                  className={`h-4 w-4 ${isSaved ? "fill-current" : ""}`}
-                />
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              {/* Feedback buttons */}
+              {onFeedback && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-8 w-8 ${
+                      place.userFeedback === 'liked'
+                        ? 'text-green-600 bg-green-50'
+                        : 'text-muted-foreground'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onFeedback(
+                        place.userFeedback === 'liked' ? null : 'liked'
+                      )
+                    }}
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-8 w-8 ${
+                      place.userFeedback === 'disliked'
+                        ? 'text-red-600 bg-red-50'
+                        : 'text-muted-foreground'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onFeedback(
+                        place.userFeedback === 'disliked' ? null : 'disliked'
+                      )
+                    }}
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+
+              {/* Save button */}
+              {showSaveButton && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-8 w-8 ${isSaved ? 'text-primary' : ''}`}
+                  disabled={isSaving}
+                  onClick={onSave}
+                >
+                  <Bookmark
+                    className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`}
+                  />
+                </Button>
+              )}
+            </div>
           </div>
-          <CardTitle className="text-card-title mt-2">{trip.name}</CardTitle>
+          <CardTitle className="text-card-title mt-2">{place.name}</CardTitle>
         </CardHeader>
-        <CardContent className="layout-card-content">
+        <CardContent className="flex-1 flex flex-col">
           {/* Why Recommended */}
-          {trip.whyRecommended ? (
+          {place.whyRecommended ? (
             <CardDescription className="text-card-description mb-3 flex-shrink-0">
-              {trip.whyRecommended}
+              {place.whyRecommended}
             </CardDescription>
           ) : (
             <CardDescription className="text-card-description mb-3 flex-shrink-0">
-              {trip.description}
+              {place.description}
             </CardDescription>
           )}
 
           <div className="flex-1 space-content">
             {/* Duration Information - Single Row */}
-            {(trip.estimatedActivityDuration ||
-              trip.estimatedTransportTime) && (
+            {(place.estimatedActivityDuration ||
+              place.estimatedTransportTime) && (
               <div className="flex gap-2 flex-wrap">
-                {trip.estimatedActivityDuration && (
+                {place.estimatedActivityDuration && (
                   <span className="badge-info">
-                    Activity:{" "}
-                    {abbreviateDuration(trip.estimatedActivityDuration)}
+                    Activity:{' '}
+                    {abbreviateDuration(place.estimatedActivityDuration)}
                   </span>
                 )}
-                {trip.estimatedTransportTime && (
+                {place.estimatedTransportTime && (
                   <span className="badge-warning flex items-center gap-1">
-                    {getTransportIcon(trip.transportMode)}
-                    {abbreviateDuration(trip.estimatedTransportTime)}
+                    {getTransportIcon(place.transportMode)}
+                    {abbreviateDuration(place.estimatedTransportTime)}
                   </span>
                 )}
               </div>
             )}
 
             {/* Best Time to Visit - Bottom with 3-line limit */}
-            {trip.bestTimeToVisit && (
+            {place.bestTimeToVisit && (
               <div className="space-tight">
                 <div className="p-2 bg-status-success rounded-md">
                   <p className="text-xs text-status-success-foreground leading-relaxed line-clamp-3">
-                    Best: {trip.bestTimeToVisit}
+                    Best: {place.bestTimeToVisit}
                   </p>
                 </div>
               </div>
@@ -148,5 +186,5 @@ export default function TripResultCard({
         </CardContent>
       </Card>
     </motion.div>
-  );
+  )
 }
