@@ -33,6 +33,11 @@ export async function generateSearchTitle(searchQuery: FormValues) {
       Distance: ${searchQuery.distance} ${searchQuery.transportType}
       Duration: ${searchQuery.activityDurationValue} ${searchQuery.activityDurationUnit}
       ${
+        searchQuery.locationName
+          ? `Location: ${searchQuery.locationName}`
+          : ''
+      }
+      ${
         searchQuery.additionalInfo
           ? `Search query: ${searchQuery.additionalInfo}`
           : ''
@@ -60,12 +65,17 @@ export async function generateSearchTitle(searchQuery: FormValues) {
       - "Wild Photography Adventures"
       - "Secret Garden Wanderings"
       - "Ocean Breeze Escapes"
+      - "Paris Trail Adventures"
+      - "Tokyo Nature Escapes"
+      - "Colorado Mountain Dreams"
+      - "California Coast Wanderings"
       
       Focus on:
       - Evoking emotion and wonder
       - Using nature imagery
       - Creating anticipation
       - Being memorable and inspiring
+      - Including location context when available to make titles more specific and personal
       
       Return ONLY the title, no quotes, no additional text.
       Keep it under 6 words and make it poetic yet accessible.

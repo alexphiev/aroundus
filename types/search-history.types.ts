@@ -12,6 +12,7 @@ export interface SearchQuery {
     latitude: number
     longitude: number
   }
+  locationName?: string // Human-readable location name (e.g., "Paris, France")
   additionalInfo?: string // User's direct input from homepage search
   transportType?: 'foot' | 'bike' | 'public_transport' | 'car' // Transport mode
 }
@@ -74,4 +75,5 @@ export interface FormValues {
   activityDurationValue: number
   activityDurationUnit: 'hours' | 'days'
   additionalInfo?: string // User's direct input from homepage search
+  locationName?: string // Human-readable location name (e.g., "Paris, France")
 }

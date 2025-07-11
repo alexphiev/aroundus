@@ -23,6 +23,7 @@ const searchCriteriaSchema = z.object({
     latitude: z.number(),
     longitude: z.number(),
   }),
+  locationName: z.string().optional(),
   additionalInfo: z.string().optional(),
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car']).optional(),
 })

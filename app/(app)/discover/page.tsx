@@ -11,6 +11,7 @@ import { mapSearchToFormFilters } from '@/actions/map-search-to-form.actions'
 import { savePlaceAction } from '@/actions/place.actions'
 import { SearchFormModal } from '@/components/discovery/form/DiscoverFormModal'
 import DiscoveryResult from '@/components/discovery/result/DiscoveryResult'
+import { useLocationContext } from '@/components/providers/LocationProvider'
 import {
   discoveryFormSchema,
   type DiscoveryFormValues,
@@ -65,13 +66,15 @@ function reconstructSearchContext(
 
 function DiscoverPageContent() {
   const searchParams = useSearchParams()
+  const {
+    userLocation,
+    locationInfo,
+    isLoadingLocation,
+    locationError,
+    setUserLocation,
+  } = useLocationContext()
   const [isSearchOpen, setIsSearchOpen] = useState(false) // Start closed to prevent flash
   const [isPending, startTransition] = useTransition()
-  const [userLocation, setUserLocation] = useState<{
-    latitude: number
-    longitude: number
-  } | null>(null)
-  const [locationError, setLocationError] = useState<string | null>(null)
   const [placeResults, setPlaceResults] = useState<PlaceResultItem[] | null>(
     null
   )
@@ -107,9 +110,8 @@ function DiscoverPageContent() {
     },
   })
 
-  // Get user location
+  // Get user location using the context
   const getLocation = () => {
-    setLocationError(null)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -121,14 +123,10 @@ function DiscoverPageContent() {
         },
         (error) => {
           console.error('Error getting location: ', error)
-          setLocationError(
-            `Error: ${error.message}. Please ensure location services are enabled.`
-          )
           toast.error('Failed to acquire location.')
         }
       )
     } else {
-      setLocationError('Geolocation is not supported by this browser.')
       toast.error('Geolocation not supported.')
     }
   }
@@ -406,6 +404,7 @@ function DiscoverPageContent() {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
         },
+        locationName: locationInfo?.locationName,
         additionalInfo: values.additionalInfo,
         transportType: values.transportType,
       }
@@ -417,7 +416,7 @@ function DiscoverPageContent() {
         // Only generate title if one doesn't already exist
         const titleGenerationPromise = generatedTitle 
           ? Promise.resolve(generatedTitle)
-          : generateSearchTitle(values)
+          : generateSearchTitle({...values, locationName: locationInfo?.locationName})
               .then((titleResult) => {
                 if (titleResult.success && titleResult.data?.title) {
                   setGeneratedTitle(titleResult.data.title)
@@ -441,6 +440,7 @@ function DiscoverPageContent() {
             latitude: userLocation.latitude,
             longitude: userLocation.longitude,
           },
+          locationName: locationInfo?.locationName,
           specialCare: values.specialCare,
           otherSpecialCare: values.otherSpecialCare,
           additionalInfo: values.additionalInfo,

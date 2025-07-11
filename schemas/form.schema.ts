@@ -72,6 +72,7 @@ export const discoverySubmissionSchema = baseDiscoverySchema
       latitude: z.number(),
       longitude: z.number(),
     }),
+    locationName: z.string().optional(),
   })
   .refine(
     (data) => {

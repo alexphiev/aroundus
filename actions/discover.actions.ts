@@ -424,6 +424,9 @@ export async function handlePlaceSearchBatch(
 
   const targetDate = getTargetDate(validatedData.when)
 
+  // Use location name from the request (already geocoded on client)
+  const locationName = validatedData.locationName || 'your location'
+
   // Get weather forecast for the target location and date
   const weatherData = await getWeatherDataForAI(
     validatedData.location.latitude,
@@ -496,7 +499,7 @@ export async function handlePlaceSearchBatch(
     )}
     - Desired activity duration at location: ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}
     - Physical activity level: ${validatedData.activityLevel} (where 1 is very light and 5 is very strenuous)
-    - Starting GPS location: latitude ${validatedData.location.latitude}, longitude ${validatedData.location.longitude}
+    - Starting location: ${locationName} (latitude ${validatedData.location.latitude}, longitude ${validatedData.location.longitude})
     
     ${
       specialCareRequirements.length > 0
@@ -549,7 +552,7 @@ export async function handlePlaceSearchBatch(
     For travel distance of ${validatedData.distance} via ${getTransportDescription(
       validatedData.transportType
     )}:
-    - ONLY suggest places that are realistically reachable within ${validatedData.distance} travel time from the GPS coordinates (${validatedData.location.latitude}, ${validatedData.location.longitude}) using ${getTransportDescription(
+    - ONLY suggest places that are realistically reachable within ${validatedData.distance} travel time from ${locationName} (coordinates: ${validatedData.location.latitude}, ${validatedData.location.longitude}) using ${getTransportDescription(
       validatedData.transportType
     )}
     - Use Google Search to verify actual travel times from the starting location to ensure destinations are within the specified time limit
@@ -607,13 +610,15 @@ export async function handlePlaceSearchBatch(
   try {
     // Create a simpler prompt that requests 4 high-quality destinations
     const prompt = `
-      You are an expert nature concierge. Find 4 excellent nature destinations that match the user's criteria.
+      You are an expert nature concierge. Find 4 excellent nature destinations near ${locationName} that match the user's criteria.
       
       ${baseCriteria}
       
-      Focus on finding diverse, high-quality destinations that offer great nature experiences. 
+      Focus on finding diverse, high-quality destinations around ${locationName} that offer great nature experiences. 
       Mix different types of locations (mountains, forests, lakes, etc.) to provide variety.
       Prioritize places that are accessible, safe, and offer the type of experience the user is looking for.
+      
+      LOCATION CONTEXT: The user is starting from ${locationName}, so suggest destinations that make sense geographically from this location.
       
       ${
         currentContext.previousPlaces.length > 0
@@ -671,6 +676,7 @@ export async function handlePlaceSearchBatch(
         batchNumber: batchNumber,
         success: true,
         hasMore: true, // Always assume there could be more results
+        locationName, // Include location name in response
       }
     } else {
       return {
