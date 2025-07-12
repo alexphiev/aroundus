@@ -20,6 +20,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useState } from 'react'
 import PlaceIcons from './PlaceIcons'
 
@@ -89,10 +90,12 @@ export default function PlaceCard({
         {/* Photo Carousel */}
         {place.photos && place.photos.length > 0 && (
           <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
-            <img
+            <Image
               src={place.photos[currentPhotoIndex].url}
               alt={`${place.name} - Photo ${currentPhotoIndex + 1}`}
               className="w-full h-full object-cover"
+              width={300}
+              height={300}
               onError={(e) => {
                 // Hide image if it fails to load
                 e.currentTarget.style.display = 'none'

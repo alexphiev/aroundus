@@ -13,7 +13,7 @@ import PlaceResultsGrid from '@/components/discovery/result/PlaceResulstGrid'
 import { PlaceResultItem } from '@/types/result.types'
 import { FormValues } from '@/types/search-history.types'
 import { AnimatePresence, motion, PanInfo, useAnimation } from 'framer-motion'
-import { ChevronUp, Grip } from 'lucide-react'
+import { ChevronUp } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -111,8 +111,10 @@ export default function MobileDiscoveryResult({
       let newState: OverlayState = overlayState
 
       // Prioritize velocity over distance for more responsive feel
-      const isSwipingUp = velocity.y < -velocityThreshold || offset.y < -dragThreshold
-      const isSwipingDown = velocity.y > velocityThreshold || offset.y > dragThreshold
+      const isSwipingUp =
+        velocity.y < -velocityThreshold || offset.y < -dragThreshold
+      const isSwipingDown =
+        velocity.y > velocityThreshold || offset.y > dragThreshold
 
       if (isSwipingUp) {
         if (overlayState === 'collapsed') newState = 'half'
@@ -322,11 +324,13 @@ export default function MobileDiscoveryResult({
                 onClick={handleHandleTap}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <div className={`w-12 h-1.5 rounded-full transition-colors ${
-                    overlayState === 'collapsed' 
-                      ? 'bg-primary/50' 
-                      : 'bg-muted-foreground/30'
-                  }`} />
+                  <div
+                    className={`w-12 h-1.5 rounded-full transition-colors ${
+                      overlayState === 'collapsed'
+                        ? 'bg-primary/50'
+                        : 'bg-muted-foreground/30'
+                    }`}
+                  />
                   {isCollapsed && (
                     <ChevronUp className="h-4 w-4 text-primary/70 mt-1" />
                   )}
@@ -337,7 +341,8 @@ export default function MobileDiscoveryResult({
                   <div className="absolute left-4 flex items-center gap-2">
                     <div className="w-2 h-2 bg-primary rounded-full" />
                     <span className="text-sm font-medium text-foreground">
-                      {placeResults.length} place{placeResults.length !== 1 ? 's' : ''}
+                      {placeResults.length} place
+                      {placeResults.length !== 1 ? 's' : ''}
                     </span>
                   </div>
                 )}
@@ -352,7 +357,9 @@ export default function MobileDiscoveryResult({
               >
                 <div className="flex flex-col items-center gap-1">
                   <div className="w-12 h-1.5 bg-muted-foreground/50 rounded-full" />
-                  <span className="text-xs text-muted-foreground/70 mt-1">Swipe down</span>
+                  <span className="text-xs text-muted-foreground/70 mt-1">
+                    Swipe down
+                  </span>
                 </div>
               </div>
             )}
