@@ -141,7 +141,8 @@ function DiscoverPageContent() {
     } else {
       toast.error('Geolocation not supported.')
     }
-  }, [setUserLocation])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Load latest search from history on component mount
   useEffect(() => {
@@ -261,7 +262,7 @@ function DiscoverPageContent() {
     }
 
     loadLatestSearch()
-  }, [form, getLocation, searchParams, setUserLocation])
+  }, [searchParams])
 
   // Handle URL parameters for search query and shortcuts
   useEffect(() => {
@@ -369,8 +370,6 @@ function DiscoverPageContent() {
     hasProcessedQuery,
     isLoadingHistory,
     userLocation,
-    form,
-    getLocation,
   ])
 
   // Form submission handler with progressive search
