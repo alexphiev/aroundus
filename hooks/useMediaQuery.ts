@@ -18,7 +18,7 @@ export function useMediaQuery(query: string): boolean | null {
     }
 
     const mediaQuery = window.matchMedia(query)
-    
+
     // Update value if different from initial
     if (matches !== mediaQuery.matches) {
       setMatches(mediaQuery.matches)
@@ -38,7 +38,7 @@ export function useMediaQuery(query: string): boolean | null {
       mediaQuery.addListener(handler)
       return () => mediaQuery.removeListener(handler)
     }
-  }, [query])
+  }, [query, matches])
 
   return matches
 }

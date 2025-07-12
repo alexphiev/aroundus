@@ -18,7 +18,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -29,11 +28,6 @@ import {
 } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import {
   ACTIVITY_DURATION_UNITS,
   ACTIVITY_DURATION_VALUES,
@@ -58,49 +52,8 @@ import {
   Stars,
 } from 'lucide-react'
 import { UseFormReturn } from 'react-hook-form'
-
-type FormSchemaType = FormValues
-
-// Define the TransportOption component
-interface TransportOptionProps {
-  value: string
-  current: string
-  onChange: (value: string) => void
-  icon: React.ReactNode
-  label: string
-}
-
-function TransportOption({
-  value,
-  current,
-  onChange,
-  icon,
-  label,
-}: TransportOptionProps) {
-  const isSelected = current === value
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'p-2 rounded-full transition-all cursor-pointer hover:scale-105',
-            isSelected
-              ? 'bg-primary/10 text-primary ring-2 ring-primary'
-              : 'bg-muted text-muted-foreground hover:bg-primary/5 hover:text-primary/80'
-          )}
-          onClick={() => onChange(value)}
-        >
-          {icon}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
-  )
-}
+import { CustomFormLabel } from './CustomFormLabel'
+import { TransportOption } from './TransportOptions'
 
 // Get activity level icon based on the selected level
 const getActivityLevelIcon = (level: number) => {
@@ -124,8 +77,8 @@ const getActivityLevelIcon = (level: number) => {
 interface SearchFormModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  form: UseFormReturn<FormSchemaType>
-  onSubmit: (values: FormSchemaType) => void
+  form: UseFormReturn<FormValues>
+  onSubmit: (values: FormValues) => void
   isPending: boolean
   locationError: string | null
   onRetryLocation: () => void
@@ -193,17 +146,17 @@ export function SearchFormModal({
                     name="additionalInfo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
+                        <CustomFormLabel className="flex items-center gap-2">
                           <Stars className="h-4 w-4" />
                           Describe what you&apos;re looking for in your own
                           words
-                        </FormLabel>
+                        </CustomFormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="e.g., peaceful waterfalls with swimming spots, challenging mountain trails with scenic views, family-friendly parks with picnic areas..."
                             {...field}
                             disabled={isPending}
-                            className="min-h-16 resize-none"
+                            className="min-h-16 resize-none text-sm placeholder:text-sm"
                             rows={2}
                           />
                         </FormControl>
@@ -219,7 +172,9 @@ export function SearchFormModal({
                       name="activity"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>What would you like to do?</FormLabel>
+                          <CustomFormLabel>
+                            What would you like to do?
+                          </CustomFormLabel>
                           <SelectionGrid
                             options={ACTIVITY_OPTIONS}
                             value={field.value}
@@ -236,11 +191,14 @@ export function SearchFormModal({
                         name="otherActivity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Describe your activity</FormLabel>
+                            <CustomFormLabel>
+                              Describe your activity
+                            </CustomFormLabel>
                             <Input
                               placeholder="e.g., bird watching, sketching, rock climbing..."
                               {...field}
                               disabled={isPending}
+                              className="text-sm placeholder:text-sm"
                             />
                             <FormMessage />
                           </FormItem>
@@ -257,13 +215,15 @@ export function SearchFormModal({
                       name="activityLevel"
                       render={({ field }) => (
                         <FormItem className="space-y-3">
-                          <FormLabel>Physical Activity Level</FormLabel>
+                          <CustomFormLabel>
+                            Physical Activity Level
+                          </CustomFormLabel>
                           <div className="flex flex-row gap-4">
                             <div className="p-2 rounded-full bg-primary/10 text-primary">
                               {getActivityLevelIcon(field.value)}
                             </div>
                             <div className="flex flex-col gap-2 flex-1">
-                              <div className="text-sm text-muted-foreground font-medium mb-1">
+                              <div className="text-sm font-medium mb-1">
                                 {field.value === 1 && 'Very easy'}
                                 {field.value === 2 && 'Easy'}
                                 {field.value === 3 && 'Moderate'}
@@ -292,7 +252,7 @@ export function SearchFormModal({
 
                     {/* Activity Duration Column */}
                     <div className="space-y-3">
-                      <FormLabel>Activity Duration</FormLabel>
+                      <CustomFormLabel>Activity Duration</CustomFormLabel>
                       <div className="grid grid-cols-2 gap-3">
                         <FormField
                           control={form.control}
@@ -360,7 +320,9 @@ export function SearchFormModal({
                       name="when"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>When would you like to go?</FormLabel>
+                          <CustomFormLabel>
+                            When would you like to go?
+                          </CustomFormLabel>
                           <SelectionGrid
                             options={WHEN_OPTIONS}
                             value={field.value}
@@ -377,7 +339,9 @@ export function SearchFormModal({
                         name="customDate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Select custom date</FormLabel>
+                            <CustomFormLabel>
+                              Select custom date
+                            </CustomFormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -426,9 +390,9 @@ export function SearchFormModal({
                     name="distance"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Max Distance From You</FormLabel>
-                        <div className="grid grid-cols-2 gap-4 items-start">
-                          <div>
+                        <CustomFormLabel>Max Distance From You</CustomFormLabel>
+                        <div className="flex flex-row gap-4 items-start w-full">
+                          <div className="flex-1 min-w-0">
                             <FormControl>
                               <FullWidthSelect
                                 onValueChange={field.onChange}
@@ -453,7 +417,7 @@ export function SearchFormModal({
                             control={form.control}
                             name="transportType"
                             render={({ field }) => (
-                              <div className="flex items-center gap-2 justify-around h-10">
+                              <div className="flex items-center gap-2 justify-around h-10 flex-1 min-w-fit">
                                 {TRANSPORT_OPTIONS.map((option) => (
                                   <TransportOption
                                     key={option.value}
@@ -480,7 +444,9 @@ export function SearchFormModal({
                       name="specialCare"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Special Requirements (Optional)</FormLabel>
+                          <CustomFormLabel>
+                            Special Requirements (Optional)
+                          </CustomFormLabel>
                           <SelectionGrid
                             options={SPECIAL_CARE_OPTIONS}
                             value={field.value}
@@ -497,13 +463,14 @@ export function SearchFormModal({
                         name="otherSpecialCare"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>
+                            <CustomFormLabel>
                               Describe your special requirements
-                            </FormLabel>
+                            </CustomFormLabel>
                             <Input
                               placeholder="e.g., wheelchair accessible, quiet environment, pet-friendly..."
                               {...field}
                               disabled={isPending}
+                              className="text-sm placeholder:text-sm"
                             />
                             <FormMessage />
                           </FormItem>

@@ -100,6 +100,7 @@ function DiscoverPageContent() {
   const [currentSearchQuery, setCurrentSearchQuery] =
     useState<FormValues | null>(null) // Track current search filters
   const [generatedTitle, setGeneratedTitle] = useState<string | null>(null) // Track AI-generated search title
+  const [isNewSearch, setIsNewSearch] = useState(false) // Track if this is a completely new search vs editing existing
   const [searchContext, setSearchContext] =
     useState<OptimizedSearchContext | null>(null) // Track search context for iterations
 
@@ -141,7 +142,7 @@ function DiscoverPageContent() {
     } else {
       toast.error('Geolocation not supported.')
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Load latest search from history on component mount
@@ -262,6 +263,7 @@ function DiscoverPageContent() {
     }
 
     loadLatestSearch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   // Handle URL parameters for search query and shortcuts
@@ -365,12 +367,8 @@ function DiscoverPageContent() {
         getLocation()
       }
     }
-  }, [
-    searchParams,
-    hasProcessedQuery,
-    isLoadingHistory,
-    userLocation,
-  ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, hasProcessedQuery, isLoadingHistory, userLocation])
 
   // Form submission handler with progressive search
   function onSubmit(values: DiscoveryFormValues) {
@@ -379,6 +377,9 @@ function DiscoverPageContent() {
       getLocation() // Try to get location again
       return
     }
+
+    // Store current search query for filter display FIRST to show filters immediately
+    setCurrentSearchQuery(values)
 
     // Close modal immediately and clear results only when starting new search
     setIsSearchOpen(false)
@@ -421,28 +422,25 @@ function DiscoverPageContent() {
         transportType: values.transportType,
       }
 
-      // Store current search query for filter display
-      setCurrentSearchQuery(values)
-
       try {
-        // Only generate title if one doesn't already exist
-        const titleGenerationPromise = generatedTitle
-          ? Promise.resolve(generatedTitle)
-          : generateSearchTitle({
+        // Only generate title when explicitly starting a new search (via "New Search" button)
+        const titleGenerationPromise = (isNewSearch
+          ? generateSearchTitle({
               ...values,
               locationName: locationInfo?.locationName,
             })
-              .then((titleResult) => {
-                if (titleResult.success && titleResult.data?.title) {
-                  setGeneratedTitle(titleResult.data.title)
-                  return titleResult.data.title
-                }
-                return null
-              })
-              .catch((error) => {
-                console.error('Failed to generate search title:', error)
-                return null
-              })
+          : Promise.resolve({ success: true, data: { title: generatedTitle } }))
+          .then((titleResult) => {
+            if (titleResult.success && titleResult.data?.title) {
+              setGeneratedTitle(titleResult.data.title)
+              return titleResult.data.title
+            }
+            return null
+          })
+          .catch((error) => {
+            console.error('Failed to generate search title:', error)
+            return null
+          })
         // Convert payload to the format expected by discover actions
         const actionPayload = {
           activity: finalActivity,
@@ -510,6 +508,7 @@ function DiscoverPageContent() {
         setPlaceResults([])
       } finally {
         setIsLoading(false)
+        setIsNewSearch(false) // Reset flag after search completion
       }
     })
   }
@@ -709,6 +708,8 @@ function DiscoverPageContent() {
             activityDurationUnit: 'hours',
             additionalInfo: '',
           })
+          // Mark this as a new search that should generate a new title
+          setIsNewSearch(true)
           // Keep current results visible, only reset form in modal
           setIsSearchOpen(true)
         }}
@@ -716,6 +717,8 @@ function DiscoverPageContent() {
         generatedTitle={generatedTitle}
         onTitleEdit={handleTitleEdit}
         onEditFilters={() => {
+          // Mark this as editing existing search, not a new search
+          setIsNewSearch(false)
           // Pre-fill form with current search values for editing
           if (currentSearchQuery) {
             form.reset({

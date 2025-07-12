@@ -210,7 +210,7 @@ export default function DiscoveryResult({
         <LayoutLoader key="layout-loader" />
       ) : isMobile ? (
         /* Mobile Layout */
-        <motion.div 
+        <motion.div
           key="mobile-layout"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -219,8 +219,6 @@ export default function DiscoveryResult({
         >
           <MobileDiscoveryResult
             placeResults={placeResults}
-            title={title}
-            subtitle={subtitle}
             onSearchClick={onSearchClick}
             userLocation={userLocation}
             showSaveButton={showSaveButton}
@@ -236,7 +234,6 @@ export default function DiscoveryResult({
             searchQuery={searchQuery}
             generatedTitle={generatedTitle}
             onEditFilters={onEditFilters}
-            onTitleEdit={onTitleEdit}
           />
         </motion.div>
       ) : (
@@ -284,7 +281,9 @@ export default function DiscoveryResult({
                   >
                     <ResultsHeader
                       title={
-                        searchQuery ? generatedTitle || 'Search in Progress' : title
+                        searchQuery
+                          ? generatedTitle || 'Search in Progress'
+                          : title
                       }
                       subtitle={
                         searchQuery
@@ -311,12 +310,13 @@ export default function DiscoveryResult({
                     {isLoading && <LoadingState />}
 
                     {/* No Results */}
-                    {!isLoading && (!placeResults || placeResults.length === 0) && (
-                      <EmptyState
-                        message={emptyStateMessage}
-                        onSearchClick={onSearchClick}
-                      />
-                    )}
+                    {!isLoading &&
+                      (!placeResults || placeResults.length === 0) && (
+                        <EmptyState
+                          message={emptyStateMessage}
+                          onSearchClick={onSearchClick}
+                        />
+                      )}
 
                     {/* Trip Results Grid */}
                     {!isLoading && placeResults && placeResults.length > 0 && (

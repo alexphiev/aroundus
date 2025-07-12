@@ -35,7 +35,9 @@ export default function PlaceResultsGrid({
 }: Props) {
   return (
     <div className="space-y-6">
-      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+      <div
+        className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}
+      >
         <AnimatePresence>
           {placeResults.map((place, index) => (
             <PlaceCard
@@ -58,7 +60,7 @@ export default function PlaceResultsGrid({
 
       {/* Load More Button */}
       {hasMoreResults && onLoadMore && (
-        <div className="flex justify-center pt-4">
+        <div className="flex justify-center pb-16">
           <Button
             onClick={onLoadMore}
             disabled={isLoadingMore}

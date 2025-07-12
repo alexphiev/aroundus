@@ -22,8 +22,6 @@ type OverlayState = 'collapsed' | 'half' | 'full'
 
 interface Props {
   placeResults: PlaceResultItem[] | null
-  title: string
-  subtitle: string
   onSearchClick?: () => void
   userLocation?: { latitude: number; longitude: number } | null
   showSaveButton?: boolean
@@ -39,7 +37,6 @@ interface Props {
   searchQuery?: FormValues | null
   generatedTitle?: string | null
   onEditFilters?: () => void
-  onTitleEdit?: (newTitle: string) => void
 }
 
 // State configuration - adjusted for top bar
@@ -51,8 +48,6 @@ const stateConfig = {
 
 export default function MobileDiscoveryResult({
   placeResults,
-  title,
-  subtitle,
   onSearchClick,
   userLocation,
   showSaveButton = true,
@@ -68,12 +63,13 @@ export default function MobileDiscoveryResult({
   searchQuery,
   generatedTitle,
   onEditFilters,
-  onTitleEdit,
 }: Props) {
   const [activeCardIndex, setActiveCardIndex] = useState<number>(-1)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set())
-  const [selectedPlace, setSelectedPlace] = useState<PlaceResultItem | null>(null)
+  const [selectedPlace, setSelectedPlace] = useState<PlaceResultItem | null>(
+    null
+  )
   const [overlayState, setOverlayState] = useState<OverlayState>('collapsed')
   const controls = useAnimation()
 
@@ -92,7 +88,7 @@ export default function MobileDiscoveryResult({
   useEffect(() => {
     const config = stateConfig[overlayState]
     const yValue = overlayState === 'full' ? 0 : config.y // In full screen, no offset needed since it's positioned from top
-    
+
     controls.start({
       y: yValue,
       transition: {
@@ -113,8 +109,10 @@ export default function MobileDiscoveryResult({
 
       let newState: OverlayState = overlayState
 
-      const isSwipingUp = velocity.y < -velocityThreshold || offset.y < -dragThreshold
-      const isSwipingDown = velocity.y > velocityThreshold || offset.y > dragThreshold
+      const isSwipingUp =
+        velocity.y < -velocityThreshold || offset.y < -dragThreshold
+      const isSwipingDown =
+        velocity.y > velocityThreshold || offset.y > dragThreshold
 
       if (isSwipingUp) {
         if (overlayState === 'collapsed') newState = 'half'
@@ -272,7 +270,7 @@ export default function MobileDiscoveryResult({
       )}
 
       {/* Floating Action Button - Only show when not full screen and not in detail view */}
-      {!isFullScreen && !selectedPlace && (
+      {!selectedPlace && (
         <FloatingActionButton onClick={() => onNewSearch?.()} />
       )}
 
@@ -285,7 +283,7 @@ export default function MobileDiscoveryResult({
       <AnimatePresence mode="wait">
         {selectedPlace ? (
           /* Detail View - Full Screen */
-          <div className="absolute inset-0 z-50 bg-background pt-16">
+          <div className="absolute inset-0 z-50 bg-background pb-16">
             <PlaceDetailView
               key="detail-view"
               place={selectedPlace}
@@ -293,7 +291,6 @@ export default function MobileDiscoveryResult({
               onSave={handleSavePlace}
               isSaved={savedPlaceNames.has(selectedPlace.name)}
               showSaveButton={showSaveButton}
-              className="h-full"
             />
           </div>
         ) : (
@@ -303,16 +300,16 @@ export default function MobileDiscoveryResult({
             className={`absolute inset-x-0 z-30 bg-background shadow-2xl border-t border-border/10 ${
               isFullScreen ? 'top-16 rounded-none' : 'bottom-0 rounded-t-xl'
             }`}
-            style={{ 
-              height: isFullScreen ? 'calc(100vh - 4rem)' : '100vh', 
-              touchAction: 'none' 
+            style={{
+              height: isFullScreen ? 'calc(100vh - 4rem)' : '100vh',
+              touchAction: 'none',
             }}
             initial={{ y: isFullScreen ? 0 : '85%' }}
             animate={controls}
             drag="y"
-            dragConstraints={{ 
+            dragConstraints={{
               top: isFullScreen ? -100 : -window.innerHeight * 0.8,
-              bottom: window.innerHeight * 0.9
+              bottom: window.innerHeight * 0.9,
             }}
             dragElastic={0.1}
             onDragEnd={handleDragEnd}
@@ -336,7 +333,8 @@ export default function MobileDiscoveryResult({
                   <div className="absolute left-4 flex items-center gap-2">
                     <Grip className="h-4 w-4 text-muted-foreground/60" />
                     <span className="text-sm text-muted-foreground">
-                      {placeResults.length} place{placeResults.length !== 1 ? 's' : ''} found
+                      {placeResults.length} place
+                      {placeResults.length !== 1 ? 's' : ''} found
                     </span>
                   </div>
                 )}
@@ -370,12 +368,13 @@ export default function MobileDiscoveryResult({
                     {isLoading && <LoadingState />}
 
                     {/* No Results */}
-                    {!isLoading && (!placeResults || placeResults.length === 0) && (
-                      <EmptyState
-                        message={emptyStateMessage}
-                        onSearchClick={onSearchClick}
-                      />
-                    )}
+                    {!isLoading &&
+                      (!placeResults || placeResults.length === 0) && (
+                        <EmptyState
+                          message={emptyStateMessage}
+                          onSearchClick={onSearchClick}
+                        />
+                      )}
 
                     {/* Trip Results Grid - Mobile Optimized */}
                     {!isLoading && placeResults && placeResults.length > 0 && (

@@ -12,7 +12,7 @@ interface Props {
 export default function MapToggleButton({ onClick, className = '' }: Props) {
   return (
     <motion.div
-      className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 ${className}`}
+      className={`fixed bottom-18 left-1/2 transform -translate-x-1/2 z-50 ${className}`}
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 100, opacity: 0 }}
@@ -24,7 +24,7 @@ export default function MapToggleButton({ onClick, className = '' }: Props) {
     >
       <Button
         onClick={onClick}
-        variant="secondary"
+        variant="link"
         size="sm"
         className="h-10 px-4 rounded-full shadow-lg bg-background/95 backdrop-blur-sm border border-border/20 hover:bg-background/100"
       >

@@ -73,14 +73,101 @@ async function executeDiscoverPrompt(
     }
   }
 
+  // Handle new Gemini response structure with candidates array at root level
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (
+    !responseText &&
+    (result as any).candidates &&
+    Array.isArray((result as any).candidates)
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const candidates = (result as any).candidates
+    if (candidates.length > 0) {
+      const candidate = candidates[0]
+      if (
+        candidate.content &&
+        candidate.content.parts &&
+        candidate.content.parts.length > 0
+      ) {
+        responseText = candidate.content.parts[0].text || ''
+      }
+
+      // Check for text in other possible locations
+      if (!responseText && candidate.text) {
+        responseText = candidate.text
+      }
+
+      // Check if content itself has text property
+      if (!responseText && candidate.content && candidate.content.text) {
+        responseText = candidate.content.text
+      }
+    }
+  }
+
   if (!responseText) {
-    console.error(
-      'Full result structure for debugging:',
-      JSON.stringify(result, null, 2)
+    console.warn(
+      'First attempt with grounding failed, retrying without grounding tools...'
     )
-    throw new Error(
-      'AI response missing text content - check console for full structure'
-    )
+
+    // Retry without grounding tools as fallback
+    try {
+      const fallbackResult = await genAI.models.generateContent({
+        model: modelName,
+        contents: contents,
+        // No tools/grounding for fallback
+      })
+
+      // Try to extract text from fallback result
+      if (fallbackResult.candidates && fallbackResult.candidates.length > 0) {
+        const candidate = fallbackResult.candidates[0]
+        if (
+          candidate.content &&
+          candidate.content.parts &&
+          candidate.content.parts.length > 0
+        ) {
+          responseText = candidate.content.parts[0].text || ''
+        }
+      }
+
+      if (!responseText && fallbackResult.text) {
+        responseText = fallbackResult.text
+      }
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError)
+    }
+
+    if (!responseText) {
+      console.error(
+        'Full result structure for debugging:',
+        JSON.stringify(result, null, 2)
+      )
+
+      // Additional debugging for the candidates structure
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (
+        (result as any).candidates &&
+        Array.isArray((result as any).candidates)
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const candidates = (result as any).candidates
+        console.error(
+          'Candidates structure:',
+          JSON.stringify(candidates, null, 2)
+        )
+
+        // Check if there's text content in other properties
+        for (const candidate of candidates) {
+          console.error('Candidate keys:', Object.keys(candidate))
+          if (candidate.content) {
+            console.error('Content keys:', Object.keys(candidate.content))
+          }
+        }
+      }
+
+      throw new Error(
+        'AI response missing text content - check console for full structure'
+      )
+    }
   }
 
   // Clean and parse JSON response - robust extraction with fallback
@@ -346,7 +433,6 @@ function generateUserContext(context: OptimizedSearchContext): string {
     - **PROMOTE DIVERSITY:** Each recommendation must be distinctly different from all previous suggestions. Vary landscapes, activities, location or characteristics.
     - **GEOGRAPHIC SPREAD:** Suggest places in different directions and regions from previous recommendations to maximize exploration coverage.
     - **ACTIVITY VARIATION:** If previous suggestions focused on one type of activity, expand to different but compatible activities within the user's preferences.
-    - **INCLUDE A WILDCARD ✨:** Include one recommendation that is intentionally different from the user's typical preferences but could be a pleasant surprise. Label it as a "Serendipity Pick."
     - **FOCUS ON NOVELTY:** The primary goal is to help the user discover **completely new** experiences. Avoid any place that could be considered similar, nearby, or a variation of previous suggestions.
     - **STRICT UNIQUENESS:** Every recommendation must offer a genuinely different experience from what has been suggested before.`
 

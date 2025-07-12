@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { PlaceResultItem } from '@/types/result.types'
 import { ArrowLeft, Bookmark, Share2, Star } from 'lucide-react'
 
@@ -21,6 +22,8 @@ export default function PlaceHeader({
   isSaved = false,
   showSaveButton = true,
 }: PlaceHeaderProps) {
+  const isMobile = useIsMobile()
+
   // Handle save action
   const handleSave = async () => {
     if (onSave) {
@@ -29,7 +32,7 @@ export default function PlaceHeader({
   }
 
   return (
-    <div className="flex-shrink-0 p-6 pb-4 bg-background border-b">
+    <div className="flex-shrink-0 py-4 px-6 bg-background border-b">
       <div className="flex items-center justify-between mb-4">
         <Button
           variant="ghost"
@@ -38,13 +41,13 @@ export default function PlaceHeader({
           className="text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Places
+          {isMobile ? '' : 'Back to Places'}
         </Button>
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onShare}>
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
+            <Share2 className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'}`} />
+            {isMobile ? '' : 'Share'}
           </Button>
           {showSaveButton && (
             <Button
@@ -53,22 +56,21 @@ export default function PlaceHeader({
               onClick={handleSave}
             >
               <Bookmark
-                className={`h-4 w-4 mr-2 ${isSaved ? 'fill-current' : ''}`}
+                className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'} ${
+                  isSaved ? 'fill-current' : ''
+                }`}
               />
-              {isSaved ? 'Saved' : 'Save'}
+              {isMobile ? '' : isSaved ? 'Saved' : 'Save'}
             </Button>
           )}
         </div>
       </div>
 
       {/* Place Title and Rating */}
-      <div className="space-y-3">
-        {/* Title - smaller on mobile */}
-        <h1 className="text-xl md:text-3xl font-bold">{place.name}</h1>
-        
-        {/* Stars below title on mobile, inline on desktop */}
+      <h1 className="text-xl md:text-3xl font-bold">
+        {place.name}
         {place.starRating && (
-          <div className="flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 ml-2">
             {Array.from({ length: 3 }, (_, i) => (
               <Star
                 key={i}
@@ -79,9 +81,9 @@ export default function PlaceHeader({
                 }`}
               />
             ))}
-          </div>
+          </span>
         )}
-      </div>
+      </h1>
     </div>
   )
 }

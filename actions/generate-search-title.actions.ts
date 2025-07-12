@@ -32,11 +32,7 @@ export async function generateSearchTitle(searchQuery: FormValues) {
       When: ${searchQuery.when}
       Distance: ${searchQuery.distance} ${searchQuery.transportType}
       Duration: ${searchQuery.activityDurationValue} ${searchQuery.activityDurationUnit}
-      ${
-        searchQuery.locationName
-          ? `Location: ${searchQuery.locationName}`
-          : ''
-      }
+      ${searchQuery.locationName ? `Location: ${searchQuery.locationName}` : ''}
       ${
         searchQuery.additionalInfo
           ? `Search query: ${searchQuery.additionalInfo}`
@@ -57,24 +53,19 @@ export async function generateSearchTitle(searchQuery: FormValues) {
       ${searchDescription}
       
       Examples of good poetic titles:
-      - "Whispers of Weekend Trails"
-      - "Sunset Cycling Dreams"
-      - "Hidden Forest Treasures"
-      - "Morning Mountain Magic"
-      - "Peaceful Lakeside Moments"
-      - "Wild Photography Adventures"
-      - "Secret Garden Wanderings"
-      - "Ocean Breeze Escapes"
-      - "Paris Trail Adventures"
-      - "Tokyo Nature Escapes"
-      - "Colorado Mountain Dreams"
-      - "California Coast Wanderings"
+      - "Whispers of Weekend Trails around Paris"
+      - "Sunset Cycling Dreams in Tokyo"
+      - "Hidden Forest Treasures in the Alps"
+      - "Morning Mountain Magic in the Rockies"
+      - "Peaceful Lakeside Moments in the Adirondacks"
+      - "Wild Photography Adventures in the Amazon"
+      - "Secret Garden Wanderings in the Manchester Countryside"
+      - "Ocean Breeze Escapes around Marseille"
       
       Focus on:
       - Evoking emotion and wonder
       - Using nature imagery
       - Creating anticipation
-      - Being memorable and inspiring
       - Including location context when available to make titles more specific and personal
       
       Return ONLY the title, no quotes, no additional text.
@@ -121,6 +112,7 @@ export async function generateSearchTitle(searchQuery: FormValues) {
     const finalTitle =
       cleanTitle.length > 40 ? cleanTitle.substring(0, 37) + '...' : cleanTitle
 
+    console.log('✨ Generated title: ', finalTitle)
     return {
       success: true,
       data: { title: finalTitle },

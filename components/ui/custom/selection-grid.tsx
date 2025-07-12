@@ -27,7 +27,7 @@ export function SelectionGrid({
     <div
       className={cn(
         'grid gap-3',
-        `grid-cols-${maxCols}`,
+        `grid-cols-2 md:grid-cols-${maxCols}`,
         options.length <= 3 && 'max-w-md'
       )}
     >
@@ -38,7 +38,7 @@ export function SelectionGrid({
             key={option.value}
             type="button"
             className={cn(
-              'flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all h-16 min-w-0 cursor-pointer',
+              'flex flex-col items-center justify-center p-3 rounded-lg border-1 transition-all h-16 min-w-0 cursor-pointer hover:scale-105 hover:border-primary/50 hover:bg-primary/5 hover:text-primary',
               isSelected
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-muted-foreground/20 bg-background hover:border-primary/50 hover:bg-primary/5'
@@ -46,7 +46,7 @@ export function SelectionGrid({
             onClick={() => onChange(isSelected ? undefined : option.value)}
           >
             <div className="mb-1.5 flex-shrink-0">{option.icon}</div>
-            <span className="text-xs font-medium text-center leading-tight">
+            <span className="text-sm font-medium text-center leading-tight">
               {option.label}
             </span>
           </button>
