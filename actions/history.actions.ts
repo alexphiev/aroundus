@@ -28,7 +28,22 @@ const searchCriteriaSchema = z.object({
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car']).optional(),
 })
 
-// Schema for search results
+// Schema for photo data
+const photoSchema = z.object({
+  url: z.string(),
+  attribution: z.string().optional(),
+})
+
+// Schema for review data  
+const reviewSchema = z.object({
+  author: z.string(),
+  rating: z.number(),
+  text: z.string(),
+  publishTime: z.string(),
+  authorPhotoUrl: z.string().optional(),
+})
+
+// Schema for search results (including Google Places data)
 const searchResultSchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -42,6 +57,15 @@ const searchResultSchema = z.object({
   starRating: z.number().optional(),
   bestTimeToVisit: z.string().optional(),
   timeToAvoid: z.string().optional(),
+  // Google Places data
+  photos: z.array(photoSchema).optional(),
+  reviews: z.array(reviewSchema).optional(),
+  googleRating: z.number().optional(),
+  reviewCount: z.number().optional(),
+  // Other fields
+  id: z.string().optional(),
+  transportMode: z.string().optional(),
+  userFeedback: z.enum(['liked', 'disliked']).nullable().optional(),
 })
 
 // Save search to history

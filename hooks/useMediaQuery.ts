@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 
 export function useMediaQuery(query: string): boolean | null {
-  // Start with the actual match state to prevent flash
+  // Start with mobile-first assumption for SSR
   const [matches, setMatches] = useState<boolean | null>(() => {
     if (typeof window !== 'undefined') {
       return window.matchMedia(query).matches
     }
-    return null
+    // Default to desktop for SSR to avoid mobile flash on desktop
+    return query.includes('max-width') ? false : true
   })
 
   useEffect(() => {

@@ -1,3 +1,16 @@
+export interface PlacePhoto {
+  url: string
+  attribution?: string
+}
+
+export interface PlaceReview {
+  author: string
+  rating: number
+  text: string
+  publishTime: string
+  authorPhotoUrl?: string
+}
+
 export interface PlaceResultItem {
   id?: string
   name: string
@@ -40,6 +53,11 @@ export interface PlaceResultItem {
   created_at?: string
   // User feedback for place recommendations
   userFeedback?: 'liked' | 'disliked' | null
+  // Google Places data
+  photos?: PlacePhoto[]
+  reviews?: PlaceReview[]
+  googleRating?: number
+  reviewCount?: number
 }
 
 // Minimal place context for optimized search iterations

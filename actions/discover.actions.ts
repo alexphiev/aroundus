@@ -14,6 +14,7 @@ import type {
   UserPreferences,
 } from '@/types/result.types'
 import { getWeatherDataForAI } from './weather.actions'
+import { enrichPlaceWithGoogleData } from '@/lib/google-places.service'
 
 // Helper function to execute a single AI prompt with conversation context
 async function executeDiscoverPrompt(
@@ -737,10 +738,36 @@ export async function handlePlaceSearchBatch(
           place.transportMode || validatedData.transportType || 'car', // Use user's selected transport type as fallback
       }))
 
+      // Enrich places with Google Photos and Reviews in parallel
+      const enrichedResults = await Promise.all(
+        batchResults.map(async (place) => {
+          try {
+            const googleData = await enrichPlaceWithGoogleData(
+              place.name,
+              place.lat,
+              place.long
+            )
+            return {
+              ...place,
+              photos: googleData.photos,
+              reviews: googleData.reviews,
+              googleRating: googleData.googleRating,
+              reviewCount: googleData.reviewCount,
+            }
+          } catch (error) {
+            console.error(
+              `Failed to enrich place ${place.name} with Google data:`,
+              error
+            )
+            return place // Return original place if enrichment fails
+          }
+        })
+      )
+
       // Build updated search context for next iteration
       const allPlaces = [
         ...currentContext.previousPlaces,
-        ...convertToMinimalContext(batchResults),
+        ...convertToMinimalContext(enrichedResults),
       ]
       const updatedPreferences = extractUserPreferences(allPlaces)
 
@@ -751,7 +778,7 @@ export async function handlePlaceSearchBatch(
       }
 
       return {
-        data: batchResults,
+        data: enrichedResults,
         searchContext: updatedSearchContext,
         batchNumber: batchNumber,
         success: true,

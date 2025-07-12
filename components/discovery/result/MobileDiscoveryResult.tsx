@@ -39,9 +39,9 @@ interface Props {
   onEditFilters?: () => void
 }
 
-// State configuration - adjusted for top bar
+// State configuration - adjusted for top bar and bottom nav
 const stateConfig = {
-  collapsed: { heightPercent: 15, y: '85%' },
+  collapsed: { heightPercent: 20, y: 'calc(100vh - 140px)' }, // Always visible above bottom nav (80px) + handle (60px)
   half: { heightPercent: 50, y: '50%' },
   full: { heightPercent: 100, y: '64px' }, // Start below top bar (64px = 4rem)
 }
@@ -87,32 +87,32 @@ export default function MobileDiscoveryResult({
   // Animate to current state
   useEffect(() => {
     const config = stateConfig[overlayState]
-    const yValue = overlayState === 'full' ? 0 : config.y // In full screen, no offset needed since it's positioned from top
+    const yValue = overlayState === 'full' ? 0 : config.y
 
     controls.start({
       y: yValue,
       transition: {
         type: 'spring',
-        damping: 25,
-        stiffness: 200,
+        damping: 30,
+        stiffness: 300,
+        duration: 0.3,
       },
     })
   }, [overlayState, controls])
 
-  // Handle drag end to determine new state
+  // Handle drag end to determine new state - more responsive snapping
   const handleDragEnd = useCallback(
     (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
       const { offset, velocity } = info
       const screenHeight = window.innerHeight
-      const dragThreshold = screenHeight * 0.15 // Increased threshold
-      const velocityThreshold = 300 // Reduced for easier triggering
+      const dragThreshold = screenHeight * 0.1 // Smaller threshold for more responsive snapping
+      const velocityThreshold = 200 // Lower threshold for easier triggering
 
       let newState: OverlayState = overlayState
 
-      const isSwipingUp =
-        velocity.y < -velocityThreshold || offset.y < -dragThreshold
-      const isSwipingDown =
-        velocity.y > velocityThreshold || offset.y > dragThreshold
+      // Prioritize velocity over distance for more responsive feel
+      const isSwipingUp = velocity.y < -velocityThreshold || offset.y < -dragThreshold
+      const isSwipingDown = velocity.y > velocityThreshold || offset.y > dragThreshold
 
       if (isSwipingUp) {
         if (overlayState === 'collapsed') newState = 'half'
@@ -304,51 +304,55 @@ export default function MobileDiscoveryResult({
               height: isFullScreen ? 'calc(100vh - 4rem)' : '100vh',
               touchAction: 'none',
             }}
-            initial={{ y: isFullScreen ? 0 : '85%' }}
+            initial={{ y: isFullScreen ? 0 : 'calc(100vh - 140px)' }}
             animate={controls}
             drag="y"
             dragConstraints={{
-              top: isFullScreen ? -100 : -window.innerHeight * 0.8,
-              bottom: window.innerHeight * 0.9,
+              top: isFullScreen ? -50 : -window.innerHeight * 0.4, // Reduced range for cleaner snapping
+              bottom: 120, // Never go below 120px from bottom (ensures always visible above bottom nav)
             }}
-            dragElastic={0.1}
+            dragElastic={0.05} // Reduced elasticity for snappier feel
             onDragEnd={handleDragEnd}
-            whileTap={{ scale: isCollapsed ? 1.02 : 1 }}
+            whileTap={{ scale: isCollapsed ? 1.01 : 1 }} // Subtle feedback
           >
             {/* Drag Handle - Only show when not overlapping with top bar */}
             {!isFullScreen && (
               <div
-                className="relative flex items-center justify-center py-3 cursor-pointer select-none"
+                className="relative flex items-center justify-center py-4 cursor-pointer select-none bg-background border-b border-border/5"
                 onClick={handleHandleTap}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
+                  <div className={`w-12 h-1.5 rounded-full transition-colors ${
+                    overlayState === 'collapsed' 
+                      ? 'bg-primary/50' 
+                      : 'bg-muted-foreground/30'
+                  }`} />
                   {isCollapsed && (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground/60 mt-1" />
+                    <ChevronUp className="h-4 w-4 text-primary/70 mt-1" />
                   )}
                 </div>
 
-                {/* Collapsed preview */}
+                {/* Collapsed preview - improved layout */}
                 {isCollapsed && placeResults && placeResults.length > 0 && (
                   <div className="absolute left-4 flex items-center gap-2">
-                    <Grip className="h-4 w-4 text-muted-foreground/60" />
-                    <span className="text-sm text-muted-foreground">
-                      {placeResults.length} place
-                      {placeResults.length !== 1 ? 's' : ''} found
+                    <div className="w-2 h-2 bg-primary rounded-full" />
+                    <span className="text-sm font-medium text-foreground">
+                      {placeResults.length} place{placeResults.length !== 1 ? 's' : ''}
                     </span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Full Screen Drag Handle - Positioned below top bar */}
+            {/* Full Screen Drag Handle - Always visible to indicate swipe capability */}
             {isFullScreen && (
               <div
-                className="relative flex items-center justify-center py-2 cursor-pointer select-none bg-background/80 backdrop-blur-sm"
+                className="sticky top-0 z-40 flex items-center justify-center py-3 cursor-pointer select-none bg-background/95 backdrop-blur-md border-b border-border/10 shadow-sm"
                 onClick={handleHandleTap}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
+                  <div className="w-12 h-1.5 bg-muted-foreground/50 rounded-full" />
+                  <span className="text-xs text-muted-foreground/70 mt-1">Swipe down</span>
                 </div>
               </div>
             )}

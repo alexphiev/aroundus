@@ -3,18 +3,17 @@
 import { getSavedPlacesAction, savePlaceAction } from '@/actions/place.actions'
 import ActiveSearchFilters from '@/components/discovery/result/ActiveSearchFilters'
 import EmptyState from '@/components/discovery/result/EmptyState'
-import LayoutLoader from '@/components/discovery/result/LayoutLoader'
 import LoadingState from '@/components/discovery/result/LoadingState'
 import PlaceMap from '@/components/discovery/result/Map'
 import MobileDiscoveryResult from '@/components/discovery/result/MobileDiscoveryResult'
 import PlaceDetailView from '@/components/discovery/result/PlaceDetailView'
 import PlaceResultsGrid from '@/components/discovery/result/PlaceResulstGrid'
 import ResultsHeader from '@/components/discovery/result/ResultsHeader'
-import { useIsMobile } from '@/hooks/useMediaQuery'
 import { PlaceResultItem } from '@/types/result.types'
 import { FormValues } from '@/types/search-history.types'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { toast } from 'sonner'
 
 interface Props {
@@ -203,157 +202,150 @@ export default function DiscoveryResult({
     setIsSaving(false)
   }
 
+  // Don't render anything until we know the screen size
+  if (isMobile === null) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
+
   return (
-    <AnimatePresence mode="wait">
-      {/* Show loading state while detecting layout */}
-      {isMobile === null ? (
-        <LayoutLoader key="layout-loader" />
-      ) : isMobile ? (
-        /* Mobile Layout */
-        <motion.div
-          key="mobile-layout"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <MobileDiscoveryResult
-            placeResults={placeResults}
-            onSearchClick={onSearchClick}
-            userLocation={userLocation}
-            showSaveButton={showSaveButton}
-            emptyStateMessage={emptyStateMessage}
-            isLoading={isLoading}
-            className={className}
-            onSavePlace={onSavePlace}
-            hasMoreResults={hasMoreResults}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={onLoadMore}
-            onNewSearch={onNewSearch}
-            onCardClick={onCardClick}
-            searchQuery={searchQuery}
-            generatedTitle={generatedTitle}
-            onEditFilters={onEditFilters}
-          />
-        </motion.div>
-      ) : (
-        /* Desktop Layout */
-        <motion.div
-          key="desktop-layout"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className={`h-screen flex ml-[60px] ${className}`}
-        >
-          {/* Left Column - Conditional View */}
-          <div className="w-full md:w-1/2 flex flex-col h-full">
-            <AnimatePresence mode="wait">
-              {selectedPlace ? (
-                /* Detail View */
-                <PlaceDetailView
-                  key="detail-view"
-                  place={selectedPlace}
-                  onBack={handleBackToCards}
-                  onSave={handleSavePlace}
-                  isSaved={savedPlaceNames.has(selectedPlace.name)}
-                  showSaveButton={showSaveButton}
-                />
-              ) : (
-                /* Cards List View */
+    <>
+      {/* Mobile Layout - render conditionally */}
+      {isMobile && (
+        <MobileDiscoveryResult
+          placeResults={placeResults}
+          onSearchClick={onSearchClick}
+          userLocation={userLocation}
+          showSaveButton={showSaveButton}
+          emptyStateMessage={emptyStateMessage}
+          isLoading={isLoading}
+          className={className}
+          onSavePlace={onSavePlace}
+          hasMoreResults={hasMoreResults}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={onLoadMore}
+          onNewSearch={onNewSearch}
+          onCardClick={onCardClick}
+          searchQuery={searchQuery}
+          generatedTitle={generatedTitle}
+          onEditFilters={onEditFilters}
+        />
+      )}
+
+      {/* Desktop Layout - render conditionally */}
+      {!isMobile && (
+        <div className={`h-screen flex ml-[60px] ${className}`}>
+        {/* Left Column - Conditional View */}
+        <div className="w-full md:w-1/2 flex flex-col h-full">
+          <AnimatePresence mode="wait">
+            {selectedPlace ? (
+              /* Detail View */
+              <PlaceDetailView
+                key="detail-view"
+                place={selectedPlace}
+                onBack={handleBackToCards}
+                onSave={handleSavePlace}
+                isSaved={savedPlaceNames.has(selectedPlace.name)}
+                showSaveButton={showSaveButton}
+              />
+            ) : (
+              /* Cards List View */
+              <motion.div
+                key="cards-view"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+                className="flex flex-col h-full px-6"
+              >
+                {/* Fixed Title Header with smooth transition */}
                 <motion.div
-                  key="cards-view"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex flex-col h-full px-6"
+                  key={
+                    generatedTitle ||
+                    (searchQuery ? 'search-in-progress' : 'default')
+                  }
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
                 >
-                  {/* Fixed Title Header with smooth transition */}
-                  <motion.div
-                    key={
-                      generatedTitle ||
-                      (searchQuery ? 'search-in-progress' : 'default')
+                  <ResultsHeader
+                    title={
+                      searchQuery
+                        ? generatedTitle || 'Search in Progress'
+                        : title
                     }
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                  >
-                    <ResultsHeader
-                      title={
-                        searchQuery
-                          ? generatedTitle || 'Search in Progress'
-                          : title
-                      }
-                      subtitle={
-                        searchQuery
-                          ? 'Refine your search by editing filters or view your results below'
-                          : subtitle
-                      }
-                      onNewSearch={onNewSearch}
-                      isGeneratedTitle={!!generatedTitle}
-                      onTitleEdit={onTitleEdit}
-                    />
-                  </motion.div>
+                    subtitle={
+                      searchQuery
+                        ? 'Refine your search by editing filters or view your results below'
+                        : subtitle
+                    }
+                    onNewSearch={onNewSearch}
+                    isGeneratedTitle={!!generatedTitle}
+                    onTitleEdit={onTitleEdit}
+                  />
+                </motion.div>
 
-                  {/* Active Search Filters */}
-                  {searchQuery && (
-                    <ActiveSearchFilters
-                      searchQuery={searchQuery}
-                      onEditFilters={onEditFilters}
-                    />
-                  )}
+                {/* Active Search Filters */}
+                {searchQuery && (
+                  <ActiveSearchFilters
+                    searchQuery={searchQuery}
+                    onEditFilters={onEditFilters}
+                  />
+                )}
 
-                  {/* Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto py-4 pb-8 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                    {/* Loading State */}
-                    {isLoading && <LoadingState />}
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto py-4 pb-8 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {/* Loading State */}
+                  {isLoading && <LoadingState />}
 
-                    {/* No Results */}
-                    {!isLoading &&
-                      (!placeResults || placeResults.length === 0) && (
-                        <EmptyState
-                          message={emptyStateMessage}
-                          onSearchClick={onSearchClick}
-                        />
-                      )}
-
-                    {/* Trip Results Grid */}
-                    {!isLoading && placeResults && placeResults.length > 0 && (
-                      <PlaceResultsGrid
-                        placeResults={placeResults}
-                        activeCardIndex={activeCardIndex}
-                        savedPlaceNames={savedPlaceNames}
-                        showSaveButton={showSaveButton}
-                        isSaving={isSaving}
-                        hasMoreResults={hasMoreResults}
-                        isLoadingMore={isLoadingMore}
-                        onLoadMore={onLoadMore}
-                        onCardClick={handleCardClick}
-                        onSavePlace={handleSavePlace}
+                  {/* No Results */}
+                  {!isLoading &&
+                    (!placeResults || placeResults.length === 0) && (
+                      <EmptyState
+                        message={emptyStateMessage}
+                        onSearchClick={onSearchClick}
                       />
                     )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
-          {/* Right Column - Map (Full Screen Height) */}
-          <div className="w-full md:w-1/2 h-screen">
-            <PlaceMap
-              placeResults={placeResults}
-              userLocation={userLocation}
-              activeMarkerIndex={activeCardIndex}
-              className="h-full"
-              shouldUpdateBounds={true}
-              isProgressiveSearch={isLoadingMore}
-              onMarkerClick={handleMarkerClick}
-              onPopupClose={handlePopupClose}
-            />
-          </div>
-        </motion.div>
+                  {/* Trip Results Grid */}
+                  {!isLoading && placeResults && placeResults.length > 0 && (
+                    <PlaceResultsGrid
+                      placeResults={placeResults}
+                      activeCardIndex={activeCardIndex}
+                      savedPlaceNames={savedPlaceNames}
+                      showSaveButton={showSaveButton}
+                      isSaving={isSaving}
+                      hasMoreResults={hasMoreResults}
+                      isLoadingMore={isLoadingMore}
+                      onLoadMore={onLoadMore}
+                      onCardClick={handleCardClick}
+                      onSavePlace={handleSavePlace}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Right Column - Map (Full Screen Height) */}
+        <div className="w-full md:w-1/2 h-screen">
+          <PlaceMap
+            placeResults={placeResults}
+            userLocation={userLocation}
+            activeMarkerIndex={activeCardIndex}
+            className="h-full"
+            shouldUpdateBounds={true}
+            isProgressiveSearch={isLoadingMore}
+            onMarkerClick={handleMarkerClick}
+            onPopupClose={handlePopupClose}
+          />
+        </div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   )
 }
