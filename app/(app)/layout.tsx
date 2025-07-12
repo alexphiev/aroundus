@@ -1,6 +1,7 @@
 'use client'
 
 import { AppSidebar } from '@/components/layout/AppSidebar'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { SidebarProvider } from '@/components/layout/sidebar'
 import { NavigationProvider } from '@/components/NavigationLoader'
 import { LocationProvider } from '@/components/providers/LocationProvider'
@@ -22,6 +23,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <Toaster />
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </NavigationProvider>
     </LocationProvider>
   )

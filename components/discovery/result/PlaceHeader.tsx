@@ -63,23 +63,24 @@ export default function PlaceHeader({
 
       {/* Place Title and Rating */}
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">{place.name}</h1>
-          {place.starRating && (
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 3 }, (_, i) => (
-                <Star
-                  key={i}
-                  className={`h-5 w-5 ${
-                    i < (place.starRating || 0)
-                      ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Title - smaller on mobile */}
+        <h1 className="text-xl md:text-3xl font-bold">{place.name}</h1>
+        
+        {/* Stars below title on mobile, inline on desktop */}
+        {place.starRating && (
+          <div className="flex items-center gap-1">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Star
+                key={i}
+                className={`h-4 w-4 md:h-5 md:w-5 ${
+                  i < (place.starRating || 0)
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : 'text-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

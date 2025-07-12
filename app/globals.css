@@ -79,14 +79,20 @@
   }
 }
 
-@utility container {
-  margin-inline: auto;
-  padding-inline: 2rem;
-  @media (width >= --theme(--breakpoint-sm)) {
-    max-width: none;
+@layer utilities {
+  .container {
+    margin-inline: auto;
+    padding-inline: 2rem;
   }
-  @media (width >= 1400px) {
-    max-width: 1400px;
+  @media (min-width: 640px) {
+    .container {
+      max-width: none;
+    }
+  }
+  @media (min-width: 1400px) {
+    .container {
+      max-width: 1400px;
+    }
   }
 }
 
@@ -108,129 +114,131 @@
   }
 }
 
-@utility card-interactive {
-  /* Card interaction patterns */
-  @apply cursor-pointer transition-all hover:shadow-lg;
-}
+@layer utilities {
+  .card-interactive {
+    /* Card interaction patterns */
+    @apply cursor-pointer transition-all hover:shadow-lg;
+  }
 
-@utility card-active {
-  @apply ring-2 ring-primary;
-}
+  .card-active {
+    @apply ring-2 ring-primary;
+  }
 
-@utility card-layout {
-  @apply h-full flex flex-col;
-}
+  .card-layout {
+    @apply h-full flex flex-col;
+  }
 
-@utility icon-container {
-  /* Icon container patterns */
-  @apply bg-primary/10 p-1 rounded-full;
-}
+  .icon-container {
+    /* Icon container patterns */
+    @apply bg-primary/10 p-1 rounded-full;
+  }
 
-@utility icon-container-sm {
-  @apply bg-primary/10 p-0.5 rounded-full;
-}
+  .icon-container-sm {
+    @apply bg-primary/10 p-0.5 rounded-full;
+  }
 
-@utility badge-info {
-  /* Status badge patterns */
-  @apply bg-status-info text-status-info-foreground px-2 py-1 rounded text-xs;
-}
+  .badge-info {
+    /* Status badge patterns */
+    @apply bg-status-info text-status-info-foreground px-2 py-1 rounded text-xs;
+  }
 
-@utility badge-warning {
-  @apply bg-status-warning text-status-warning-foreground px-2 py-1 rounded text-xs;
-}
+  .badge-warning {
+    @apply bg-status-warning text-status-warning-foreground px-2 py-1 rounded text-xs;
+  }
 
-@utility badge-success {
-  @apply bg-status-success text-status-success-foreground px-2 py-1 rounded text-xs;
-}
+  .badge-success {
+    @apply bg-status-success text-status-success-foreground px-2 py-1 rounded text-xs;
+  }
 
-@utility badge-error {
-  @apply bg-status-error text-status-error-foreground px-2 py-1 rounded text-xs;
-}
+  .badge-error {
+    @apply bg-status-error text-status-error-foreground px-2 py-1 rounded text-xs;
+  }
 
-@utility text-card-title {
-  /* Typography patterns */
-  @apply text-lg font-medium line-clamp-2;
-}
+  .text-card-title {
+    /* Typography patterns */
+    @apply text-lg font-medium line-clamp-2;
+  }
 
-@utility text-card-description {
-  @apply text-sm text-muted-foreground line-clamp-4;
-}
+  .text-card-description {
+    @apply text-sm text-muted-foreground line-clamp-4;
+  }
 
-@utility text-meta {
-  @apply text-xs text-muted-foreground;
-}
+  .text-meta {
+    @apply text-xs text-muted-foreground;
+  }
 
-@utility text-meta-bold {
-  @apply text-xs font-medium text-muted-foreground;
-}
+  .text-meta-bold {
+    @apply text-xs font-medium text-muted-foreground;
+  }
 
-@utility layout-card-header {
-  /* Layout patterns */
-  @apply p-4 pb-2 flex-shrink-0;
-}
+  .layout-card-header {
+    /* Layout patterns */
+    @apply p-4 pb-2 flex-shrink-0;
+  }
 
-@utility layout-card-content {
-  @apply p-4 pt-0 flex-1 flex flex-col;
-}
+  .layout-card-content {
+    @apply p-4 pt-0 flex-1 flex flex-col;
+  }
 
-@utility layout-flex-between {
-  @apply flex justify-between items-start;
-}
+  .layout-flex-between {
+    @apply flex justify-between items-start;
+  }
 
-@utility layout-flex-center {
-  @apply flex items-center justify-center;
-}
+  .layout-flex-center {
+    @apply flex items-center justify-center;
+  }
 
-@utility layout-flex-start {
-  @apply flex items-center gap-2;
-}
+  .layout-flex-start {
+    @apply flex items-center gap-2;
+  }
 
-@utility skeleton-base {
-  /* Skeleton patterns */
-  @apply bg-muted animate-pulse rounded;
-}
+  .skeleton-base {
+    /* Skeleton patterns */
+    @apply bg-muted animate-pulse rounded;
+  }
 
-@utility skeleton-text {
-  @apply skeleton-base h-4;
-}
+  .skeleton-text {
+    @apply bg-muted animate-pulse rounded h-4;
+  }
 
-@utility skeleton-title {
-  @apply skeleton-base h-6;
-}
+  .skeleton-title {
+    @apply bg-muted animate-pulse rounded h-6;
+  }
 
-@utility skeleton-icon {
-  @apply skeleton-base h-7 w-7 rounded-full;
-}
+  .skeleton-icon {
+    @apply bg-muted animate-pulse rounded h-7 w-7 rounded-full;
+  }
 
-@utility skeleton-button {
-  @apply skeleton-base h-8 w-8 rounded-md;
-}
+  .skeleton-button {
+    @apply bg-muted animate-pulse rounded h-8 w-8 rounded-md;
+  }
 
-@utility space-content {
-  /* Spacing patterns */
-  @apply space-y-3;
-}
+  .space-content {
+    /* Spacing patterns */
+    @apply space-y-3;
+  }
 
-@utility space-tight {
-  @apply space-y-2;
-}
+  .space-tight {
+    @apply space-y-2;
+  }
 
-@utility space-loose {
-  @apply space-y-4;
-}
+  .space-loose {
+    @apply space-y-4;
+  }
 
-@utility focus-ring {
-  /* Focus patterns */
-  @apply focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
-}
+  .focus-ring {
+    /* Focus patterns */
+    @apply focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
 
-@utility motion-card {
-  /* Motion patterns */
-  @apply transition-all duration-300 ease-out;
-}
+  .motion-card {
+    /* Motion patterns */
+    @apply transition-all duration-300 ease-out;
+  }
 
-@utility motion-hover {
-  @apply transition-colors duration-200;
+  .motion-hover {
+    @apply transition-colors duration-200;
+  }
 }
 
 @layer base {
@@ -279,5 +287,85 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Mobile Discovery Swipe Styles */
+@layer utilities {
+  .mobile-overlay {
+    /* Mobile swipeable overlay styles */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .mobile-drag-handle {
+    /* Drag handle for mobile overlay */
+    @apply relative cursor-grab active:cursor-grabbing select-none;
+  }
+
+  .mobile-safe-area {
+    /* Handle mobile safe areas */
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .mobile-viewport {
+    /* Full mobile viewport handling */
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+
+  .mobile-scroll {
+    /* Mobile-optimized scrolling */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+  }
+
+  .backdrop-blur-xs {
+    backdrop-filter: blur(2px);
+  }
+}
+
+/* Custom scrollbar styles */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) rgb(241 245 249);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgb(241 245 249);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184);
+  }
+
+  .scrollbar-thumb-gray-300 {
+    scrollbar-color: rgb(209 213 219) transparent;
+  }
+
+  .scrollbar-track-gray-100 {
+    scrollbar-color: rgb(209 213 219) rgb(243 244 246);
   }
 }

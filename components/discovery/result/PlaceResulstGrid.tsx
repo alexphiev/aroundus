@@ -17,6 +17,7 @@ interface Props {
   onLoadMore?: () => void
   onCardClick: (index: number, place: PlaceResultItem) => void
   onSavePlace: (place: PlaceResultItem) => void
+  isMobile?: boolean
 }
 
 export default function PlaceResultsGrid({
@@ -30,10 +31,11 @@ export default function PlaceResultsGrid({
   onLoadMore,
   onCardClick,
   onSavePlace,
+  isMobile = false,
 }: Props) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
         <AnimatePresence>
           {placeResults.map((place, index) => (
             <PlaceCard
