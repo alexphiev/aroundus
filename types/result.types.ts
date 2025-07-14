@@ -39,9 +39,9 @@ export interface PlaceResultItem {
   estimatedActivityDuration?: string
   estimatedTransportTime?: string
   transportMode?: 'foot' | 'bike' | 'public_transport' | 'car'
-  whyRecommended?: string
   isOtherCategory?: boolean
   starRating?: number
+  starRatingReason?: string
   bestTimeToVisit?: string
   timeToAvoid?: string
   // Enhanced location data from Google Search
@@ -49,6 +49,7 @@ export interface PlaceResultItem {
   operatingHours?: string
   entranceFee?: string
   parkingInfo?: string
+  accessibilityInfo?: string
   currentConditions?: string
   created_at?: string
   // User feedback for place recommendations
@@ -58,6 +59,7 @@ export interface PlaceResultItem {
   reviews?: PlaceReview[]
   googleRating?: number
   reviewCount?: number
+  googleMapsUri?: string
 }
 
 // Minimal place context for optimized search iterations

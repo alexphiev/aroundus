@@ -6,7 +6,7 @@ import PlaceDetailView from '@/components/discovery/result/details/PlaceDetailVi
 import EmptyState from '@/components/discovery/result/EmptyState'
 import LoadingState from '@/components/discovery/result/LoadingState'
 import PlaceMap from '@/components/discovery/result/Map'
-import PlaceResultsGrid from '@/components/discovery/result/PlaceResulstGrid'
+import PlaceResultsGrid from '@/components/discovery/result/PlaceResultsGrid'
 import ResultsHeader from '@/components/discovery/result/ResultsHeader'
 import { PlaceResultItem } from '@/types/result.types'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -153,7 +153,6 @@ export default function DesktopDiscoveryResult({
         activity: place.activity,
         estimatedActivityDuration: place.estimatedActivityDuration,
         estimatedTransportTime: place.estimatedTransportTime,
-        whyRecommended: place.whyRecommended,
         starRating: place.starRating,
         bestTimeToVisit: place.bestTimeToVisit,
         timeToAvoid: place.timeToAvoid,
@@ -180,18 +179,15 @@ export default function DesktopDiscoveryResult({
 
   if (isLoadingHistory) {
     return (
-      <div className="h-screen flex ml-[60px]">
-        <div className="w-full md:w-1/2 flex flex-col h-full px-6">
-          <div className="flex-1 flex items-center justify-center">
+      <div className="ml-[60px] flex h-screen">
+        <div className="flex h-full w-full flex-col px-6 md:w-1/2">
+          <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Checking for previous searches...
-              </p>
+              <Loader2 className="text-primary mx-auto mb-4 h-8 w-8 animate-spin" />
             </div>
           </div>
         </div>
-        <div className="w-full md:w-1/2 h-screen bg-muted">
+        <div className="bg-muted h-screen w-full md:w-1/2">
           {/* Empty map area during loading */}
         </div>
       </div>
@@ -199,9 +195,9 @@ export default function DesktopDiscoveryResult({
   }
 
   return (
-    <div className={`h-screen flex ml-[60px] ${className}`}>
+    <div className={`ml-[60px] flex h-screen ${className}`}>
       {/* Left Column - Conditional View */}
-      <div className="w-full md:w-1/2 flex flex-col h-full">
+      <div className="flex h-full w-full flex-col md:w-1/2">
         <AnimatePresence mode="wait">
           {selectedPlace ? (
             /* Detail View */
@@ -221,7 +217,7 @@ export default function DesktopDiscoveryResult({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col h-full px-6"
+              className="flex h-full flex-col px-6"
             >
               {/* Fixed Title Header with smooth transition */}
               <motion.div
@@ -257,7 +253,7 @@ export default function DesktopDiscoveryResult({
               )}
 
               {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto py-4 pb-8 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex-1 overflow-y-auto px-1 py-4 pb-8">
                 {/* Loading State */}
                 {isLoadingNew && <LoadingState />}
 
@@ -292,7 +288,7 @@ export default function DesktopDiscoveryResult({
       </div>
 
       {/* Right Column - Map (Full Screen Height) */}
-      <div className="w-full md:w-1/2 h-screen">
+      <div className="h-screen w-full md:w-1/2">
         <PlaceMap
           placeResults={placeResults}
           userLocation={userLocation}

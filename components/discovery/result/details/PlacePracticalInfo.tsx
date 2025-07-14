@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PlaceResultItem } from '@/types/result.types'
 import {
@@ -5,7 +6,9 @@ import {
   CreditCard,
   ExternalLink,
   MapPin,
+  Navigation,
   ParkingCircle,
+  Accessibility,
 } from 'lucide-react'
 
 interface Props {
@@ -13,11 +16,16 @@ interface Props {
 }
 
 export default function PlacePracticalInfo({ place }: Props) {
-  const { googleMapsLink, operatingHours, entranceFee, parkingInfo } = place
+  const { googleMapsLink, operatingHours, entranceFee, parkingInfo, accessibilityInfo } = place
 
-  if (!googleMapsLink && !operatingHours && !entranceFee && !parkingInfo) {
-    return null
+  // Handle get directions
+  const handleGetDirections = () => {
+    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.long}`
+    window.open(googleMapsUrl, '_blank')
   }
+
+  // Always show the component since we now have the Get Directions button
+  const hasAnyInfo = googleMapsLink || operatingHours || entranceFee || parkingInfo || accessibilityInfo
 
   return (
     <Card>
@@ -25,7 +33,9 @@ export default function PlacePracticalInfo({ place }: Props) {
         <CardTitle className="text-lg">Practical Info</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {place.googleMapsLink && (
+        {hasAnyInfo && (
+          <div className="space-y-4">
+            {place.googleMapsLink && (
           <div className="flex items-center gap-3">
             <MapPin className="h-6 w-6 text-blue-600" />
             <div className="flex-1">
@@ -74,6 +84,27 @@ export default function PlacePracticalInfo({ place }: Props) {
             </div>
           </div>
         )}
+        {place.accessibilityInfo && (
+          <div className="flex items-center gap-3">
+            <Accessibility className="h-6 w-6 text-blue-600" />
+            <div>
+              <p className="font-medium">Accessibility</p>
+              <p className="text-sm text-muted-foreground">
+                {place.accessibilityInfo}
+              </p>
+            </div>
+          </div>
+        )}
+          </div>
+        )}
+        
+        {/* Get Directions Button */}
+        <div className={hasAnyInfo ? "pt-4 border-t border-muted" : ""}>
+          <Button onClick={handleGetDirections} className="w-full" size="lg">
+            <Navigation className="h-5 w-5 mr-2" />
+            Get Directions
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

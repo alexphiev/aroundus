@@ -49,18 +49,20 @@ export default function LoadingState({ message }: LoadingStateProps) {
   }, [message])
 
   return (
-    <div className="p-8 text-center">
-      <div className="relative w-40 h-40 mx-auto mb-4 flex items-center justify-center">
-        <Image
-          src={loadingImage}
-          alt="Loading animation"
-          width={160}
-          height={160}
-          className="rounded-lg object-cover"
-          unoptimized
-        />
+    <div className="flex h-full items-center justify-center p-8">
+      <div className="text-center">
+        <div className="relative mx-auto mb-4 flex h-40 w-40 items-center justify-center">
+          <Image
+            src={loadingImage}
+            alt="Loading animation"
+            width={160}
+            height={160}
+            className="rounded-lg object-cover"
+            unoptimized
+          />
+        </div>
+        <p className="text-muted-foreground text-lg">{loadingMessage}</p>
       </div>
-      <p className="text-lg text-muted-foreground">{loadingMessage}</p>
     </div>
   )
 }

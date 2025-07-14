@@ -6,10 +6,8 @@ import PlaceInfoGrid from '../PlaceInfoGrid'
 import PlaceTimingInfo from '../PlaceTimingInfo'
 import PlaceDescription from './PlaceDescription'
 import PlaceHeader from './PlaceHeader'
-import PlaceLocationDetails from './PlaceLocationDetails'
 import PlacePhotoGallery from './PlacePhotoGallery'
 import PlacePracticalInfo from './PlacePracticalInfo'
-import PlaceRecommendation from './PlaceRecommendation'
 import PlaceReviews from './PlaceReviews'
 import WeatherForecast from './PlaceWeatherForecast'
 import PlaceCurrentConditions from './PlaceCurrentConditions'
@@ -56,7 +54,7 @@ export default function PlaceDetailView({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3 }}
-      className="h-full flex flex-col"
+      className="flex h-full flex-col pb-24 md:pb-0"
     >
       {/* Header with Back Button and Actions */}
       <PlaceHeader
@@ -68,29 +66,34 @@ export default function PlaceDetailView({
         showSaveButton={showSaveButton}
       />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        <PlaceDescription description={place.description} />
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+        <PlaceDescription
+          description={place.description}
+          starRating={place.starRating}
+          starRatingReason={place.starRatingReason}
+        />
 
         {place.photos && place.photos.length > 0 && (
-          <PlacePhotoGallery photos={place.photos} placeName={place.name} />
+          <PlacePhotoGallery 
+            photos={place.photos} 
+            placeName={place.name}
+            googleMapsUri={place.googleMapsUri || ''}
+          />
         )}
         <PlaceInfoGrid place={place} />
         <PlaceCurrentConditions place={place} />
         <PlacePracticalInfo place={place} />
         <PlaceTimingInfo place={place} />
-        {place.whyRecommended && (
-          <PlaceRecommendation whyRecommended={place.whyRecommended} />
-        )}
         {((place.reviews && place.reviews.length > 0) ||
           place.googleRating) && (
           <PlaceReviews
             reviews={place.reviews || []}
             googleRating={place.googleRating}
             reviewCount={place.reviewCount}
+            googleMapsUri={place.googleMapsUri}
           />
         )}
         <WeatherForecast lat={place.lat} lon={place.long} />
-        <PlaceLocationDetails place={place} />
       </div>
     </motion.div>
   )

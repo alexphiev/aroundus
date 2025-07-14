@@ -80,18 +80,18 @@ export default function PlaceCard({
       layout
     >
       <Card
-        className={`card-interactive card-layout ${
+        className={`card-interactive card-layout pt-0 ${
           isActive ? 'card-active' : ''
         }`}
         onClick={onClick}
       >
         {/* Photo Carousel */}
         {place.photos && place.photos.length > 0 && (
-          <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+          <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
             <Image
               src={place.photos[currentPhotoIndex].url}
               alt={`${place.name} - Photo ${currentPhotoIndex + 1}`}
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
               width={300}
               height={300}
               onError={(e) => {
@@ -106,7 +106,7 @@ export default function PlaceCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+                  className="absolute top-1/2 left-2 h-8 w-8 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
                   onClick={prevPhoto}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -114,18 +114,18 @@ export default function PlaceCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+                  className="absolute top-1/2 right-2 h-8 w-8 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
                   onClick={nextPhoto}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
 
                 {/* Photo Indicators */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
                   {place.photos.map((_, index) => (
                     <div
                       key={index}
-                      className={`w-2 h-2 rounded-full ${
+                      className={`h-2 w-2 rounded-full ${
                         index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
                       }`}
                     />
@@ -133,43 +133,20 @@ export default function PlaceCard({
                 </div>
               </>
             )}
-
-            {/* Photo Attribution */}
-            {place.photos[currentPhotoIndex].attribution && (
-              <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                Photo by {place.photos[currentPhotoIndex].attribution}
-              </div>
-            )}
           </div>
         )}
 
         <CardHeader className="flex-shrink-0">
-          <div className="flex justify-between items-start">
-            <div className="flex gap-1 items-center">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-1">
               <PlaceIcons
                 landscape={place.landscape}
                 activity={place.activity}
               />
 
-              {/* AI Star Rating */}
-              {place.starRating && (
-                <div className="flex items-center gap-0.5 ml-2">
-                  {Array.from({ length: 3 }, (_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-3 w-3 ${
-                        i < (place.starRating || 0)
-                          ? 'fill-primary text-primary'
-                          : 'text-muted-foreground/30'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-
               {/* Google Rating */}
               {place.googleRating && (
-                <div className="flex items-center gap-1 ml-2 text-xs text-muted-foreground">
+                <div className="text-muted-foreground ml-2 flex items-center gap-1 text-xs">
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                   <span>{place.googleRating.toFixed(1)}</span>
                   {place.reviewCount && (
@@ -190,7 +167,7 @@ export default function PlaceCard({
                     size="icon"
                     className={`h-8 w-8 ${
                       place.userFeedback === 'liked'
-                        ? 'text-green-600 bg-green-50'
+                        ? 'bg-green-50 text-green-600'
                         : 'text-muted-foreground'
                     }`}
                     onClick={(e) => {
@@ -207,7 +184,7 @@ export default function PlaceCard({
                     size="icon"
                     className={`h-8 w-8 ${
                       place.userFeedback === 'disliked'
-                        ? 'text-red-600 bg-red-50'
+                        ? 'bg-red-50 text-red-600'
                         : 'text-muted-foreground'
                     }`}
                     onClick={(e) => {
@@ -240,11 +217,11 @@ export default function PlaceCard({
           </div>
           <CardTitle className="text-card-title mt-2">{place.name}</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col">
-          {/* Why Recommended */}
-          {place.whyRecommended ? (
+        <CardContent className="flex flex-1 flex-col">
+          {/* AI Recommendation */}
+          {place.starRatingReason ? (
             <CardDescription className="text-card-description mb-3 flex-shrink-0">
-              {place.whyRecommended}
+              {place.starRatingReason}
             </CardDescription>
           ) : (
             <CardDescription className="text-card-description mb-3 flex-shrink-0">
@@ -252,48 +229,11 @@ export default function PlaceCard({
             </CardDescription>
           )}
 
-          {/* Reviews Section */}
-          {place.reviews && place.reviews.length > 0 && (
-            <div className="mb-3 space-tight">
-              <div className="text-xs font-medium text-muted-foreground mb-2">
-                Recent Reviews:
-              </div>
-              <div className="space-y-2">
-                {place.reviews.slice(0, 2).map((review, idx) => (
-                  <div key={idx} className="bg-muted/30 p-2 rounded text-xs">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-2.5 w-2.5 ${
-                              i < review.rating
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-muted-foreground/30'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-muted-foreground font-medium">
-                        {review.author}
-                      </span>
-                    </div>
-                    {review.text && (
-                      <p className="text-muted-foreground leading-relaxed line-clamp-2">
-                        {review.text}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex-1 space-content">
+          <div className="space-content flex-1">
             {/* Duration Information - Single Row */}
             {(place.estimatedActivityDuration ||
               place.estimatedTransportTime) && (
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-wrap gap-2">
                 {place.estimatedActivityDuration && (
                   <span className="badge-info">
                     Activity:{' '}
@@ -312,8 +252,8 @@ export default function PlaceCard({
             {/* Best Time to Visit - Bottom with 3-line limit */}
             {place.bestTimeToVisit && (
               <div className="space-tight">
-                <div className="p-2 bg-status-success rounded-md">
-                  <p className="text-xs text-status-success-foreground leading-relaxed line-clamp-3">
+                <div className="bg-status-success rounded-md p-2">
+                  <p className="text-status-success-foreground line-clamp-3 text-xs leading-relaxed">
                     Best: {place.bestTimeToVisit}
                   </p>
                 </div>

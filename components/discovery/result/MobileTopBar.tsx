@@ -93,11 +93,11 @@ export default function MobileTopBar({
 
   return (
     <div className="bg-background/95 border-border/10 fixed top-0 right-0 left-0 z-50 border-b backdrop-blur-sm">
-      <div className="flex items-center gap-3 px-1 py-1">
+      <div className="flex items-center gap-3 p-4">
         {/* Central Filter Summary Button */}
         <button
           onClick={onEditFilters}
-          className="border-border flex-1 rounded-lg border bg-white px-4 py-4 shadow-sm transition-all hover:shadow-md"
+          className="border-border flex-1 rounded-lg border bg-white px-2 py-2 shadow-sm transition-all hover:shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex-1 text-left">

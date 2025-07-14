@@ -275,8 +275,8 @@ async function executeDiscoverPrompt(
         "estimatedActivityDuration": "duration",
         "estimatedTransportTime": "transport_time",
         "transportMode": "transport_mode",
-        "whyRecommended": "reason",
         "starRating": star_number,
+        "starRatingReason": "comprehensive_recommendation_explanation",
         "bestTimeToVisit": "timing_info",
         "timeToAvoid": "timing_to_avoid"
       }
@@ -678,8 +678,8 @@ export async function handlePlaceSearchBatch(
     - estimatedActivityDuration: The estimated time range for the activity (e.g., "1-4 hours", "2-3 days")
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
     - transportMode: The primary transport mode used (must be one of: "foot", "bike", "public_transport", "car")
-    - whyRecommended: Brief explanation of why this fits the criteria
     - starRating: Rate from 1-3 stars based on how well this destination fulfills the user's specific request (3 = perfect match and must-go, 2 = very good match, 1 = good option but less ideal)
+    - starRatingReason: A comprehensive explanation (2-3 sentences) combining both why you recommend this place and why you gave it this specific star rating. Explain how well it matches the user's criteria (activity type, distance, duration, special requirements), highlight the place's unique qualities, and justify the rating based on overall fit and quality
     - bestTimeToVisit: Recommended time range for optimal experience based on the weather forecast and crowds (e.g., "8:00 AM - 11:00 AM before rain starts", "early morning when clear skies", "afternoon after 2 PM when temperatures cool")
     - timeToAvoid: Times or conditions to avoid (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
     
@@ -688,7 +688,7 @@ export async function handlePlaceSearchBatch(
     
     CRITICAL: Return ONLY a valid JSON array with NO additional text, explanations, introductions, or markdown formatting.
     Start your response immediately with [ and end with ].
-    Format: [{"name": "...", "description": "...", "transportMode": "...", ...}]
+    Format: [{"name": "...", "description": "...", "transportMode": "...", "starRating": number, "starRatingReason": "...", ...}]
   `
 
   try {
@@ -749,12 +749,20 @@ export async function handlePlaceSearchBatch(
               place.lat,
               place.long
             )
+
             return {
               ...place,
               photos: googleData.photos,
               reviews: googleData.reviews,
               googleRating: googleData.googleRating,
               reviewCount: googleData.reviewCount,
+              googleMapsUri: googleData.googleMapsUri,
+              // Only update these fields if they're not already set by AI or if Google has better info
+              operatingHours: googleData.operatingHours || place.operatingHours,
+              parkingInfo: googleData.parkingInfo || place.parkingInfo,
+              // Add new fields from Google Places
+              entranceFee: googleData.priceLevel || place.entranceFee,
+              accessibilityInfo: googleData.accessibilityInfo,
             }
           } catch (error) {
             console.error(

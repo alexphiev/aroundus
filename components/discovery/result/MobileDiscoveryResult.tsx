@@ -8,16 +8,13 @@ import LoadingState from '@/components/discovery/result/LoadingState'
 import PlaceMap from '@/components/discovery/result/Map'
 import MapToggleButton from '@/components/discovery/result/MapToggleButton'
 import MobileTopBar from '@/components/discovery/result/MobileTopBar'
-import PlaceResultsGrid from '@/components/discovery/result/PlaceResulstGrid'
+import PlaceResultsGrid from '@/components/discovery/result/PlaceResultsGrid'
 import { PlaceResultItem } from '@/types/result.types'
-import { AnimatePresence, motion, PanInfo } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { DiscoveryResultProps } from './DiscoveryResult'
-
-// Overlay states - simplified to two states
-type OverlayState = 'collapsed' | 'full'
 
 export default function MobileDiscoveryResult({
   placeResults,
@@ -44,52 +41,18 @@ export default function MobileDiscoveryResult({
   const [selectedPlace, setSelectedPlace] = useState<PlaceResultItem | null>(
     null
   )
-  const [overlayState, setOverlayState] = useState<OverlayState>('collapsed')
+  const [visibleView, setVisibleView] = useState<'map' | 'grid'>('grid')
+  const [navigationContext, setNavigationContext] = useState<'map' | 'grid'>(
+    'map'
+  )
 
   // Initialize overlay state based on content
   useEffect(() => {
     // Only show loading state in full view, otherwise stay collapsed to show map
     if (!selectedPlace && isLoadingNew) {
-      setOverlayState('full')
+      setVisibleView('grid')
     }
   }, [isLoadingNew, selectedPlace])
-
-  // No animation needed with new layout approach
-
-  // Handle drag end to determine new state - simplified for two states
-  const handleDragEnd = useCallback(
-    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      const { offset, velocity } = info
-      const dragThreshold = 100 // Threshold for drag distance
-      const velocityThreshold = 200 // Threshold for swipe velocity
-
-      let newState: OverlayState = overlayState
-
-      // Prioritize velocity over distance for more responsive feel
-      const isSwipingUp =
-        velocity.y < -velocityThreshold || offset.y < -dragThreshold
-      const isSwipingDown =
-        velocity.y > velocityThreshold || offset.y > dragThreshold
-
-      if (isSwipingUp && overlayState === 'collapsed') {
-        newState = 'full'
-      } else if (isSwipingDown && overlayState === 'full') {
-        newState = 'collapsed'
-      }
-
-      setOverlayState(newState)
-    },
-    [overlayState]
-  )
-
-  // Handle tap on drag handle
-  const handleHandleTap = () => {
-    if (overlayState === 'collapsed') {
-      setOverlayState('full')
-    } else {
-      setOverlayState('collapsed')
-    }
-  }
 
   // Handle marker clicks from the map
   const handleMarkerClick = (index: number) => {
@@ -111,6 +74,7 @@ export default function MobileDiscoveryResult({
   const handleCardClick = (index: number, place: PlaceResultItem) => {
     setActiveCardIndex(index)
     setSelectedPlace(place)
+    setNavigationContext('grid') // Set context to grid when coming from cards
 
     if (onCardClick) {
       onCardClick(index)
@@ -120,9 +84,33 @@ export default function MobileDiscoveryResult({
     const url = new URL(window.location.href)
     url.searchParams.set('place', index.toString())
     url.searchParams.set('placeName', place.name)
+    url.searchParams.set('from', 'grid') // Add context to URL
 
     window.history.pushState(
-      { detailView: true, index, placeName: place.name },
+      { detailView: true, index, placeName: place.name, from: 'grid' },
+      '',
+      url.toString()
+    )
+  }
+
+  // Handle place details click from map popup
+  const handlePlaceDetailsFromMap = (index: number, place: PlaceResultItem) => {
+    setActiveCardIndex(index)
+    setSelectedPlace(place)
+    setNavigationContext('map') // Set context to map when coming from map
+
+    if (onCardClick) {
+      onCardClick(index)
+    }
+
+    // Add URL parameter for place details
+    const url = new URL(window.location.href)
+    url.searchParams.set('place', index.toString())
+    url.searchParams.set('placeName', place.name)
+    url.searchParams.set('from', 'map') // Add context to URL
+
+    window.history.pushState(
+      { detailView: true, index, placeName: place.name, from: 'map' },
       '',
       url.toString()
     )
@@ -131,15 +119,23 @@ export default function MobileDiscoveryResult({
   // Handle back to cards view
   const handleBackToCards = () => {
     setSelectedPlace(null)
-    setActiveCardIndex(-1)
-    if (onCardClick) {
-      onCardClick(-1)
+
+    // Return to the appropriate view based on navigation context
+    if (navigationContext === 'grid') {
+      setVisibleView('grid') // Go back to grid view
+      setActiveCardIndex(-1) // Clear active marker for grid view
+      if (onCardClick) {
+        onCardClick(-1)
+      }
+    } else {
+      setVisibleView('map') // Go back to map view
     }
 
     // Remove URL parameters when going back to cards view
     const url = new URL(window.location.href)
     url.searchParams.delete('place')
     url.searchParams.delete('placeName')
+    url.searchParams.delete('from')
 
     window.history.replaceState(null, '', url.toString())
   }
@@ -166,6 +162,7 @@ export default function MobileDiscoveryResult({
       const urlParams = new URLSearchParams(window.location.search)
       const placeIndex = urlParams.get('place')
       const placeName = urlParams.get('placeName')
+      const fromContext = urlParams.get('from')
 
       if (placeIndex && placeName) {
         const index = parseInt(placeIndex, 10)
@@ -175,6 +172,8 @@ export default function MobileDiscoveryResult({
           if (place.name === placeName) {
             setActiveCardIndex(index)
             setSelectedPlace(place)
+            // Set navigation context based on URL parameter
+            setNavigationContext(fromContext === 'map' ? 'map' : 'grid')
             if (onCardClick) {
               onCardClick(index)
             }
@@ -194,15 +193,20 @@ export default function MobileDiscoveryResult({
       if (!placeIndex && selectedPlace) {
         // URL doesn't have place parameter, so close detail view
         setSelectedPlace(null)
-        setActiveCardIndex(-1)
-        if (onCardClick) {
-          onCardClick(-1)
+
+        // Only reset activeCardIndex if we're going back to grid view
+        if (navigationContext === 'grid') {
+          setActiveCardIndex(-1)
+          if (onCardClick) {
+            onCardClick(-1)
+          }
         }
+        // For map view, keep the activeCardIndex to maintain pin focus
       }
     }
     window.addEventListener('popstate', handlePopstate)
     return () => window.removeEventListener('popstate', handlePopstate)
-  }, [selectedPlace, onCardClick])
+  }, [selectedPlace, navigationContext, onCardClick])
 
   // Save place handler
   const handleSavePlace = async (place: PlaceResultItem) => {
@@ -225,23 +229,18 @@ export default function MobileDiscoveryResult({
     setIsSaving(false)
   }
 
-  const isFullScreen = overlayState === 'full'
-
   if (isLoadingHistory) {
     return (
-      <div className="flex h-[100vh] items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <Loader2 className="text-primary mx-auto mb-4 h-8 w-8 animate-spin" />
-          <p className="text-muted-foreground text-sm">
-            Checking for previous searches...
-          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={`flex h-full flex-col overflow-hidden ${className}`}>
+    <div className={`flex h-full flex-col ${className}`}>
       {/* Fixed Top Bar */}
       <div className="flex-shrink-0">
         {selectedPlace ? (
@@ -259,11 +258,11 @@ export default function MobileDiscoveryResult({
         )}
       </div>
 
-      {/* Main Content Area - Strictly contained */}
-      <div className="relative flex-1 overflow-hidden">
+      {/* Main Content Area - Takes remaining space */}
+      <div className="flex-1">
         {/* Background Map - Always show when not in detail view and not showing loading */}
         {!selectedPlace && !isLoadingNew && (
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 pt-24 pb-18">
             <PlaceMap
               placeResults={placeResults}
               userLocation={userLocation}
@@ -273,37 +272,19 @@ export default function MobileDiscoveryResult({
               isProgressiveSearch={isLoadingMore}
               onMarkerClick={handleMarkerClick}
               onPopupClose={handlePopupClose}
+              onPlaceDetailsClick={handlePlaceDetailsFromMap}
             />
           </div>
         )}
 
-        {/* Results indicator when map is showing */}
-        {!selectedPlace &&
-          overlayState === 'collapsed' &&
-          placeResults &&
-          placeResults.length > 0 && (
-            <div
-              className="bg-background/95 border-border/20 absolute right-4 bottom-4 left-4 z-40 cursor-pointer rounded-xl border p-3 shadow-lg backdrop-blur-sm"
-              onClick={() => setOverlayState('full')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="bg-primary h-2 w-2 rounded-full" />
-                  <span className="text-foreground text-sm font-medium">
-                    {placeResults.length} place
-                    {placeResults.length !== 1 ? 's' : ''} found
-                  </span>
-                </div>
-                <span className="text-muted-foreground text-xs">
-                  Tap to view
-                </span>
-              </div>
-            </div>
-          )}
-
-        {/* Map Toggle Button - Only show when cards are full screen */}
-        {isFullScreen && !selectedPlace && (
-          <MapToggleButton onClick={() => setOverlayState('collapsed')} />
+        {/* Map Toggle Button - Show in both states for easy switching */}
+        {!selectedPlace && placeResults && placeResults.length > 0 && (
+          <MapToggleButton
+            onClick={() =>
+              setVisibleView(visibleView === 'map' ? 'grid' : 'map')
+            }
+            showingMap={visibleView === 'map'}
+          />
         )}
 
         {/* Content Overlay */}
@@ -320,83 +301,46 @@ export default function MobileDiscoveryResult({
                 showSaveButton={showSaveButton}
               />
             </div>
-          ) : overlayState === 'full' ? (
-            /* Swipeable Cards Overlay - Only render when in full state */
+          ) : visibleView === 'grid' ? (
+            /* Cards Overlay - Only render when in grid state */
             <motion.div
               key="cards-overlay"
-              className={`bg-background absolute inset-0 z-30 ${
-                isFullScreen
-                  ? 'shadow-none'
-                  : 'border-border/10 rounded-t-xl border-t shadow-2xl'
-              }`}
-              style={{
-                touchAction: 'none',
-              }}
-              initial={{ y: 0 }}
-              animate={{ y: 0 }}
-              drag="y"
-              dragConstraints={{
-                top: -50,
-                bottom: 50,
-              }}
-              dragElastic={0.05}
-              onDragEnd={handleDragEnd}
+              className="bg-background absolute inset-0 z-30 flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
             >
-              {/* Drag Handle - Always visible for swipe indication */}
-              <div
-                className="bg-background/95 border-border/10 sticky top-0 z-40 flex cursor-pointer items-center justify-center border-b py-3 backdrop-blur-md select-none"
-                onClick={handleHandleTap}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  <div className="bg-muted-foreground/50 h-1.5 w-12 rounded-full" />
-                  <span className="text-muted-foreground/70 mt-1 text-xs">
-                    Swipe to toggle
-                  </span>
-                </div>
-              </div>
+              {/* Scrollable Content - Takes full height with proper overflow */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Loading State */}
+                {isLoadingNew && <LoadingState />}
 
-              {/* Content Area - Properly contained */}
-              <div className="flex h-full flex-col overflow-hidden">
-                <motion.div
-                  className="flex h-full flex-col px-6"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  {/* Scrollable Content - with proper bottom spacing */}
-                  <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex-1 overflow-y-auto py-4 pb-8">
-                    {/* Loading State */}
-                    {isLoadingNew && <LoadingState />}
+                {/* No Results */}
+                {!isLoadingNew &&
+                  (!placeResults || placeResults.length === 0) && (
+                    <EmptyState
+                      message={emptyStateMessage}
+                      onSearchClick={onSearchClick}
+                    />
+                  )}
 
-                    {/* No Results */}
-                    {!isLoadingNew &&
-                      (!placeResults || placeResults.length === 0) && (
-                        <EmptyState
-                          message={emptyStateMessage}
-                          onSearchClick={onSearchClick}
-                        />
-                      )}
-
-                    {/* Trip Results Grid - Mobile Optimized */}
-                    {!isLoadingNew &&
-                      placeResults &&
-                      placeResults.length > 0 && (
-                        <PlaceResultsGrid
-                          placeResults={placeResults}
-                          activeCardIndex={activeCardIndex}
-                          savedPlaceNames={savedPlaceNames}
-                          showSaveButton={showSaveButton}
-                          isSaving={isSaving}
-                          hasMoreResults={hasMoreResults}
-                          isLoadingMore={isLoadingMore}
-                          onLoadMore={onLoadMore}
-                          onCardClick={handleCardClick}
-                          onSavePlace={handleSavePlace}
-                          isMobile={true}
-                        />
-                      )}
-                  </div>
-                </motion.div>
+                {/* Trip Results Grid - Mobile Optimized */}
+                {!isLoadingNew && placeResults && placeResults.length > 0 && (
+                  <PlaceResultsGrid
+                    placeResults={placeResults}
+                    activeCardIndex={activeCardIndex}
+                    savedPlaceNames={savedPlaceNames}
+                    showSaveButton={showSaveButton}
+                    isSaving={isSaving}
+                    hasMoreResults={hasMoreResults}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={onLoadMore}
+                    onCardClick={handleCardClick}
+                    onSavePlace={handleSavePlace}
+                    isMobile={true}
+                  />
+                )}
               </div>
             </motion.div>
           ) : null}

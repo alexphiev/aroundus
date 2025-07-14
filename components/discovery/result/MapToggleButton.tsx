@@ -2,17 +2,26 @@
 
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
-import { MapIcon } from 'lucide-react'
+import { LayoutListIcon, MapIcon } from 'lucide-react'
 
 interface Props {
   onClick: () => void
   className?: string
+  showingMap?: boolean
 }
 
-export default function MapToggleButton({ onClick, className = '' }: Props) {
+export default function MapToggleButton({
+  onClick,
+  className = '',
+  showingMap = false,
+}: Props) {
+  const icon = showingMap ? LayoutListIcon : MapIcon
+  const text = showingMap ? 'See results' : 'Map'
+  const IconComponent = icon
+
   return (
     <motion.div
-      className={`fixed bottom-18 left-1/2 transform -translate-x-1/2 z-50 ${className}`}
+      className={`fixed bottom-20 left-1/2 z-50 -translate-x-1/2 transform ${className}`}
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 100, opacity: 0 }}
@@ -26,10 +35,10 @@ export default function MapToggleButton({ onClick, className = '' }: Props) {
         onClick={onClick}
         variant="link"
         size="sm"
-        className="h-10 px-4 rounded-full shadow-lg bg-background/95 backdrop-blur-sm border border-border/20 hover:bg-background/100"
+        className="bg-background/95 border-border/20 hover:bg-background/100 h-10 rounded-full border px-4 shadow-lg backdrop-blur-sm"
       >
-        <MapIcon className="h-4 w-4 mr-2" />
-        <span className="text-sm font-medium">Map</span>
+        <IconComponent className="mr-2 h-4 w-4" />
+        <span className="text-sm font-medium">{text}</span>
       </Button>
     </motion.div>
   )

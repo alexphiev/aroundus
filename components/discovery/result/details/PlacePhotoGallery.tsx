@@ -1,21 +1,34 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel'
 import { PlacePhoto } from '@/types/result.types'
-import { Camera, ExternalLink } from 'lucide-react'
+import { Camera, X } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface PlacePhotoGalleryProps {
+  googleMapsUri: string
   photos: PlacePhoto[]
   placeName: string
 }
 
 export default function PlacePhotoGallery({
+  googleMapsUri,
   photos,
   placeName,
 }: PlacePhotoGalleryProps) {
-  const [selectedPhoto, setSelectedPhoto] = useState<PlacePhoto | null>(null)
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(
+    null
+  )
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
 
   // Handle image load errors
@@ -40,75 +53,159 @@ export default function PlacePhotoGallery({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-2">
-            {validPhotos.slice(0, 4).map((photo, index) => (
-              <div
-                key={index}
-                className="relative aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setSelectedPhoto(photo)}
-              >
-                <Image
-                  src={photo.url}
-                  alt={`${placeName} - Photo ${index + 1}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  onError={() => handleImageError(photo.url)}
-                />
-                {index === 3 && validPhotos.length > 4 && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="text-white font-medium">
-                      +{validPhotos.length - 4} more
-                    </span>
+          <Carousel
+            opts={{
+              align: 'start',
+              loop: false,
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {validPhotos.map((photo, index) => (
+                <CarouselItem
+                  key={index}
+                  className="basis-1/2 pl-2 md:basis-1/3 md:pl-4"
+                >
+                  <div
+                    className="relative aspect-square cursor-pointer overflow-hidden rounded-lg transition-opacity hover:opacity-90"
+                    onClick={() => setSelectedPhotoIndex(index)}
+                  >
+                    <Image
+                      src={photo.url}
+                      alt={`${placeName} - Photo ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                      onError={() => handleImageError(photo.url)}
+                    />
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            {validPhotos.length > 2 && (
+              <>
+                <CarouselPrevious className="left-2" />
+                <CarouselNext className="right-2" />
+              </>
+            )}
+          </Carousel>
 
           {validPhotos.some((photo) => photo.attribution) && (
-            <div className="mt-3 pt-3 border-t border-muted">
-              <p className="text-xs text-muted-foreground">
-                Photos from Google Places contributors
-              </p>
+            <div className="border-muted mt-3 border-t pt-3">
+              {googleMapsUri ? (
+                <Link href={googleMapsUri} target="_blank">
+                  <p className="text-muted-foreground text-xs hover:underline">
+                    Source: Google Maps
+                  </p>
+                </Link>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Source: Google Maps
+                </p>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Photo Modal */}
-      {selectedPhoto && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedPhoto(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] w-full">
-            <button
-              onClick={() => setSelectedPhoto(null)}
-              className="absolute top-4 right-4 z-10 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+      {/* Photo Modal with Navigation - Rendered via Portal */}
+      {selectedPhotoIndex !== null &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
+            onClick={() => setSelectedPhotoIndex(null)}
+          >
+            <div
+              className="relative h-[90vh] max-h-[90vh] w-full max-w-4xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <ExternalLink className="h-4 w-4 rotate-45" />
-            </button>
+              <button
+                onClick={() => setSelectedPhotoIndex(null)}
+                className="absolute top-4 right-4 z-10 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+              >
+                <X className="h-4 w-4" />
+              </button>
 
-            <div className="relative w-full h-full">
-              <Image
-                src={selectedPhoto.url}
-                alt={`${placeName} - Full size photo`}
-                fill
-                className="object-contain"
-                sizes="90vw"
-                priority
-              />
-            </div>
-
-            {selectedPhoto.attribution && (
-              <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-1 rounded text-sm">
-                Photo by {selectedPhoto.attribution}
+              {/* Photo counter */}
+              <div className="absolute top-4 left-4 z-10 rounded bg-black/70 px-3 py-1 text-sm text-white">
+                {selectedPhotoIndex + 1} of {validPhotos.length}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {/* Navigation arrows */}
+              {validPhotos.length > 1 && (
+                <>
+                  <button
+                    onClick={() =>
+                      setSelectedPhotoIndex(
+                        selectedPhotoIndex > 0
+                          ? selectedPhotoIndex - 1
+                          : validPhotos.length - 1
+                      )
+                    }
+                    className="absolute top-1/2 left-4 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() =>
+                      setSelectedPhotoIndex(
+                        selectedPhotoIndex < validPhotos.length - 1
+                          ? selectedPhotoIndex + 1
+                          : 0
+                      )
+                    }
+                    className="absolute top-1/2 right-4 z-10 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
+
+              <div className="relative h-full w-full overflow-hidden rounded-lg">
+                <Image
+                  src={validPhotos[selectedPhotoIndex].url}
+                  alt={`${placeName} - Photo ${selectedPhotoIndex + 1}`}
+                  fill
+                  className="object-contain"
+                  sizes="90vw"
+                  priority
+                />
+              </div>
+
+              {validPhotos[selectedPhotoIndex].attribution && (
+                <div className="absolute bottom-4 left-4 rounded bg-black/70 px-3 py-1 text-xs text-white">
+                  Photo by {validPhotos[selectedPhotoIndex].attribution}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   )
 }

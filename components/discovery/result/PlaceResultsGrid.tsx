@@ -34,7 +34,7 @@ export default function PlaceResultsGrid({
   isMobile = false,
 }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-22 pb-52 md:pt-0 md:pb-12">
       <div
         className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}
       >
@@ -70,7 +70,7 @@ export default function PlaceResultsGrid({
           >
             {isLoadingMore ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" />
                 Loading...
               </>
             ) : (

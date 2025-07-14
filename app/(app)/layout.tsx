@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <AppSidebar />
             </div>
 
-            <main className="flex-1 transition-all duration-300 overflow-hidden flex flex-col">
+            <main className="flex flex-1 flex-col overflow-hidden transition-all duration-300">
               <div className="flex-1 overflow-auto md:pb-0">{children}</div>
             </main>
           </SidebarProvider>

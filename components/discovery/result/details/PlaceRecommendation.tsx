@@ -13,13 +13,13 @@ export default function PlaceRecommendation({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <Info className="h-5 w-5" />
           Why We Recommend This Place
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-muted-foreground leading-relaxed">
+        <p className="text-muted-foreground text-sm leading-relaxed">
           {whyRecommended}
         </p>
       </CardContent>

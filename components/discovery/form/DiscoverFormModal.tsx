@@ -99,7 +99,7 @@ export function SearchFormModal({
 }: SearchFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="flex max-h-[95vh] flex-col overflow-hidden sm:max-w-2xl">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Plan Your Next Adventure</DialogTitle>
         </DialogHeader>
@@ -107,15 +107,15 @@ export function SearchFormModal({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col flex-1 min-h-0"
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <div className="flex flex-col gap-6 overflow-y-auto flex-1 px-4 -mx-4 py-2 pr-6">
+            <div className="-mx-4 flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-2 pr-6">
               {isLoadingAIFilters ? (
                 /* AI Loading State */
-                <div className="flex items-center justify-center h-full">
+                <div className="flex h-full items-center justify-center">
                   <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-                    <p className="text-sm text-muted-foreground">
+                    <Loader2 className="text-primary mx-auto mb-4 h-8 w-8 animate-spin" />
+                    <p className="text-muted-foreground text-sm">
                       Analyzing your search and pre-filling the form...
                     </p>
                   </div>
@@ -124,8 +124,8 @@ export function SearchFormModal({
                 <div className="flex flex-col gap-12">
                   {/* Location error message - only show if there's a problem */}
                   {locationError && (
-                    <div className="p-3 border border-destructive/50 rounded-lg bg-destructive/10">
-                      <p className="text-sm text-destructive">
+                    <div className="border-destructive/50 bg-destructive/10 rounded-lg border p-3">
+                      <p className="text-destructive text-sm">
                         {locationError}
                       </p>
                       <Button
@@ -153,7 +153,7 @@ export function SearchFormModal({
                         </CustomFormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="e.g., peaceful waterfalls with swimming spots, challenging mountain trails with scenic views, family-friendly parks with picnic areas..."
+                            placeholder="e.g., peaceful waterfalls with swimming spots, challenging mountain trails..."
                             {...field}
                             disabled={isPending}
                             className="min-h-16 resize-none text-sm placeholder:text-sm"
@@ -208,7 +208,7 @@ export function SearchFormModal({
                   </div>
 
                   {/* Physical Activity Level & Duration - Two Column Layout */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     {/* Physical Activity Level Column */}
                     <FormField
                       control={form.control}
@@ -219,11 +219,11 @@ export function SearchFormModal({
                             Physical Activity Level
                           </CustomFormLabel>
                           <div className="flex flex-row gap-4">
-                            <div className="p-2 rounded-full bg-primary/10 text-primary">
+                            <div className="bg-primary/10 text-primary rounded-full p-2">
                               {getActivityLevelIcon(field.value)}
                             </div>
-                            <div className="flex flex-col gap-2 flex-1">
-                              <div className="text-sm font-medium mb-1">
+                            <div className="flex flex-1 flex-col gap-2">
+                              <div className="mb-1 text-sm font-medium">
                                 {field.value === 1 && 'Very easy'}
                                 {field.value === 2 && 'Easy'}
                                 {field.value === 3 && 'Moderate'}
@@ -391,8 +391,8 @@ export function SearchFormModal({
                     render={({ field }) => (
                       <FormItem>
                         <CustomFormLabel>Max Distance From You</CustomFormLabel>
-                        <div className="flex flex-row gap-4 items-start w-full">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex w-full flex-row items-start gap-4">
+                          <div className="min-w-0 flex-1">
                             <FormControl>
                               <FullWidthSelect
                                 onValueChange={field.onChange}
@@ -417,7 +417,7 @@ export function SearchFormModal({
                             control={form.control}
                             name="transportType"
                             render={({ field }) => (
-                              <div className="flex items-center gap-2 justify-around h-10 flex-1 min-w-fit">
+                              <div className="flex h-10 min-w-fit flex-1 items-center justify-around gap-2">
                                 {TRANSPORT_OPTIONS.map((option) => (
                                   <TransportOption
                                     key={option.value}
@@ -482,14 +482,14 @@ export function SearchFormModal({
               )}
             </div>
 
-            <div className="flex-shrink-0 pt-6 border-t border-muted">
+            <div className="border-muted flex-shrink-0 border-t pt-6">
               <Button
                 type="submit"
                 className="w-full"
                 disabled={isPending || !userLocation}
               >
                 {isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Search className="mr-2 h-4 w-4" />
                 )}

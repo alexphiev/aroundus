@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { PlaceResultItem } from '@/types/result.types'
-import { ArrowLeft, Bookmark, Share2, Star } from 'lucide-react'
+import { ArrowLeft, Bookmark, Share2 } from 'lucide-react'
 
 interface PlaceHeaderProps {
   place: PlaceResultItem
@@ -32,15 +32,15 @@ export default function PlaceHeader({
   }
 
   return (
-    <div className="flex-shrink-0 py-4 px-6 bg-background border-b">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-background flex-shrink-0 border-b px-4 py-4">
+      <div className="mb-2 flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
           className="text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           {isMobile ? '' : 'Back to Places'}
         </Button>
 
@@ -67,23 +67,7 @@ export default function PlaceHeader({
       </div>
 
       {/* Place Title and Rating */}
-      <h1 className="text-xl md:text-3xl font-bold">
-        {place.name}
-        {place.starRating && (
-          <span className="inline-flex items-center gap-1 ml-2">
-            {Array.from({ length: 3 }, (_, i) => (
-              <Star
-                key={i}
-                className={`h-4 w-4 md:h-5 md:w-5 ${
-                  i < (place.starRating || 0)
-                    ? 'fill-yellow-400 text-yellow-400'
-                    : 'text-gray-300'
-                }`}
-              />
-            ))}
-          </span>
-        )}
-      </h1>
+      <h1 className="text-xl font-bold md:text-3xl">{place.name}</h1>
     </div>
   )
 }

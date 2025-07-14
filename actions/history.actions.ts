@@ -53,7 +53,6 @@ const searchResultSchema = z.object({
   activity: z.string().optional(),
   estimatedActivityDuration: z.string().optional(),
   estimatedTransportTime: z.string().optional(),
-  whyRecommended: z.string().optional(),
   starRating: z.number().optional(),
   bestTimeToVisit: z.string().optional(),
   timeToAvoid: z.string().optional(),

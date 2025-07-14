@@ -27,7 +27,6 @@ export interface SearchResult {
   activity?: string
   estimatedActivityDuration?: string
   estimatedTransportTime?: string
-  whyRecommended?: string
   starRating?: number
   bestTimeToVisit?: string
   timeToAvoid?: string

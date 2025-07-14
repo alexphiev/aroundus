@@ -19,6 +19,7 @@ import {
   Wind,
   Zap,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 interface WeatherForecastProps {
@@ -155,15 +156,15 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
     return (
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Thermometer className="h-4 w-4" />
             Weather
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            <span className="text-sm text-muted-foreground">
+            <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" />
+            <span className="text-muted-foreground text-sm">
               Loading weather...
             </span>
           </div>
@@ -183,8 +184,8 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex items-center justify-center py-4">
-            <AlertTriangle className="h-4 w-4 text-orange-500 mr-2" />
-            <span className="text-sm text-muted-foreground">{error}</span>
+            <AlertTriangle className="mr-2 h-4 w-4 text-orange-500" />
+            <span className="text-muted-foreground text-sm">{error}</span>
           </div>
         </CardContent>
       </Card>
@@ -204,7 +205,7 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
           {weatherData?.map((day, index) => (
             <div
               key={day.date}
-              className="flex items-center justify-between py-2 px-3"
+              className="flex items-center justify-between py-2"
             >
               <div className="flex items-center gap-2">
                 {getWeatherIcon(day.dominantWeather.main)}
@@ -220,7 +221,7 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
                             day: 'numeric',
                           })}
                   </p>
-                  <p className="text-xs text-muted-foreground capitalize">
+                  <p className="text-muted-foreground text-xs capitalize">
                     {day.dominantWeather.description}
                   </p>
                 </div>
@@ -248,10 +249,10 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
           ))}
         </div>
 
-        <div className="mt-3 pt-3 border-t border-muted">
-          <p className="text-xs text-muted-foreground">
-            Weather data from OpenWeather
-          </p>
+        <div className="border-muted mt-3 border-t pt-3">
+          <Link href="https://openweathermap.org/" target="_blank">
+            <p className="text-muted-foreground text-xs">Source: OpenWeather</p>
+          </Link>
         </div>
       </CardContent>
     </Card>

@@ -19,6 +19,7 @@ interface PlaceMapProps {
   isProgressiveSearch?: boolean // Whether this is a progressive search
   onMarkerClick?: (index: number) => void // Callback when marker is clicked
   onPopupClose?: () => void // Callback when popup is closed
+  onPlaceDetailsClick?: (index: number, place: PlaceResultItem) => void // Callback when place details button is clicked
 }
 
 const PlaceMap: React.FC<PlaceMapProps> = ({
@@ -30,6 +31,7 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
   isProgressiveSearch = false,
   onMarkerClick,
   onPopupClose,
+  onPlaceDetailsClick,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<Map | null>(null)
@@ -232,8 +234,14 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
           offset: [0, -10],
           className: 'custom-popup',
         }).setHTML(
-          `<div class="p-2 pr-4">
-            <h6 class="font-bold text-sm">${place.name}</h6>
+          `<div class="p-3 pr-4">
+            <h6 class="font-bold text-sm mb-2">${place.name}</h6>
+            <button 
+              id="place-details-btn-${index}" 
+              class="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              View Details
+            </button>
            </div>`
         )
 
@@ -241,6 +249,16 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
         popup.on('close', () => {
           if (onPopupClose) {
             onPopupClose()
+          }
+        })
+
+        // Add event listener for place details button after popup is opened
+        popup.on('open', () => {
+          const detailsButton = document.getElementById(`place-details-btn-${index}`)
+          if (detailsButton && onPlaceDetailsClick) {
+            detailsButton.addEventListener('click', () => {
+              onPlaceDetailsClick(index, place)
+            })
           }
         })
 
@@ -294,6 +312,7 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
     activeMarkerIndex,
     onMarkerClick,
     onPopupClose,
+    onPlaceDetailsClick,
   ])
 
   // Update active marker when activeMarkerIndex changes
