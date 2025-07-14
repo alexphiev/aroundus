@@ -60,7 +60,7 @@ export default function PlaceResultsGrid({
 
       {/* Load More Button */}
       {hasMoreResults && onLoadMore && (
-        <div className="flex justify-center pb-16">
+        <div className="flex justify-center">
           <Button
             onClick={onLoadMore}
             disabled={isLoadingMore}

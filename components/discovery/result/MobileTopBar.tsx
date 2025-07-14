@@ -1,114 +1,128 @@
 'use client'
 
 import { FormValues } from '@/types/search-history.types'
-import { ArrowLeft, Edit3 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { capitalize } from '@/utils/general.utils'
+import { Edit3, Plus } from 'lucide-react'
+import { useMemo } from 'react'
 
 interface Props {
   searchQuery?: FormValues | null
   generatedTitle?: string | null
-  resultsCount: number
   onEditFilters?: () => void
+  onNewSearch?: () => void
 }
 
 export default function MobileTopBar({
   searchQuery,
   generatedTitle,
-  resultsCount,
   onEditFilters,
+  onNewSearch,
 }: Props) {
-  const router = useRouter()
+  // Generate primary filter summary (second line)
+  const filterSummary = useMemo(() => {
+    if (!searchQuery) return null
 
-  // Generate filter summary for the main button
-  const getFilterSummary = () => {
-    if (!searchQuery) return 'Nature Discovery'
+    const parts: string[] = []
 
-    const parts = []
-    
     // Activity
     if (searchQuery.activity) {
-      const activity = searchQuery.activity === 'other' 
-        ? searchQuery.otherActivity 
-        : searchQuery.activity
-      if (activity) parts.push(activity)
-    }
-
-    // Distance
-    if (searchQuery.distance) {
-      parts.push(searchQuery.distance)
+      const activity =
+        searchQuery.activity === 'other'
+          ? searchQuery.otherActivity
+          : searchQuery.activity
+      if (activity) parts.push(capitalize(activity))
     }
 
     // When
     if (searchQuery.when && searchQuery.when !== 'today') {
-      const when = searchQuery.when === 'custom' && searchQuery.customDate
-        ? searchQuery.customDate.toLocaleDateString()
-        : searchQuery.when.replace('_', ' ')
-      parts.push(when)
+      const when =
+        searchQuery.when === 'custom' && searchQuery.customDate
+          ? searchQuery.customDate.toLocaleDateString()
+          : searchQuery.when.replace('_', ' ')
+      parts.push(capitalize(when))
     }
 
-    return parts.length > 0 ? parts.join(' • ') : 'Nature Discovery'
-  }
-
-  // Generate secondary filter line
-  const getSecondaryFilters = () => {
-    if (!searchQuery) return `${resultsCount} places found`
-
-    const parts = []
+    // Transport
+    if (searchQuery.transportType && searchQuery.distance) {
+      const transportLabels = {
+        foot: 'walking',
+        bike: 'by bike',
+        public_transport: 'by public transport',
+        car: 'by car',
+      }
+      parts.push(
+        'Around ' +
+          searchQuery.distance +
+          ' ' +
+          transportLabels[searchQuery.transportType]
+      )
+    }
 
     // Activity level
-    if (searchQuery.activityLevel) {
-      const levels = ['Low', 'Light', 'Moderate', 'High', 'Intense']
-      parts.push(`${levels[searchQuery.activityLevel - 1]} intensity`)
+    if (searchQuery.activityLevel && searchQuery.activityDurationValue) {
+      const levelLabels = {
+        1: 'Easy',
+        2: 'Moderate',
+        3: 'Challenging',
+        4: 'Difficult',
+        5: 'Extreme',
+      }
+      parts.push(
+        `${levelLabels[searchQuery.activityLevel as keyof typeof levelLabels]} level for ${searchQuery.activityDurationValue}${searchQuery.activityDurationUnit === 'hours' ? 'h' : 'days'}`
+      )
     }
 
-    // Transport type
-    if (searchQuery.transportType) {
-      const transport = searchQuery.transportType === 'public_transport' 
-        ? 'Public transport' 
-        : searchQuery.transportType.replace('_', ' ')
-      parts.push(transport)
+    // Special care
+    if (searchQuery.specialCare) {
+      const careLabels = {
+        children: 'Child-friendly',
+        lowMobility: 'Accessible',
+        dogs: 'Dog-friendly',
+        other: searchQuery.otherSpecialCare || 'Special care',
+      }
+      parts.push(careLabels[searchQuery.specialCare])
     }
 
-    // Add results count
-    parts.push(`${resultsCount} places`)
+    // Location
+    if (searchQuery.locationName) {
+      parts.push(`Near ${searchQuery.locationName}`)
+    }
 
-    return parts.join(' • ')
-  }
+    return parts.length > 0 ? parts.join(' • ') : null
+  }, [searchQuery])
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/10">
-      <div className="flex items-center px-4 py-3 gap-3">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="p-2 -ml-2 rounded-full hover:bg-muted/50 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-
+    <div className="bg-background/95 border-border/10 fixed top-0 right-0 left-0 z-50 border-b backdrop-blur-sm">
+      <div className="flex items-center gap-3 px-1 py-1">
         {/* Central Filter Summary Button */}
         <button
           onClick={onEditFilters}
-          className="flex-1 bg-white border border-border rounded-full px-4 py-3 shadow-sm hover:shadow-md transition-all"
+          className="border-border flex-1 rounded-lg border bg-white px-4 py-4 shadow-sm transition-all hover:shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex-1 text-left">
-              {/* Primary title line */}
-              <div className="font-medium text-sm leading-tight">
-                {generatedTitle || getFilterSummary()}
+              <div className="text-sm leading-tight font-medium">
+                {generatedTitle}
               </div>
-              
-              {/* Secondary filters line */}
-              <div className="text-xs text-muted-foreground mt-0.5 leading-tight">
-                {getSecondaryFilters()}
-              </div>
+
+              {filterSummary && (
+                <div className="text-muted-foreground mt-1 text-xs leading-tight">
+                  {filterSummary}
+                </div>
+              )}
             </div>
 
-            {/* Edit Icon */}
-            <div className="ml-2 p-1.5 bg-muted/50 rounded-full">
+            <div className="bg-muted/50 rounded-full p-1.5">
               <Edit3 className="h-3 w-3" />
             </div>
           </div>
+        </button>
+
+        <button
+          onClick={onNewSearch}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full p-3 shadow-sm transition-colors"
+        >
+          <Plus className="h-5 w-5" />
         </button>
       </div>
     </div>

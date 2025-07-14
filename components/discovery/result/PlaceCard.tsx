@@ -1,6 +1,5 @@
 'use client'
 
-import { getTransportIcon } from '@/components/discovery/utils/iconUtils'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -11,6 +10,7 @@ import {
 } from '@/components/ui/card'
 import { abbreviateDuration } from '@/lib/utils'
 import { PlaceResultItem } from '@/types/result.types'
+import { getIcon, IconType } from '@/utils/icon.utils'
 import { motion } from 'framer-motion'
 import {
   Bookmark,
@@ -66,8 +66,6 @@ export default function PlaceCard({
       )
     }
   }
-
-  console.log({ photos: place.photos })
 
   return (
     <motion.div
@@ -304,7 +302,7 @@ export default function PlaceCard({
                 )}
                 {place.estimatedTransportTime && (
                   <span className="badge-warning flex items-center gap-1">
-                    {getTransportIcon(place.transportMode)}
+                    {getIcon(IconType.TRANSPORT, place.transportMode, 4)}
                     {abbreviateDuration(place.estimatedTransportTime)}
                   </span>
                 )}

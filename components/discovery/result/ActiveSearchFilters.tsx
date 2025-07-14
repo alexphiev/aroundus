@@ -4,54 +4,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { FormValues } from '@/types/search-history.types'
-import {
-  Accessibility,
-  Activity,
-  Baby,
-  Bike,
-  Calendar,
-  Car,
-  Clock,
-  Dog,
-  Edit3,
-  Footprints,
-  MapPin,
-  Stars,
-  Train,
-} from 'lucide-react'
+import { getIcon, IconType } from '@/utils/icon.utils'
+import { Activity, Calendar, Clock, Edit, MapPin, PawPrint } from 'lucide-react'
 
 interface ActiveSearchFiltersProps {
   searchQuery?: FormValues | null
   onEditFilters?: () => void
   className?: string
-}
-
-const getTransportIcon = (transport: string) => {
-  switch (transport) {
-    case 'foot':
-      return <Footprints className="h-4 w-4" />
-    case 'bike':
-      return <Bike className="h-4 w-4" />
-    case 'public_transport':
-      return <Train className="h-4 w-4" />
-    case 'car':
-      return <Car className="h-4 w-4" />
-    default:
-      return <Car className="h-4 w-4" />
-  }
-}
-
-const getSpecialCareIcon = (care: string) => {
-  switch (care) {
-    case 'children':
-      return <Baby className="h-4 w-4" />
-    case 'lowMobility':
-      return <Accessibility className="h-4 w-4" />
-    case 'dogs':
-      return <Dog className="h-4 w-4" />
-    default:
-      return null
-  }
 }
 
 const formatWhen = (when: string) => {
@@ -116,7 +75,7 @@ export default function ActiveSearchFilters({
       value: searchQuery.distance,
     },
     {
-      icon: getTransportIcon(searchQuery.transportType),
+      icon: getIcon(IconType.TRANSPORT, searchQuery.transportType, 4),
       label: 'Transport',
       value:
         searchQuery.transportType === 'public_transport'
@@ -136,7 +95,11 @@ export default function ActiveSearchFilters({
   ]
 
   if (searchQuery.specialCare) {
-    const specialCareIcon = getSpecialCareIcon(searchQuery.specialCare)
+    const specialCareIcon = getIcon(
+      IconType.SPECIAL_CARE,
+      searchQuery.specialCare,
+      5
+    )
     if (specialCareIcon) {
       allFilters.push({
         icon: specialCareIcon,
@@ -153,7 +116,7 @@ export default function ActiveSearchFilters({
         {searchQuery.additionalInfo && (
           <div className="mb-5 flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <Stars className="h-4 w-4 text-muted-foreground" />
+              <PawPrint className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">
                 {searchQuery.additionalInfo}
               </span>
@@ -165,7 +128,7 @@ export default function ActiveSearchFilters({
                 onClick={onEditFilters}
                 className="h-8 gap-1"
               >
-                <Edit3 className="h-3 w-3" />
+                <Edit className="h-3 w-3" />
                 Edit
               </Button>
             )}
@@ -173,7 +136,9 @@ export default function ActiveSearchFilters({
         )}
 
         {/* Filters Row - Show filters and edit button on same row when no search query */}
-        <div className={`flex ${searchQuery.additionalInfo ? 'flex-wrap gap-2' : 'justify-between items-center'} w-full`}>
+        <div
+          className={`flex ${searchQuery.additionalInfo ? 'flex-wrap gap-2' : 'justify-between items-center'} w-full`}
+        >
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             {allFilters.map((filter, index) => (
@@ -185,7 +150,7 @@ export default function ActiveSearchFilters({
               </Badge>
             ))}
           </div>
-          
+
           {/* Edit button - show on same row when no search query */}
           {!searchQuery.additionalInfo && onEditFilters && (
             <Button
@@ -194,7 +159,7 @@ export default function ActiveSearchFilters({
               onClick={onEditFilters}
               className="h-8 gap-1 flex-shrink-0"
             >
-              <Edit3 className="h-3 w-3" />
+              <Edit className="h-3 w-3" />
               Edit
             </Button>
           )}

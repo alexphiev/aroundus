@@ -1,12 +1,9 @@
 import {
   Tooltip,
-  TooltipTrigger,
   TooltipContent,
+  TooltipTrigger,
 } from '@/components/ui/tooltip'
-import {
-  getLandscapeIcon,
-  getActivityIcon,
-} from '@/components/discovery/utils/iconUtils'
+import { getIcon, IconType } from '@/utils/icon.utils'
 
 interface PlaceIcon {
   icon: React.ReactNode
@@ -60,22 +57,28 @@ const getPlaceIcons = (landscape?: string, activity?: string): PlaceIcon[] => {
   ) {
     const primaryType = hasActivity ? activity! : landscape!
     const primaryIcon = hasActivity
-      ? getActivityIcon(activity)
-      : getLandscapeIcon(landscape)
+      ? getIcon(IconType.ACTIVITY, activity, 5)
+      : getIcon(IconType.LANDSCAPE, landscape, 5)
 
     return [
       { icon: primaryIcon, label: primaryType },
-      { icon: getActivityIcon('walking'), label: 'walking' },
+      { icon: getIcon(IconType.ACTIVITY, 'walking', 5), label: 'walking' },
     ]
   }
 
   // Show both icons if they're different
   const icons: PlaceIcon[] = []
   if (hasLandscape) {
-    icons.push({ icon: getLandscapeIcon(landscape), label: landscape! })
+    icons.push({
+      icon: getIcon(IconType.LANDSCAPE, landscape, 5),
+      label: landscape!,
+    })
   }
   if (hasActivity) {
-    icons.push({ icon: getActivityIcon(activity), label: activity! })
+    icons.push({
+      icon: getIcon(IconType.ACTIVITY, activity, 5),
+      label: activity!,
+    })
   }
 
   return icons

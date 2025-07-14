@@ -1,13 +1,12 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getFiveDayForecast } from '@/actions/weather.actions'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type {
-  ForecastResponse,
   DailyWeatherSummary,
   ForecastItem,
+  ForecastResponse,
 } from '@/types/weather.types'
-import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
   Cloud,
@@ -20,6 +19,7 @@ import {
   Wind,
   Zap,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface WeatherForecastProps {
   lat: number
@@ -128,11 +128,11 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
           items,
         }
       })
-      .slice(0, 5) // Limit to 5 days
+      .slice(0, 5)
   }
 
   // Get weather icon based on condition
-  function getWeatherIcon(condition: string, size: string = 'h-6 w-6') {
+  function getWeatherIcon(condition: string, size: string = 'h-4 w-4') {
     switch (condition.toLowerCase()) {
       case 'clear':
         return <Sun className={`${size} text-yellow-500`} />
@@ -154,17 +154,17 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Thermometer className="h-5 w-5" />
-            Weather Forecast
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Thermometer className="h-4 w-4" />
+            Weather
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span className="text-muted-foreground">
-              Loading weather data...
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <span className="text-sm text-muted-foreground">
+              Loading weather...
             </span>
           </div>
         </CardContent>
@@ -175,16 +175,16 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
   if (error) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Thermometer className="h-5 w-5" />
-            Weather Forecast
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Thermometer className="h-4 w-4" />
+            Weather
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <AlertTriangle className="h-6 w-6 text-orange-500 mr-2" />
-            <span className="text-muted-foreground">{error}</span>
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-center py-4">
+            <AlertTriangle className="h-4 w-4 text-orange-500 mr-2" />
+            <span className="text-sm text-muted-foreground">{error}</span>
           </div>
         </CardContent>
       </Card>
@@ -195,21 +195,21 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Thermometer className="h-5 w-5" />
-          5-Day Weather Forecast
+          <Thermometer className="h-4 w-4" />
+          3-Day Weather
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-1">
           {weatherData?.map((day, index) => (
             <div
               key={day.date}
-              className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+              className="flex items-center justify-between py-2 px-3"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {getWeatherIcon(day.dominantWeather.main)}
                 <div>
-                  <p className="font-medium">
+                  <p className="text-sm font-medium">
                     {index === 0
                       ? 'Today'
                       : index === 1
@@ -220,27 +220,27 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
                             day: 'numeric',
                           })}
                   </p>
-                  <p className="text-sm text-muted-foreground capitalize">
+                  <p className="text-xs text-muted-foreground capitalize">
                     {day.dominantWeather.description}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1">
-                  <Thermometer className="h-4 w-4 text-orange-500" />
+                  <Thermometer className="h-3 w-3 text-orange-500" />
                   <span>
-                    {day.tempMax}°/{day.tempMin}°C
+                    {day.tempMin}°/{day.tempMax}°
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <Droplets className="h-4 w-4 text-blue-500" />
+                  <Droplets className="h-3 w-3 text-blue-500" />
                   <span>{day.precipitationChance}%</span>
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <Wind className="h-4 w-4 text-gray-500" />
+                  <Wind className="h-3 w-3 text-gray-500" />
                   <span>{day.windSpeed} m/s</span>
                 </div>
               </div>
@@ -248,9 +248,9 @@ export default function WeatherForecast({ lat, lon }: WeatherForecastProps) {
           ))}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-muted">
+        <div className="mt-3 pt-3 border-t border-muted">
           <p className="text-xs text-muted-foreground">
-            Weather data provided by OpenWeather. Updated every 3 hours.
+            Weather data from OpenWeather
           </p>
         </div>
       </CardContent>

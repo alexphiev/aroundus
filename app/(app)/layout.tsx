@@ -1,12 +1,22 @@
 'use client'
 
-import { AppSidebar } from '@/components/layout/AppSidebar'
-import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import { SidebarProvider } from '@/components/layout/sidebar'
 import { NavigationProvider } from '@/components/NavigationLoader'
 import { LocationProvider } from '@/components/providers/LocationProvider'
 import { Toaster } from '@/components/ui/sonner'
+import dynamic from 'next/dynamic'
 import '../globals.css'
+
+const AppSidebar = dynamic(() => import('@/components/layout/AppSidebar'), {
+  ssr: true,
+})
+
+const MobileBottomNav = dynamic(
+  () => import('@/components/layout/MobileBottomNav'),
+  {
+    ssr: true,
+  }
+)
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,10 +24,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <NavigationProvider>
         <div className="relative flex h-screen overflow-hidden">
           <SidebarProvider>
-            <AppSidebar />
+            <div className="hidden md:block">
+              <AppSidebar />
+            </div>
 
             <main className="flex-1 transition-all duration-300 overflow-hidden flex flex-col">
-              <div className="flex-1 overflow-auto pb-20 md:pb-0">{children}</div>
+              <div className="flex-1 overflow-auto md:pb-0">{children}</div>
             </main>
           </SidebarProvider>
 
@@ -25,7 +37,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <MobileBottomNav />
+        <div className="block md:hidden">
+          <MobileBottomNav />
+        </div>
       </NavigationProvider>
     </LocationProvider>
   )

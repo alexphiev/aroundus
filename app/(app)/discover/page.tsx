@@ -23,7 +23,6 @@ import type {
   SearchQuery,
 } from '@/types/search-history.types'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import {
   Suspense,
@@ -80,7 +79,7 @@ function reconstructSearchContext(
   }
 }
 
-function DiscoverPageContent() {
+function DiscoverPageComponent() {
   const searchParams = useSearchParams()
   const { userLocation, locationInfo, locationError, setUserLocation } =
     useLocationContext()
@@ -89,7 +88,7 @@ function DiscoverPageContent() {
   const [placeResults, setPlaceResults] = useState<PlaceResultItem[] | null>(
     null
   )
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingNew, setIsLoadingNew] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(true) // Track if we're loading search history
   const [isLoadingAIFilters, setIsLoadingAIFilters] = useState(false) // Track if we're loading AI-mapped filters
   const [hasProcessedQuery, setHasProcessedQuery] = useState(false) // Track if we've already processed the URL query
@@ -383,7 +382,7 @@ function DiscoverPageContent() {
 
     // Close modal immediately and clear results only when starting new search
     setIsSearchOpen(false)
-    setIsLoading(true)
+    setIsLoadingNew(true)
     setPlaceResults(null) // Clear previous results
     setHasPerformedSearch(true) // Mark that a search is being performed
     setCurrentBatch(1) // Reset to first batch
@@ -424,12 +423,17 @@ function DiscoverPageContent() {
 
       try {
         // Only generate title when explicitly starting a new search (via "New Search" button)
-        const titleGenerationPromise = (isNewSearch
-          ? generateSearchTitle({
-              ...values,
-              locationName: locationInfo?.locationName,
-            })
-          : Promise.resolve({ success: true, data: { title: generatedTitle } }))
+        const titleGenerationPromise = (
+          isNewSearch
+            ? generateSearchTitle({
+                ...values,
+                locationName: locationInfo?.locationName,
+              })
+            : Promise.resolve({
+                success: true,
+                data: { title: generatedTitle },
+              })
+        )
           .then((titleResult) => {
             if (titleResult.success && titleResult.data?.title) {
               setGeneratedTitle(titleResult.data.title)
@@ -507,7 +511,7 @@ function DiscoverPageContent() {
         toast.error('Failed to fetch trip results. Please try again.')
         setPlaceResults([])
       } finally {
-        setIsLoading(false)
+        setIsLoadingNew(false)
         setIsNewSearch(false) // Reset flag after search completion
       }
     })
@@ -633,33 +637,6 @@ function DiscoverPageContent() {
     }
   }
 
-  // Show loading state while checking for search history
-  if (isLoadingHistory) {
-    return (
-      <div className="h-screen flex ml-[60px]">
-        <div className="w-full md:w-1/2 flex flex-col h-full px-6">
-          <div className="flex-shrink-0 pt-6 pb-4 bg-background">
-            <h1 className="text-3xl font-bold mb-2">Discover Nature Trips</h1>
-            <p className="text-muted-foreground">
-              Loading your previous search...
-            </p>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Checking for previous searches...
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="w-full md:w-1/2 h-screen bg-muted">
-          {/* Empty map area during loading */}
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       {/* Search Form Modal */}
@@ -681,7 +658,8 @@ function DiscoverPageContent() {
         title="Discover Nature Trips"
         subtitle="Find the perfect nature spot based on your preferences"
         userLocation={userLocation}
-        isLoading={isLoading && (!placeResults || placeResults.length === 0)}
+        isLoadingNew={isLoadingNew}
+        isLoadingHistory={isLoadingHistory}
         onSearchClick={() => setIsSearchOpen(true)}
         emptyStateMessage={
           hasPerformedSearch
@@ -748,28 +726,8 @@ function DiscoverPageContent() {
 
 export default function DiscoverPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="h-screen flex ml-[60px]">
-          <div className="w-full md:w-1/2 flex flex-col h-full px-6">
-            <div className="flex-shrink-0 pt-6 pb-4 bg-background">
-              <h1 className="text-3xl font-bold mb-2">Discover Nature</h1>
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                <p className="text-muted-foreground">Loading page...</p>
-              </div>
-            </div>
-          </div>
-          <div className="w-full md:w-1/2 h-screen bg-muted">
-            {/* Empty map area during loading */}
-          </div>
-        </div>
-      }
-    >
-      <DiscoverPageContent />
+    <Suspense>
+      <DiscoverPageComponent />
     </Suspense>
   )
 }

@@ -1,50 +1,23 @@
 'use client'
 
 import { getSavedPlacesAction, savePlaceAction } from '@/actions/place.actions'
+import PlaceDetailView from '@/components/discovery/result/details/PlaceDetailView'
 import DetailViewTopBar from '@/components/discovery/result/DetailViewTopBar'
 import EmptyState from '@/components/discovery/result/EmptyState'
-import FloatingActionButton from '@/components/discovery/result/FloatingActionButton'
 import LoadingState from '@/components/discovery/result/LoadingState'
 import PlaceMap from '@/components/discovery/result/Map'
 import MapToggleButton from '@/components/discovery/result/MapToggleButton'
 import MobileTopBar from '@/components/discovery/result/MobileTopBar'
-import PlaceDetailView from '@/components/discovery/result/PlaceDetailView'
 import PlaceResultsGrid from '@/components/discovery/result/PlaceResulstGrid'
 import { PlaceResultItem } from '@/types/result.types'
-import { FormValues } from '@/types/search-history.types'
-import { AnimatePresence, motion, PanInfo, useAnimation } from 'framer-motion'
-import { ChevronUp } from 'lucide-react'
+import { AnimatePresence, motion, PanInfo } from 'framer-motion'
+import { Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { DiscoveryResultProps } from './DiscoveryResult'
 
-// Overlay states
-type OverlayState = 'collapsed' | 'half' | 'full'
-
-interface Props {
-  placeResults: PlaceResultItem[] | null
-  onSearchClick?: () => void
-  userLocation?: { latitude: number; longitude: number } | null
-  showSaveButton?: boolean
-  emptyStateMessage?: string
-  isLoading?: boolean
-  className?: string
-  onSavePlace?: (place: PlaceResultItem) => Promise<void>
-  hasMoreResults?: boolean
-  isLoadingMore?: boolean
-  onLoadMore?: () => void
-  onNewSearch?: () => void
-  onCardClick?: (index: number) => void
-  searchQuery?: FormValues | null
-  generatedTitle?: string | null
-  onEditFilters?: () => void
-}
-
-// State configuration - adjusted for top bar and bottom nav
-const stateConfig = {
-  collapsed: { heightPercent: 20, y: 'calc(100vh - 140px)' }, // Always visible above bottom nav (80px) + handle (60px)
-  half: { heightPercent: 50, y: '50%' },
-  full: { heightPercent: 100, y: '64px' }, // Start below top bar (64px = 4rem)
-}
+// Overlay states - simplified to two states
+type OverlayState = 'collapsed' | 'full'
 
 export default function MobileDiscoveryResult({
   placeResults,
@@ -52,7 +25,8 @@ export default function MobileDiscoveryResult({
   userLocation,
   showSaveButton = true,
   emptyStateMessage = 'No trips to display',
-  isLoading = false,
+  isLoadingNew = false,
+  isLoadingHistory = false,
   className = '',
   onSavePlace,
   hasMoreResults = false,
@@ -63,7 +37,7 @@ export default function MobileDiscoveryResult({
   searchQuery,
   generatedTitle,
   onEditFilters,
-}: Props) {
+}: DiscoveryResultProps) {
   const [activeCardIndex, setActiveCardIndex] = useState<number>(-1)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [savedPlaceNames, setSavedPlaceNames] = useState<Set<string>>(new Set())
@@ -71,42 +45,23 @@ export default function MobileDiscoveryResult({
     null
   )
   const [overlayState, setOverlayState] = useState<OverlayState>('collapsed')
-  const controls = useAnimation()
 
   // Initialize overlay state based on content
   useEffect(() => {
-    if (placeResults && placeResults.length > 0) {
-      setOverlayState('half')
-    } else if (isLoading) {
-      setOverlayState('half')
-    } else {
-      setOverlayState('collapsed')
+    // Only show loading state in full view, otherwise stay collapsed to show map
+    if (!selectedPlace && isLoadingNew) {
+      setOverlayState('full')
     }
-  }, [placeResults, isLoading])
+  }, [isLoadingNew, selectedPlace])
 
-  // Animate to current state
-  useEffect(() => {
-    const config = stateConfig[overlayState]
-    const yValue = overlayState === 'full' ? 0 : config.y
+  // No animation needed with new layout approach
 
-    controls.start({
-      y: yValue,
-      transition: {
-        type: 'spring',
-        damping: 30,
-        stiffness: 300,
-        duration: 0.3,
-      },
-    })
-  }, [overlayState, controls])
-
-  // Handle drag end to determine new state - more responsive snapping
+  // Handle drag end to determine new state - simplified for two states
   const handleDragEnd = useCallback(
-    (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
       const { offset, velocity } = info
-      const screenHeight = window.innerHeight
-      const dragThreshold = screenHeight * 0.1 // Smaller threshold for more responsive snapping
-      const velocityThreshold = 200 // Lower threshold for easier triggering
+      const dragThreshold = 100 // Threshold for drag distance
+      const velocityThreshold = 200 // Threshold for swipe velocity
 
       let newState: OverlayState = overlayState
 
@@ -116,12 +71,10 @@ export default function MobileDiscoveryResult({
       const isSwipingDown =
         velocity.y > velocityThreshold || offset.y > dragThreshold
 
-      if (isSwipingUp) {
-        if (overlayState === 'collapsed') newState = 'half'
-        else if (overlayState === 'half') newState = 'full'
-      } else if (isSwipingDown) {
-        if (overlayState === 'full') newState = 'half'
-        else if (overlayState === 'half') newState = 'collapsed'
+      if (isSwipingUp && overlayState === 'collapsed') {
+        newState = 'full'
+      } else if (isSwipingDown && overlayState === 'full') {
+        newState = 'collapsed'
       }
 
       setOverlayState(newState)
@@ -132,11 +85,9 @@ export default function MobileDiscoveryResult({
   // Handle tap on drag handle
   const handleHandleTap = () => {
     if (overlayState === 'collapsed') {
-      setOverlayState('half')
-    } else if (overlayState === 'half') {
       setOverlayState('full')
     } else {
-      setOverlayState('half')
+      setOverlayState('collapsed')
     }
   }
 
@@ -165,10 +116,15 @@ export default function MobileDiscoveryResult({
       onCardClick(index)
     }
 
+    // Add URL parameter for place details
+    const url = new URL(window.location.href)
+    url.searchParams.set('place', index.toString())
+    url.searchParams.set('placeName', place.name)
+
     window.history.pushState(
       { detailView: true, index, placeName: place.name },
       '',
-      window.location.href
+      url.toString()
     )
   }
 
@@ -179,7 +135,13 @@ export default function MobileDiscoveryResult({
     if (onCardClick) {
       onCardClick(-1)
     }
-    window.history.replaceState(null, '', window.location.href)
+
+    // Remove URL parameters when going back to cards view
+    const url = new URL(window.location.href)
+    url.searchParams.delete('place')
+    url.searchParams.delete('placeName')
+
+    window.history.replaceState(null, '', url.toString())
   }
 
   // Load saved trips
@@ -198,10 +160,39 @@ export default function MobileDiscoveryResult({
     loadSavedTrips()
   }, [])
 
+  // Handle URL parameters on mount to restore place details view
+  useEffect(() => {
+    if (placeResults && placeResults.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search)
+      const placeIndex = urlParams.get('place')
+      const placeName = urlParams.get('placeName')
+
+      if (placeIndex && placeName) {
+        const index = parseInt(placeIndex, 10)
+        if (index >= 0 && index < placeResults.length) {
+          const place = placeResults[index]
+          // Verify the place name matches to ensure URL integrity
+          if (place.name === placeName) {
+            setActiveCardIndex(index)
+            setSelectedPlace(place)
+            if (onCardClick) {
+              onCardClick(index)
+            }
+          }
+        }
+      }
+    }
+  }, [placeResults, onCardClick])
+
   // Handle browser back button
   useEffect(() => {
     const handlePopstate = () => {
-      if (selectedPlace) {
+      // Check if we're still on a place detail URL
+      const urlParams = new URLSearchParams(window.location.search)
+      const placeIndex = urlParams.get('place')
+
+      if (!placeIndex && selectedPlace) {
+        // URL doesn't have place parameter, so close detail view
         setSelectedPlace(null)
         setActiveCardIndex(-1)
         if (onCardClick) {
@@ -234,152 +225,151 @@ export default function MobileDiscoveryResult({
     setIsSaving(false)
   }
 
-  const showContent = overlayState !== 'collapsed'
-  const isCollapsed = overlayState === 'collapsed'
   const isFullScreen = overlayState === 'full'
 
-  return (
-    <div className={`relative h-screen overflow-hidden ${className}`}>
-      {/* Conditional Top Bar */}
-      {selectedPlace ? (
-        <DetailViewTopBar
-          onBack={handleBackToCards}
-          placeName={selectedPlace.name}
-        />
-      ) : (
-        <MobileTopBar
-          searchQuery={searchQuery}
-          generatedTitle={generatedTitle}
-          resultsCount={placeResults?.length || 0}
-          onEditFilters={onEditFilters}
-        />
-      )}
-
-      {/* Full-screen background map - Only show when not in detail view */}
-      {!selectedPlace && (
-        <div className="absolute inset-0 pt-16">
-          <PlaceMap
-            placeResults={placeResults}
-            userLocation={userLocation}
-            activeMarkerIndex={activeCardIndex}
-            className="h-full w-full"
-            shouldUpdateBounds={true}
-            isProgressiveSearch={isLoadingMore}
-            onMarkerClick={handleMarkerClick}
-            onPopupClose={handlePopupClose}
-          />
+  if (isLoadingHistory) {
+    return (
+      <div className="flex h-[100vh] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="text-primary mx-auto mb-4 h-8 w-8 animate-spin" />
+          <p className="text-muted-foreground text-sm">
+            Checking for previous searches...
+          </p>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* Floating Action Button - Only show when not full screen and not in detail view */}
-      {!selectedPlace && (
-        <FloatingActionButton onClick={() => onNewSearch?.()} />
-      )}
-
-      {/* Map Toggle Button - Only show when full screen and not in detail view */}
-      {isFullScreen && !selectedPlace && (
-        <MapToggleButton onClick={() => setOverlayState('collapsed')} />
-      )}
-
-      {/* Overlay content */}
-      <AnimatePresence mode="wait">
+  return (
+    <div className={`flex h-full flex-col overflow-hidden ${className}`}>
+      {/* Fixed Top Bar */}
+      <div className="flex-shrink-0">
         {selectedPlace ? (
-          /* Detail View - Full Screen */
-          <div className="absolute inset-0 z-50 bg-background pb-16">
-            <PlaceDetailView
-              key="detail-view"
-              place={selectedPlace}
-              onBack={handleBackToCards}
-              onSave={handleSavePlace}
-              isSaved={savedPlaceNames.has(selectedPlace.name)}
-              showSaveButton={showSaveButton}
+          <DetailViewTopBar
+            onBack={handleBackToCards}
+            placeName={selectedPlace.name}
+          />
+        ) : (
+          <MobileTopBar
+            searchQuery={searchQuery}
+            generatedTitle={generatedTitle}
+            onEditFilters={onEditFilters}
+            onNewSearch={onNewSearch}
+          />
+        )}
+      </div>
+
+      {/* Main Content Area - Strictly contained */}
+      <div className="relative flex-1 overflow-hidden">
+        {/* Background Map - Always show when not in detail view and not showing loading */}
+        {!selectedPlace && !isLoadingNew && (
+          <div className="absolute inset-0">
+            <PlaceMap
+              placeResults={placeResults}
+              userLocation={userLocation}
+              activeMarkerIndex={activeCardIndex}
+              className="h-full w-full"
+              shouldUpdateBounds={true}
+              isProgressiveSearch={isLoadingMore}
+              onMarkerClick={handleMarkerClick}
+              onPopupClose={handlePopupClose}
             />
           </div>
-        ) : (
-          /* Swipeable Cards Overlay */
-          <motion.div
-            key="cards-overlay"
-            className={`absolute inset-x-0 z-30 bg-background shadow-2xl border-t border-border/10 ${
-              isFullScreen ? 'top-16 rounded-none' : 'bottom-0 rounded-t-xl'
-            }`}
-            style={{
-              height: isFullScreen ? 'calc(100vh - 4rem)' : '100vh',
-              touchAction: 'none',
-            }}
-            initial={{ y: isFullScreen ? 0 : 'calc(100vh - 140px)' }}
-            animate={controls}
-            drag="y"
-            dragConstraints={{
-              top: isFullScreen ? -50 : -window.innerHeight * 0.4, // Reduced range for cleaner snapping
-              bottom: 120, // Never go below 120px from bottom (ensures always visible above bottom nav)
-            }}
-            dragElastic={0.05} // Reduced elasticity for snappier feel
-            onDragEnd={handleDragEnd}
-            whileTap={{ scale: isCollapsed ? 1.01 : 1 }} // Subtle feedback
-          >
-            {/* Drag Handle - Only show when not overlapping with top bar */}
-            {!isFullScreen && (
-              <div
-                className="relative flex items-center justify-center py-4 cursor-pointer select-none bg-background border-b border-border/5"
-                onClick={handleHandleTap}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  <div
-                    className={`w-12 h-1.5 rounded-full transition-colors ${
-                      overlayState === 'collapsed'
-                        ? 'bg-primary/50'
-                        : 'bg-muted-foreground/30'
-                    }`}
-                  />
-                  {isCollapsed && (
-                    <ChevronUp className="h-4 w-4 text-primary/70 mt-1" />
-                  )}
+        )}
+
+        {/* Results indicator when map is showing */}
+        {!selectedPlace &&
+          overlayState === 'collapsed' &&
+          placeResults &&
+          placeResults.length > 0 && (
+            <div
+              className="bg-background/95 border-border/20 absolute right-4 bottom-4 left-4 z-40 cursor-pointer rounded-xl border p-3 shadow-lg backdrop-blur-sm"
+              onClick={() => setOverlayState('full')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="bg-primary h-2 w-2 rounded-full" />
+                  <span className="text-foreground text-sm font-medium">
+                    {placeResults.length} place
+                    {placeResults.length !== 1 ? 's' : ''} found
+                  </span>
                 </div>
-
-                {/* Collapsed preview - improved layout */}
-                {isCollapsed && placeResults && placeResults.length > 0 && (
-                  <div className="absolute left-4 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full" />
-                    <span className="text-sm font-medium text-foreground">
-                      {placeResults.length} place
-                      {placeResults.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                )}
+                <span className="text-muted-foreground text-xs">
+                  Tap to view
+                </span>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Full Screen Drag Handle - Always visible to indicate swipe capability */}
-            {isFullScreen && (
+        {/* Map Toggle Button - Only show when cards are full screen */}
+        {isFullScreen && !selectedPlace && (
+          <MapToggleButton onClick={() => setOverlayState('collapsed')} />
+        )}
+
+        {/* Content Overlay */}
+        <AnimatePresence mode="wait">
+          {selectedPlace ? (
+            /* Detail View - Full Screen within container */
+            <div className="bg-background absolute inset-0 z-50">
+              <PlaceDetailView
+                key="detail-view"
+                place={selectedPlace}
+                onBack={handleBackToCards}
+                onSave={handleSavePlace}
+                isSaved={savedPlaceNames.has(selectedPlace.name)}
+                showSaveButton={showSaveButton}
+              />
+            </div>
+          ) : overlayState === 'full' ? (
+            /* Swipeable Cards Overlay - Only render when in full state */
+            <motion.div
+              key="cards-overlay"
+              className={`bg-background absolute inset-0 z-30 ${
+                isFullScreen
+                  ? 'shadow-none'
+                  : 'border-border/10 rounded-t-xl border-t shadow-2xl'
+              }`}
+              style={{
+                touchAction: 'none',
+              }}
+              initial={{ y: 0 }}
+              animate={{ y: 0 }}
+              drag="y"
+              dragConstraints={{
+                top: -50,
+                bottom: 50,
+              }}
+              dragElastic={0.05}
+              onDragEnd={handleDragEnd}
+            >
+              {/* Drag Handle - Always visible for swipe indication */}
               <div
-                className="sticky top-0 z-40 flex items-center justify-center py-3 cursor-pointer select-none bg-background/95 backdrop-blur-md border-b border-border/10 shadow-sm"
+                className="bg-background/95 border-border/10 sticky top-0 z-40 flex cursor-pointer items-center justify-center border-b py-3 backdrop-blur-md select-none"
                 onClick={handleHandleTap}
               >
                 <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-1.5 bg-muted-foreground/50 rounded-full" />
-                  <span className="text-xs text-muted-foreground/70 mt-1">
-                    Swipe down
+                  <div className="bg-muted-foreground/50 h-1.5 w-12 rounded-full" />
+                  <span className="text-muted-foreground/70 mt-1 text-xs">
+                    Swipe to toggle
                   </span>
                 </div>
               </div>
-            )}
 
-            {/* Content Area - Simplified */}
-            <div className="flex flex-col h-full pb-20 overflow-hidden">
-              {showContent && (
+              {/* Content Area - Properly contained */}
+              <div className="flex h-full flex-col overflow-hidden">
                 <motion.div
-                  className="flex flex-col h-full px-6"
+                  className="flex h-full flex-col px-6"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
                 >
-                  {/* Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto py-4 pb-8 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {/* Scrollable Content - with proper bottom spacing */}
+                  <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex-1 overflow-y-auto py-4 pb-8">
                     {/* Loading State */}
-                    {isLoading && <LoadingState />}
+                    {isLoadingNew && <LoadingState />}
 
                     {/* No Results */}
-                    {!isLoading &&
+                    {!isLoadingNew &&
                       (!placeResults || placeResults.length === 0) && (
                         <EmptyState
                           message={emptyStateMessage}
@@ -388,28 +378,30 @@ export default function MobileDiscoveryResult({
                       )}
 
                     {/* Trip Results Grid - Mobile Optimized */}
-                    {!isLoading && placeResults && placeResults.length > 0 && (
-                      <PlaceResultsGrid
-                        placeResults={placeResults}
-                        activeCardIndex={activeCardIndex}
-                        savedPlaceNames={savedPlaceNames}
-                        showSaveButton={showSaveButton}
-                        isSaving={isSaving}
-                        hasMoreResults={hasMoreResults}
-                        isLoadingMore={isLoadingMore}
-                        onLoadMore={onLoadMore}
-                        onCardClick={handleCardClick}
-                        onSavePlace={handleSavePlace}
-                        isMobile={true}
-                      />
-                    )}
+                    {!isLoadingNew &&
+                      placeResults &&
+                      placeResults.length > 0 && (
+                        <PlaceResultsGrid
+                          placeResults={placeResults}
+                          activeCardIndex={activeCardIndex}
+                          savedPlaceNames={savedPlaceNames}
+                          showSaveButton={showSaveButton}
+                          isSaving={isSaving}
+                          hasMoreResults={hasMoreResults}
+                          isLoadingMore={isLoadingMore}
+                          onLoadMore={onLoadMore}
+                          onCardClick={handleCardClick}
+                          onSavePlace={handleSavePlace}
+                          isMobile={true}
+                        />
+                      )}
                   </div>
                 </motion.div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

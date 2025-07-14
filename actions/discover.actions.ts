@@ -3,6 +3,7 @@
 import { MODEL } from '@/constants/ai.constants'
 import { getAIError, getGenAI } from '@/lib/ai.service'
 import { authenticateUser } from '@/lib/auth.service'
+import { enrichPlaceWithGoogleData } from '@/lib/google-places.service'
 import {
   discoverySubmissionSchema,
   type DiscoverySubmissionValues,
@@ -14,7 +15,6 @@ import type {
   UserPreferences,
 } from '@/types/result.types'
 import { getWeatherDataForAI } from './weather.actions'
-import { enrichPlaceWithGoogleData } from '@/lib/google-places.service'
 
 // Helper function to execute a single AI prompt with conversation context
 async function executeDiscoverPrompt(
@@ -75,10 +75,12 @@ async function executeDiscoverPrompt(
   }
 
   // Handle new Gemini response structure with candidates array at root level
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   if (
     !responseText &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (result as any).candidates &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Array.isArray((result as any).candidates)
   ) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,10 +145,10 @@ async function executeDiscoverPrompt(
         JSON.stringify(result, null, 2)
       )
 
-      // Additional debugging for the candidates structure
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (result as any).candidates &&
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Array.isArray((result as any).candidates)
       ) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -675,7 +677,7 @@ export async function handlePlaceSearchBatch(
     - activity: Must be ONE of: "hiking", "biking", "camping", "photography", "wildlife", "walking", "swimming"
     - estimatedActivityDuration: The estimated time range for the activity (e.g., "1-4 hours", "2-3 days")
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
-    - transportMode: The primary transport mode used (must be one of: "foot", "bike", "transit", "car")
+    - transportMode: The primary transport mode used (must be one of: "foot", "bike", "public_transport", "car")
     - whyRecommended: Brief explanation of why this fits the criteria
     - starRating: Rate from 1-3 stars based on how well this destination fulfills the user's specific request (3 = perfect match and must-go, 2 = very good match, 1 = good option but less ideal)
     - bestTimeToVisit: Recommended time range for optimal experience based on the weather forecast and crowds (e.g., "8:00 AM - 11:00 AM before rain starts", "early morning when clear skies", "afternoon after 2 PM when temperatures cool")

@@ -2,13 +2,17 @@
 
 import { PlaceResultItem } from '@/types/result.types'
 import { motion } from 'framer-motion'
+import PlaceInfoGrid from '../PlaceInfoGrid'
+import PlaceTimingInfo from '../PlaceTimingInfo'
 import PlaceDescription from './PlaceDescription'
 import PlaceHeader from './PlaceHeader'
-import PlaceInfoGrid from './PlaceInfoGrid'
 import PlaceLocationDetails from './PlaceLocationDetails'
+import PlacePhotoGallery from './PlacePhotoGallery'
+import PlacePracticalInfo from './PlacePracticalInfo'
 import PlaceRecommendation from './PlaceRecommendation'
-import PlaceTimingInfo from './PlaceTimingInfo'
-import WeatherForecast from './WeatherForecast'
+import PlaceReviews from './PlaceReviews'
+import WeatherForecast from './PlaceWeatherForecast'
+import PlaceCurrentConditions from './PlaceCurrentConditions'
 
 interface PlaceDetailViewProps {
   place: PlaceResultItem
@@ -64,26 +68,28 @@ export default function PlaceDetailView({
         showSaveButton={showSaveButton}
       />
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Description */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
         <PlaceDescription description={place.description} />
 
-        {/* Quick Info Grid */}
+        {place.photos && place.photos.length > 0 && (
+          <PlacePhotoGallery photos={place.photos} placeName={place.name} />
+        )}
         <PlaceInfoGrid place={place} />
-
-        {/* Timing Information */}
+        <PlaceCurrentConditions place={place} />
+        <PlacePracticalInfo place={place} />
         <PlaceTimingInfo place={place} />
-
-        {/* Why Recommended */}
         {place.whyRecommended && (
           <PlaceRecommendation whyRecommended={place.whyRecommended} />
         )}
-
-        {/* Weather Forecast */}
+        {((place.reviews && place.reviews.length > 0) ||
+          place.googleRating) && (
+          <PlaceReviews
+            reviews={place.reviews || []}
+            googleRating={place.googleRating}
+            reviewCount={place.reviewCount}
+          />
+        )}
         <WeatherForecast lat={place.lat} lon={place.long} />
-
-        {/* Location Details */}
         <PlaceLocationDetails place={place} />
       </div>
     </motion.div>

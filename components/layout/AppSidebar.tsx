@@ -25,7 +25,7 @@ const navLinks = [
   },
 ]
 
-export function AppSidebar() {
+export default function AppSidebar() {
   return (
     <Sidebar>
       <SidebarBody>
