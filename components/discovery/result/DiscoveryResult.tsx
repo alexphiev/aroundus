@@ -3,6 +3,7 @@
 import { PlaceResultItem } from '@/types/result.types'
 import { FormValues } from '@/types/search-history.types'
 import dynamic from 'next/dynamic'
+import { useMemo } from 'react'
 
 // Lazy load components for better performance
 const MobileDiscoveryResult = dynamic(
@@ -23,7 +24,7 @@ export interface DiscoveryResultProps {
   title: string
   subtitle: string
   onSearchClick?: () => void
-  userLocation?: { latitude: number; longitude: number } | null
+  baseLocation?: { latitude: number; longitude: number } | null
   showSaveButton?: boolean
   emptyStateMessage?: string
   isLoadingNew?: boolean
@@ -43,15 +44,30 @@ export interface DiscoveryResultProps {
 }
 
 export default function DiscoveryResult(props: DiscoveryResultProps) {
+  const { searchQuery, baseLocation } = props
+
+  // Calculate base location for map - use search location if available, fallback to user location
+  const mapBaseLocation = useMemo(() => {
+    if (searchQuery?.locationType === 'custom' && searchQuery.customLocation) {
+      const result = {
+        latitude: searchQuery.customLocation.lat,
+        longitude: searchQuery.customLocation.lng,
+      }
+      return result
+    }
+
+    return baseLocation
+  }, [searchQuery, baseLocation])
+
   return (
     <div className="h-full">
       {/* Mobile Layout - render conditionally */}
-      <div className="hidden md:block h-full">
-        <DesktopDiscoveryResult {...props} />
+      <div className="hidden h-full md:block">
+        <DesktopDiscoveryResult baseLocation={mapBaseLocation} {...props} />
       </div>
 
-      <div className="block md:hidden h-full">
-        <MobileDiscoveryResult {...props} />
+      <div className="block h-full md:hidden">
+        <MobileDiscoveryResult baseLocation={mapBaseLocation} {...props} />
       </div>
     </div>
   )

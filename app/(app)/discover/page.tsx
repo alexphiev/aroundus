@@ -102,6 +102,10 @@ function DiscoverPageComponent() {
   const [isNewSearch, setIsNewSearch] = useState(false) // Track if this is a completely new search vs editing existing
   const [searchContext, setSearchContext] =
     useState<OptimizedSearchContext | null>(null) // Track search context for iterations
+  const [searchLocation, setSearchLocation] = useState<{
+    latitude: number
+    longitude: number
+  } | null>(null) // Track the location used for the current search
 
   // Initialize form
   const form = useForm<DiscoveryFormValues>({
@@ -220,6 +224,10 @@ function DiscoverPageComponent() {
 
             // Set location and results
             setUserLocation({
+              latitude: query.location.latitude,
+              longitude: query.location.longitude,
+            })
+            setSearchLocation({
               latitude: query.location.latitude,
               longitude: query.location.longitude,
             })
@@ -385,7 +393,7 @@ function DiscoverPageComponent() {
 
     if (values.locationType === 'current') {
       if (!userLocation) {
-        toast.error('Please allow location access to search for trips.')
+        toast.error('Please allow location access.')
         getLocation() // Try to get location again
         return
       }
@@ -393,7 +401,7 @@ function DiscoverPageComponent() {
       selectedLocationName = locationInfo?.locationName
     } else if (values.locationType === 'custom') {
       if (!values.customLocation) {
-        toast.error('Please select a location to search for trips.')
+        toast.error('Please select a location.')
         return
       }
       selectedLocation = {
@@ -408,6 +416,9 @@ function DiscoverPageComponent() {
 
     // Store current search query for filter display FIRST to show filters immediately
     setCurrentSearchQuery(values)
+
+    // Update search location to the selected location
+    setSearchLocation(selectedLocation)
 
     // Close modal immediately and clear results only when starting new search
     setIsSearchOpen(false)
@@ -474,6 +485,23 @@ function DiscoverPageComponent() {
             console.error('Failed to generate search title:', error)
             return null
           })
+
+        // Helper to get title for error cases
+        const getErrorTitle = async (errorMessage?: string) => {
+          try {
+            const title = await titleGenerationPromise
+            return (
+              title ||
+              (errorMessage
+                ? `Search failed: ${errorMessage}`
+                : 'Search failed')
+            )
+          } catch {
+            return errorMessage
+              ? `Search failed: ${errorMessage}`
+              : 'Search failed'
+          }
+        }
         // Convert payload to the format expected by discover actions (old format without location selection fields)
         const actionPayload = {
           activity: finalActivity,
@@ -493,10 +521,52 @@ function DiscoverPageComponent() {
         // Get first batch of results
         const batchResult = await handlePlaceSearchBatch(actionPayload, 1, null)
 
-        if (batchResult?.error) {
-          toast.error(batchResult.error)
+        // Handle different error types appropriately
+        if (!batchResult.success) {
+          const error = batchResult.error
+
+          // Show user-friendly error message
+          if (error?.userFriendlyMessage) {
+            toast.error(error.userFriendlyMessage)
+          } else {
+            toast.error('Failed to fetch trip results. Please try again.')
+          }
+
+          // Log technical details for debugging
+          console.error('Search error:', {
+            type: error?.type,
+            message: error?.message,
+            details: error?.details,
+            retryable: error?.retryable,
+          })
+
+          // Set empty results
           setPlaceResults([])
-        } else if (batchResult?.data && batchResult.success) {
+
+          // Save search to history even with error for user reference
+          try {
+            const errorTitle = await getErrorTitle(
+              error?.userFriendlyMessage || error?.message
+            )
+            await saveSearchToHistory(
+              payload,
+              [], // Empty results for failed search
+              false, // No more results
+              1,
+              errorTitle
+            )
+          } catch (historyError) {
+            console.error(
+              'Failed to save failed search to history:',
+              historyError
+            )
+          }
+
+          return // Exit early on error
+        }
+
+        // Handle successful results
+        if (batchResult.data && batchResult.success) {
           const batchPlaces = Array.isArray(batchResult.data)
             ? batchResult.data
             : []
@@ -514,7 +584,7 @@ function DiscoverPageComponent() {
           if (batchPlaces.length > 0) {
             toast.success(`Found ${batchPlaces.length} great destinations!`)
 
-            // Save search to history with generated title
+            // Save successful search to history
             try {
               const generatedTitle = await titleGenerationPromise
               await saveSearchToHistory(
@@ -530,12 +600,33 @@ function DiscoverPageComponent() {
             }
           } else {
             toast.info('No trips found matching your criteria.')
+
+            // Save search with no results to history
+            try {
+              const noResultsTitle = await getErrorTitle(
+                'No results found for this search'
+              )
+              await saveSearchToHistory(payload, [], false, 1, noResultsTitle)
+            } catch (error) {
+              console.error(
+                'Failed to save no-results search to history:',
+                error
+              )
+            }
           }
         }
       } catch (error) {
-        console.error('Error fetching trip results:', error)
-        toast.error('Failed to fetch trip results. Please try again.')
+        console.error('Unexpected error fetching trip results:', error)
+        toast.error('An unexpected error occurred. Please try again.')
         setPlaceResults([])
+
+        // Save unexpected error to history
+        try {
+          const errorTitle = 'Unexpected error occurred during search'
+          await saveSearchToHistory(payload, [], false, 1, errorTitle)
+        } catch (historyError) {
+          console.error('Failed to save error search to history:', historyError)
+        }
       } finally {
         setIsLoadingNew(false)
         setIsNewSearch(false) // Reset flag after search completion
@@ -556,7 +647,7 @@ function DiscoverPageComponent() {
 
   // Load more results handler
   const handleLoadMore = async () => {
-    if (!userLocation || !placeResults || isLoadingMore || !hasMoreResults) {
+    if (!searchLocation || !placeResults || isLoadingMore || !hasMoreResults) {
       return
     }
 
@@ -581,8 +672,8 @@ function DiscoverPageComponent() {
         activityDurationValue: formValues.activityDurationValue,
         activityDurationUnit: formValues.activityDurationUnit,
         location: {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
+          latitude: searchLocation.latitude,
+          longitude: searchLocation.longitude,
         },
         specialCare: formValues.specialCare,
         otherSpecialCare: formValues.otherSpecialCare,
@@ -598,7 +689,7 @@ function DiscoverPageComponent() {
       )
 
       if (batchResult?.error) {
-        toast.error(batchResult.error)
+        toast.error(batchResult.error.message)
       } else if (batchResult?.data && batchResult.success) {
         const newPlaces = Array.isArray(batchResult.data)
           ? batchResult.data
@@ -683,7 +774,7 @@ function DiscoverPageComponent() {
         placeResults={placeResults as PlaceResultItem[] | null}
         title="Discover Nature Trips"
         subtitle="Find the perfect nature spot based on your preferences"
-        userLocation={userLocation}
+        baseLocation={searchLocation || userLocation}
         isLoadingNew={isLoadingNew}
         isLoadingHistory={isLoadingHistory}
         onSearchClick={() => setIsSearchOpen(true)}

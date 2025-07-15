@@ -4,347 +4,234 @@ import { MODEL } from '@/constants/ai.constants'
 import { getAIError, getGenAI } from '@/lib/ai.service'
 import { authenticateUser } from '@/lib/auth.service'
 import { enrichPlaceWithGoogleData } from '@/lib/google-places.service'
-import {
-  discoverySubmissionSchema,
-  type DiscoverySubmissionValues,
-} from '@/schemas/form.schema'
+import { type DiscoverySubmissionValues } from '@/schemas/form.schema'
 import type {
+  DiscoverError,
+  DiscoverResult,
   MinimalPlaceContext,
   OptimizedSearchContext,
   PlaceResultItem,
   UserPreferences,
 } from '@/types/result.types'
+import { DiscoverErrorType } from '@/types/result.types'
+import {
+  createDiscoverError,
+  validateDiscoverySubmission,
+} from '@/utils/discover.utils'
 import { getWeatherDataForAI } from './weather.actions'
 
-// Helper function to execute a single AI prompt with conversation context
+// Helper function to extract text from AI response with simplified fallbacks
+function extractResponseText(result: unknown): string {
+  // Type guard for expected response structure
+  const isValidCandidate = (
+    candidate: unknown
+  ): candidate is { content: { parts: { text: string }[] } } => {
+    return (
+      typeof candidate === 'object' &&
+      candidate !== null &&
+      'content' in candidate &&
+      typeof candidate.content === 'object' &&
+      candidate.content !== null &&
+      'parts' in candidate.content &&
+      Array.isArray(candidate.content.parts) &&
+      candidate.content.parts.length > 0 &&
+      typeof candidate.content.parts[0] === 'object' &&
+      candidate.content.parts[0] !== null &&
+      'text' in candidate.content.parts[0] &&
+      typeof candidate.content.parts[0].text === 'string'
+    )
+  }
+
+  // Check standard response structure
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'candidates' in result &&
+    Array.isArray(result.candidates) &&
+    result.candidates.length > 0
+  ) {
+    const candidate = result.candidates[0]
+    if (isValidCandidate(candidate)) {
+      return candidate.content.parts[0].text
+    }
+  }
+
+  // Check for alternative text property
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'text' in result &&
+    typeof result.text === 'string'
+  ) {
+    return result.text
+  }
+
+  throw new Error('No valid text content found in AI response')
+}
+
+// Helper function to extract JSON from response text
+function extractJsonFromText(responseText: string): unknown {
+  const cleanedText = responseText.trim()
+
+  // Try to find JSON block markers first
+  const jsonBlockRegex = /```(?:json)?\s*(\[[\s\S]*?\]|\{[\s\S]*?\})\s*```/
+  const jsonBlockMatch = cleanedText.match(jsonBlockRegex)
+
+  if (jsonBlockMatch) {
+    try {
+      return JSON.parse(jsonBlockMatch[1])
+    } catch {
+      // Continue to other methods if JSON block parsing fails
+    }
+  }
+
+  // Try to find JSON array/object directly
+  const arrayMatch = cleanedText.match(/\[[\s\S]*?\]/)
+  if (arrayMatch) {
+    try {
+      return JSON.parse(arrayMatch[0])
+    } catch {
+      // Continue to other methods
+    }
+  }
+
+  const objectMatch = cleanedText.match(/\{[\s\S]*?\}/)
+  if (objectMatch) {
+    try {
+      return JSON.parse(objectMatch[0])
+    } catch {
+      // Continue to other methods
+    }
+  }
+
+  // If all else fails, try parsing the entire text
+  try {
+    return JSON.parse(cleanedText)
+  } catch {
+    throw new Error(
+      `Failed to extract valid JSON from response: ${cleanedText.substring(0, 200)}...`
+    )
+  }
+}
+
+// Improved executeDiscoverPrompt with better error handling
 async function executeDiscoverPrompt(
   prompt: string,
   modelName: string
 ): Promise<PlaceResultItem[]> {
   const genAI = getGenAI()
   if (!genAI) {
-    throw new Error(getAIError() || 'AI service unavailable')
+    throw createDiscoverError(
+      DiscoverErrorType.AI_SERVICE_ERROR,
+      'AI service is not available',
+      undefined,
+      true,
+      'AI service is temporarily unavailable. Please try again later.'
+    )
   }
-  // Build conversation history with the new prompt
+
   const contents = [{ role: 'user', parts: [{ text: prompt }] }]
 
-  const result = await genAI.models.generateContent({
-    model: modelName,
-    contents: contents,
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  })
-
-  // Check if result has candidates and extract text from first candidate
-  let responseText: string = ''
-
-  if (result.candidates && result.candidates.length > 0) {
-    const candidate = result.candidates[0]
-    if (
-      candidate.content &&
-      candidate.content.parts &&
-      candidate.content.parts.length > 0
-    ) {
-      responseText = candidate.content.parts[0].text || ''
-    }
-  }
-
-  // Fallback methods for different response structures
-  if (!responseText && result.text) {
-    responseText = result.text
-  }
-
-  // Additional fallback for potential response structure issues
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!responseText && (result as any).response) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = (result as any).response
-    if (response.text && typeof response.text === 'function') {
-      responseText = response.text()
-    } else if (response.candidates && response.candidates.length > 0) {
-      const candidate = response.candidates[0]
-      if (
-        candidate.content &&
-        candidate.content.parts &&
-        candidate.content.parts.length > 0
-      ) {
-        responseText = candidate.content.parts[0].text || ''
-      }
-    }
-  }
-
-  // Handle new Gemini response structure with candidates array at root level
-
-  if (
-    !responseText &&
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (result as any).candidates &&
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Array.isArray((result as any).candidates)
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const candidates = (result as any).candidates
-    if (candidates.length > 0) {
-      const candidate = candidates[0]
-      if (
-        candidate.content &&
-        candidate.content.parts &&
-        candidate.content.parts.length > 0
-      ) {
-        responseText = candidate.content.parts[0].text || ''
-      }
-
-      // Check for text in other possible locations
-      if (!responseText && candidate.text) {
-        responseText = candidate.text
-      }
-
-      // Check if content itself has text property
-      if (!responseText && candidate.content && candidate.content.text) {
-        responseText = candidate.content.text
-      }
-    }
-  }
-
-  if (!responseText) {
-    console.warn(
-      'First attempt with grounding failed, retrying without grounding tools...'
-    )
-
-    // Retry without grounding tools as fallback
-    try {
-      const fallbackResult = await genAI.models.generateContent({
-        model: modelName,
-        contents: contents,
-        // No tools/grounding for fallback
-      })
-
-      // Try to extract text from fallback result
-      if (fallbackResult.candidates && fallbackResult.candidates.length > 0) {
-        const candidate = fallbackResult.candidates[0]
-        if (
-          candidate.content &&
-          candidate.content.parts &&
-          candidate.content.parts.length > 0
-        ) {
-          responseText = candidate.content.parts[0].text || ''
-        }
-      }
-
-      if (!responseText && fallbackResult.text) {
-        responseText = fallbackResult.text
-      }
-    } catch (fallbackError) {
-      console.error('Fallback also failed:', fallbackError)
-    }
-
-    if (!responseText) {
-      console.error(
-        'Full result structure for debugging:',
-        JSON.stringify(result, null, 2)
-      )
-
-      if (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (result as any).candidates &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        Array.isArray((result as any).candidates)
-      ) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const candidates = (result as any).candidates
-        console.error(
-          'Candidates structure:',
-          JSON.stringify(candidates, null, 2)
-        )
-
-        // Check if there's text content in other properties
-        for (const candidate of candidates) {
-          console.error('Candidate keys:', Object.keys(candidate))
-          if (candidate.content) {
-            console.error('Content keys:', Object.keys(candidate.content))
-          }
-        }
-      }
-
-      throw new Error(
-        'AI response missing text content - check console for full structure'
-      )
-    }
-  }
-
-  // Clean and parse JSON response - robust extraction with fallback
-  let cleanedJsonText = responseText.trim()
-  let parsedResponse
-
-  // Try multiple extraction methods
   try {
-    // Method 1: Look for JSON block markers
-    const jsonStartMarkers = ['```json\n', '```json', '```\n', '```']
-    const jsonEndMarker = '```'
+    // First attempt with grounding tools
+    const result = await genAI.models.generateContent({
+      model: modelName,
+      contents: contents,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    })
 
-    let jsonStart = -1
-    for (const marker of jsonStartMarkers) {
-      const index = cleanedJsonText.indexOf(marker)
-      if (index !== -1) {
-        jsonStart = index + marker.length
-        break
-      }
-    }
-
-    if (jsonStart !== -1) {
-      const jsonEnd = cleanedJsonText.indexOf(jsonEndMarker, jsonStart)
-      if (jsonEnd !== -1) {
-        cleanedJsonText = cleanedJsonText.substring(jsonStart, jsonEnd)
-      } else {
-        cleanedJsonText = cleanedJsonText.substring(jsonStart)
-      }
-    } else {
-      // Method 2: Find JSON array/object directly
-      const arrayStart = cleanedJsonText.indexOf('[')
-      const objectStart = cleanedJsonText.indexOf('{')
-
-      if (
-        arrayStart !== -1 &&
-        (objectStart === -1 || arrayStart < objectStart)
-      ) {
-        cleanedJsonText = cleanedJsonText.substring(arrayStart)
-        let bracketCount = 0
-        let endIndex = -1
-        for (let i = 0; i < cleanedJsonText.length; i++) {
-          if (cleanedJsonText[i] === '[') bracketCount++
-          if (cleanedJsonText[i] === ']') bracketCount--
-          if (bracketCount === 0) {
-            endIndex = i + 1
-            break
-          }
-        }
-        if (endIndex !== -1) {
-          cleanedJsonText = cleanedJsonText.substring(0, endIndex)
-        }
-      } else if (objectStart !== -1) {
-        cleanedJsonText = cleanedJsonText.substring(objectStart)
-        let braceCount = 0
-        let endIndex = -1
-        for (let i = 0; i < cleanedJsonText.length; i++) {
-          if (cleanedJsonText[i] === '{') braceCount++
-          if (cleanedJsonText[i] === '}') braceCount--
-          if (braceCount === 0) {
-            endIndex = i + 1
-            break
-          }
-        }
-        if (endIndex !== -1) {
-          cleanedJsonText = cleanedJsonText.substring(0, endIndex)
-        }
-      }
-    }
-
-    cleanedJsonText = cleanedJsonText.trim()
-
-    // Try to parse the extracted content
-    if (
-      cleanedJsonText &&
-      (cleanedJsonText.startsWith('[') || cleanedJsonText.startsWith('{'))
-    ) {
-      parsedResponse = JSON.parse(cleanedJsonText)
-    } else {
-      throw new Error('No valid JSON found, attempting fallback')
-    }
-  } catch {
-    // Fallback: Make a new request specifically asking for JSON format
-    console.error(
-      'JSON extraction failed, attempting fallback request for JSON format'
-    )
-
-    const fallbackPrompt = `
-    The previous response contained good information but was not in the required JSON format.
-    Please convert the destination information from your previous response into a strict JSON array format.
-    
-    Return ONLY a JSON array with NO additional text, explanations, or markdown formatting.
-    Each destination should have this exact structure:
-    
-    [
-      {
-        "name": "destination name",
-        "description": "detailed description",
-        "lat": latitude_number,
-        "long": longitude_number,
-        "landscape": "landscape_type",
-        "activity": "activity_type",
-        "estimatedActivityDuration": "duration",
-        "estimatedTransportTime": "transport_time",
-        "transportMode": "transport_mode",
-        "starRating": star_number,
-        "starRatingReason": "comprehensive_recommendation_explanation",
-        "bestTimeToVisit": "timing_info",
-        "timeToAvoid": "timing_to_avoid"
-      }
-    ]
-    
-    Convert the destinations you mentioned in your previous response to this exact JSON format.
-    `
-
+    let responseText: string
     try {
-      const fallbackResult = await genAI.models.generateContent({
-        model: modelName,
-        contents: [{ role: 'user', parts: [{ text: fallbackPrompt }] }],
-      })
-      let fallbackText = ''
+      responseText = extractResponseText(result)
+    } catch (extractError) {
+      // Retry without grounding tools if text extraction fails
+      console.warn('First attempt failed, retrying without grounding tools...')
 
-      if (fallbackResult.candidates && fallbackResult.candidates.length > 0) {
-        const candidate = fallbackResult.candidates[0]
-        if (
-          candidate.content &&
-          candidate.content.parts &&
-          candidate.content.parts.length > 0
-        ) {
-          fallbackText = candidate.content.parts[0].text || ''
-        }
+      try {
+        const fallbackResult = await genAI.models.generateContent({
+          model: modelName,
+          contents: contents,
+          // No tools for fallback
+        })
+
+        responseText = extractResponseText(fallbackResult)
+      } catch (fallbackError) {
+        throw createDiscoverError(
+          DiscoverErrorType.AI_RESPONSE_ERROR,
+          'Failed to extract response from AI after multiple attempts',
+          { originalError: extractError, fallbackError },
+          true,
+          'AI response was malformed. Please try again.'
+        )
       }
+    }
 
-      fallbackText = fallbackText.trim()
-
-      // Try to extract JSON from fallback response
-      let fallbackJson = fallbackText
-      if (fallbackJson.startsWith('```json')) {
-        fallbackJson = fallbackJson
-          .replace(/^```json\s*/, '')
-          .replace(/\s*```$/, '')
-      } else if (fallbackJson.startsWith('```')) {
-        fallbackJson = fallbackJson
-          .replace(/^```\s*/, '')
-          .replace(/\s*```$/, '')
-      }
-
-      const arrayStart = fallbackJson.indexOf('[')
-      if (arrayStart !== -1) {
-        fallbackJson = fallbackJson.substring(arrayStart)
-        let bracketCount = 0
-        let endIndex = -1
-        for (let i = 0; i < fallbackJson.length; i++) {
-          if (fallbackJson[i] === '[') bracketCount++
-          if (fallbackJson[i] === ']') bracketCount--
-          if (bracketCount === 0) {
-            endIndex = i + 1
-            break
-          }
-        }
-        if (endIndex !== -1) {
-          fallbackJson = fallbackJson.substring(0, endIndex)
-        }
-      }
-
-      parsedResponse = JSON.parse(fallbackJson.trim())
-    } catch (fallbackError) {
-      console.error('Fallback JSON extraction also failed:', fallbackError)
-      throw new Error(
-        'Unable to extract valid JSON from AI response after multiple attempts'
+    // Parse JSON from response
+    let parsedResponse: unknown
+    try {
+      parsedResponse = extractJsonFromText(responseText)
+    } catch (jsonError) {
+      throw createDiscoverError(
+        DiscoverErrorType.AI_PARSING_ERROR,
+        'Failed to parse JSON from AI response',
+        { responseText: responseText.substring(0, 500), error: jsonError },
+        true,
+        'AI response was not in the expected format. Please try again.'
       )
     }
-  }
 
-  return parsedResponse
+    // Validate that response is an array
+    if (!Array.isArray(parsedResponse)) {
+      throw createDiscoverError(
+        DiscoverErrorType.AI_PARSING_ERROR,
+        'AI response is not an array',
+        { responseType: typeof parsedResponse },
+        true,
+        'AI response was not in the expected format. Please try again.'
+      )
+    }
+
+    return parsedResponse as PlaceResultItem[]
+  } catch (error) {
+    // If it's already a DiscoverError, re-throw it
+    if (typeof error === 'object' && error !== null && 'type' in error) {
+      throw error
+    }
+
+    // Handle network/API errors
+    if (error instanceof Error) {
+      if (
+        error.message.includes('network') ||
+        error.message.includes('timeout')
+      ) {
+        throw createDiscoverError(
+          DiscoverErrorType.NETWORK_ERROR,
+          'Network error occurred while contacting AI service',
+          error,
+          true,
+          'Network error. Please check your connection and try again.'
+        )
+      }
+
+      throw createDiscoverError(
+        DiscoverErrorType.AI_SERVICE_ERROR,
+        error.message,
+        error,
+        true,
+        'AI service error. Please try again later.'
+      )
+    }
+
+    throw createDiscoverError(
+      DiscoverErrorType.UNKNOWN_ERROR,
+      'An unexpected error occurred',
+      error,
+      true,
+      'An unexpected error occurred. Please try again.'
+    )
+  }
 }
 
 // Helper function to convert places to minimal context
@@ -460,28 +347,45 @@ export async function handlePlaceSearchBatch(
   data: DiscoverySubmissionValues,
   batchNumber: number = 1,
   searchContext: OptimizedSearchContext | null = null
-) {
+): Promise<DiscoverResult<PlaceResultItem[]>> {
   // Check authentication
   const authResult = await authenticateUser()
   if (authResult.error) {
-    return { error: authResult.error }
-  }
-
-  // Validate incoming data again on the server (optional but good practice)
-  const parseResult = discoverySubmissionSchema.safeParse(data)
-  if (!parseResult.success) {
-    console.error('Invalid data for place search:', parseResult.error.flatten())
     return {
-      error: 'Invalid search criteria provided.',
-      details: parseResult.error.flatten(),
+      success: false,
+      error: createDiscoverError(
+        DiscoverErrorType.AUTH_ERROR,
+        authResult.error,
+        undefined,
+        false,
+        'Please sign in to search for places.'
+      ),
     }
   }
 
-  const validatedData = parseResult.data
+  // Validate incoming data
+  const validationResult = validateDiscoverySubmission(data)
+  if (!validationResult.success) {
+    return {
+      success: false,
+      error: validationResult.error,
+    }
+  }
+
+  const validatedData = validationResult.data!
 
   // Check AI availability
   if (!getGenAI()) {
-    return { error: getAIError() || 'AI service unavailable' }
+    return {
+      success: false,
+      error: createDiscoverError(
+        DiscoverErrorType.AI_SERVICE_ERROR,
+        getAIError() || 'AI service unavailable',
+        undefined,
+        true,
+        'AI service is temporarily unavailable. Please try again later.'
+      ),
+    }
   }
 
   const modelName = MODEL.GEMINI_FLASH
@@ -789,35 +693,65 @@ export async function handlePlaceSearchBatch(
       }
 
       return {
+        success: true,
         data: enrichedResults,
         searchContext: updatedSearchContext,
         batchNumber: batchNumber,
-        success: true,
         hasMore: true, // Always assume there could be more results
         locationName, // Include location name in response
       }
     } else {
       return {
-        data: [],
-        searchContext: searchContext,
-        batchNumber: batchNumber,
         success: false,
+        data: [],
+        searchContext: searchContext || undefined,
+        batchNumber: batchNumber,
         hasMore: false,
-        error: 'Invalid response format from AI',
+        error: createDiscoverError(
+          DiscoverErrorType.AI_PARSING_ERROR,
+          'Invalid response format from AI',
+          undefined,
+          true,
+          'AI response was not in the expected format. Please try again.'
+        ),
       }
     }
   } catch (apiError) {
     console.error(`Batch ${batchNumber} AI search error:`, apiError)
+
+    // If it's already a DiscoverError, return it properly
+    if (
+      typeof apiError === 'object' &&
+      apiError !== null &&
+      'type' in apiError
+    ) {
+      return {
+        success: false,
+        error: apiError as DiscoverError,
+        batchNumber: batchNumber,
+        hasMore: false,
+        searchContext: searchContext || undefined,
+      }
+    }
+
+    // Handle other errors
     let errorMessage = `Failed to get place suggestions from AI.`
     if (apiError instanceof Error && apiError.message) {
       errorMessage += ` Details: ${apiError.message}`
     }
+
     return {
-      error: errorMessage,
-      batchNumber: batchNumber,
       success: false,
+      error: createDiscoverError(
+        DiscoverErrorType.AI_SERVICE_ERROR,
+        errorMessage,
+        apiError,
+        true,
+        'Failed to get place suggestions. Please try again later.'
+      ),
+      batchNumber: batchNumber,
       hasMore: false,
-      searchContext: searchContext,
+      searchContext: searchContext || undefined,
     }
   }
 }

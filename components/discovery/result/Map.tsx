@@ -144,12 +144,15 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
     }
   }, [placeResults, baseLocation])
 
+  // Update markers when baseLocation or placeResults change
   useEffect(() => {
-    if (!map.current || !mapLoaded || !placeResults) return
+    if (!map.current || !mapLoaded) return
 
-    const bounds = new LngLatBounds()
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove())
+    markersRef.current = []
 
-    // Add user location marker if available
+    // Add base location marker if available
     if (baseLocation) {
       const el = document.createElement('div')
       const root = createRoot(el)
@@ -160,11 +163,10 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
         .addTo(map.current!)
 
       markersRef.current.push(userMarker)
-      bounds.extend([baseLocation.longitude, baseLocation.latitude])
     }
 
-    // Add places markers
-    if (placeResults.length > 0) {
+    // Add places markers if they exist
+    if (placeResults && placeResults.length > 0) {
       placeResults.forEach((place, index) => {
         const markerNode = document.createElement('div')
         const root = createRoot(markerNode)
@@ -173,7 +175,6 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
         markerNode.addEventListener('click', () => {
           if (onMarkerClick) {
             if (activePopupRef.current) {
-              console.log('Closing popup')
               activePopupRef.current.remove()
               activePopupRef.current = null
             }
@@ -187,10 +188,29 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
           .addTo(map.current!)
 
         markersRef.current.push(marker)
-        onViewAllPlaces()
       })
     }
-  }, [placeResults, mapLoaded, onMarkerClick, baseLocation, onViewAllPlaces])
+
+    // Update bounds to show all markers
+    if (markersRef.current.length > 0) {
+      const bounds = new LngLatBounds()
+      markersRef.current.forEach((marker) => {
+        bounds.extend(marker.getLngLat())
+      })
+
+      if (markersRef.current.length === 1) {
+        map.current.fitBounds(bounds, { padding: 50, zoom: 10 })
+      } else {
+        map.current.fitBounds(bounds, { padding: 50 })
+      }
+    }
+  }, [
+    baseLocation?.latitude,
+    baseLocation?.longitude,
+    placeResults,
+    mapLoaded,
+    onMarkerClick,
+  ])
 
   // Add popup for active place
   useEffect(() => {

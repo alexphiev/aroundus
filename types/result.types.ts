@@ -89,3 +89,34 @@ export interface OptimizedSearchContext {
   userPreferences: UserPreferences
   batchNumber: number
 }
+
+// Error types for discover actions
+export enum DiscoverErrorType {
+  AUTH_ERROR = 'AUTH_ERROR',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  AI_SERVICE_ERROR = 'AI_SERVICE_ERROR',
+  AI_RESPONSE_ERROR = 'AI_RESPONSE_ERROR',
+  AI_PARSING_ERROR = 'AI_PARSING_ERROR',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  GOOGLE_PLACES_ERROR = 'GOOGLE_PLACES_ERROR',
+  WEATHER_ERROR = 'WEATHER_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+}
+
+export interface DiscoverError {
+  type: DiscoverErrorType
+  message: string
+  details?: unknown
+  retryable?: boolean
+  userFriendlyMessage?: string
+}
+
+export interface DiscoverResult<T = unknown> {
+  success: boolean
+  data?: T
+  error?: DiscoverError
+  searchContext?: OptimizedSearchContext
+  batchNumber?: number
+  hasMore?: boolean
+  locationName?: string
+}

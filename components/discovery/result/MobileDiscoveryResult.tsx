@@ -18,7 +18,7 @@ import { DiscoveryResultProps } from './DiscoveryResult'
 export default function MobileDiscoveryResult({
   placeResults,
   onSearchClick,
-  userLocation,
+  baseLocation,
   showSaveButton = true,
   emptyStateMessage = 'No trips to display',
   isLoadingNew = false,
@@ -263,8 +263,9 @@ export default function MobileDiscoveryResult({
         {!selectedPlace && !isLoadingNew && (
           <div className="inset-0 h-full">
             <PlaceMap
+              key={`${baseLocation?.latitude}-${baseLocation?.longitude}`}
               placeResults={placeResults}
-              baseLocation={userLocation}
+              baseLocation={baseLocation}
               activeMarkerIndex={activeCardIndex}
               activePlace={activePlace}
               className="h-full w-full"

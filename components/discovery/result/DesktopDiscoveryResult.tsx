@@ -20,7 +20,7 @@ export default function DesktopDiscoveryResult({
   title,
   subtitle,
   onSearchClick,
-  userLocation,
+  baseLocation,
   showSaveButton = true,
   emptyStateMessage = 'No trips to display',
   isLoadingNew = false,
@@ -289,8 +289,9 @@ export default function DesktopDiscoveryResult({
       {/* Right Column - Map (Full Screen Height) */}
       <div className="h-[100dvh] w-full md:w-1/2">
         <PlaceMap
+          key={`${baseLocation?.latitude}-${baseLocation?.longitude}`}
           placeResults={placeResults}
-          baseLocation={userLocation}
+          baseLocation={baseLocation}
           activeMarkerIndex={activeCardIndex}
           activePlace={selectedPlace}
           className="h-full"
