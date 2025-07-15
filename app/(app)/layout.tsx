@@ -22,14 +22,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <LocationProvider>
       <NavigationProvider>
-        <div className="relative flex h-screen overflow-hidden">
+        <div className="relative flex h-[calc(100dvh-3.5rem)] overflow-hidden md:h-[100dvh]">
           <SidebarProvider>
             <div className="hidden md:block">
               <AppSidebar />
             </div>
 
             <main className="flex flex-1 flex-col overflow-hidden transition-all duration-300">
-              <div className="flex-1 overflow-auto md:pb-0">{children}</div>
+              <div className="flex-1 md:pb-0">{children}</div>
             </main>
           </SidebarProvider>
 

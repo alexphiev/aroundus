@@ -29,8 +29,8 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md p-8 space-y-6 bg-card text-card-foreground rounded-lg shadow-lg">
+    <div className="bg-background flex min-h-[100dvh] items-center justify-center">
+      <div className="bg-card text-card-foreground w-full max-w-md space-y-6 rounded-lg p-8 shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold">Sign In</h1>
           <p className="text-muted-foreground">
@@ -63,16 +63,16 @@ export default function SignInPage() {
               disabled={isPending}
             />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-destructive text-sm">{error}</p>}
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? 'Signing In...' : 'Sign In'}
           </Button>
         </form>
-        <p className="text-sm text-center text-muted-foreground">
+        <p className="text-muted-foreground text-center text-sm">
           Don&apos;t have an account?{' '}
           <Button
             variant="link"
-            className="p-0 h-auto"
+            className="h-auto p-0"
             onClick={() => router.push('/sign-up')}
             disabled={isPending}
           >

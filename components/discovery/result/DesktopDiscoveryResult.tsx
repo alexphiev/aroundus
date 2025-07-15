@@ -178,7 +178,7 @@ export default function DesktopDiscoveryResult({
 
   if (isLoadingHistory) {
     return (
-      <div className="ml-[60px] flex h-screen">
+      <div className="ml-[60px] flex h-[100dvh]">
         <div className="flex h-full w-full flex-col px-6 md:w-1/2">
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
@@ -186,7 +186,7 @@ export default function DesktopDiscoveryResult({
             </div>
           </div>
         </div>
-        <div className="bg-muted h-screen w-full md:w-1/2">
+        <div className="bg-muted h-[100dvh] w-full md:w-1/2">
           {/* Empty map area during loading */}
         </div>
       </div>
@@ -194,7 +194,7 @@ export default function DesktopDiscoveryResult({
   }
 
   return (
-    <div className={`ml-[60px] flex h-screen ${className}`}>
+    <div className={`ml-[60px] flex h-[100dvh] ${className}`}>
       {/* Left Column - Conditional View */}
       <div className="flex h-full w-full flex-col md:w-1/2">
         <AnimatePresence mode="wait">
@@ -287,7 +287,7 @@ export default function DesktopDiscoveryResult({
       </div>
 
       {/* Right Column - Map (Full Screen Height) */}
-      <div className="h-screen w-full md:w-1/2">
+      <div className="h-[100dvh] w-full md:w-1/2">
         <PlaceMap
           placeResults={placeResults}
           baseLocation={userLocation}

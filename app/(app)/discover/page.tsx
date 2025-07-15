@@ -107,6 +107,8 @@ function DiscoverPageComponent() {
   const form = useForm<DiscoveryFormValues>({
     resolver: zodResolver(discoveryFormSchema),
     defaultValues: {
+      locationType: 'custom', // Default to custom to avoid GPS permission request
+      customLocation: undefined,
       activity: '',
       otherActivity: '',
       when: '',
@@ -194,6 +196,8 @@ function DiscoverPageComponent() {
             }
 
             const formValues = {
+              locationType: 'current' as const, // Assume current location for saved searches
+              customLocation: undefined,
               activity: isOtherActivity ? 'other' : query.activity || '',
               otherActivity: isOtherActivity ? query.activity : '',
               when: isCustomDate ? 'custom' : query.when || 'today',
@@ -207,6 +211,7 @@ function DiscoverPageComponent() {
               activityDurationValue: query.activityDurationValue,
               activityDurationUnit: query.activityDurationUnit,
               additionalInfo: query.additionalInfo || '',
+              locationName: query.locationName,
             }
 
             // Set form values from saved search
@@ -317,6 +322,8 @@ function DiscoverPageComponent() {
             }
 
             const formValues = {
+              locationType: 'custom' as const, // Default to custom for URL-based searches
+              customLocation: undefined,
               activity: isOtherActivity ? 'other' : mappedData.activity || '',
               otherActivity: isOtherActivity ? mappedData.activity : '',
               when: isCustomDate ? 'custom' : mappedData.when || 'today',
@@ -331,6 +338,7 @@ function DiscoverPageComponent() {
               additionalInfo:
                 mappedData.additionalInfo ||
                 (query ? decodeURIComponent(query) : ''),
+              locationName: undefined,
             }
 
             // Update form with AI-mapped values
@@ -371,9 +379,30 @@ function DiscoverPageComponent() {
 
   // Form submission handler with progressive search
   function onSubmit(values: DiscoveryFormValues) {
-    if (!userLocation) {
-      toast.error('Please allow location access to search for trips.')
-      getLocation() // Try to get location again
+    // Determine the location to use based on user selection
+    let selectedLocation: { latitude: number; longitude: number }
+    let selectedLocationName: string | undefined
+
+    if (values.locationType === 'current') {
+      if (!userLocation) {
+        toast.error('Please allow location access to search for trips.')
+        getLocation() // Try to get location again
+        return
+      }
+      selectedLocation = userLocation
+      selectedLocationName = locationInfo?.locationName
+    } else if (values.locationType === 'custom') {
+      if (!values.customLocation) {
+        toast.error('Please select a location to search for trips.')
+        return
+      }
+      selectedLocation = {
+        latitude: values.customLocation.lat,
+        longitude: values.customLocation.lng,
+      }
+      selectedLocationName = values.customLocation.name
+    } else {
+      toast.error('Please select a location type.')
       return
     }
 
@@ -412,23 +441,23 @@ function DiscoverPageComponent() {
         activityLevel: values.activityLevel,
         activityDurationValue: values.activityDurationValue,
         activityDurationUnit: values.activityDurationUnit,
-        location: {
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-        },
-        locationName: locationInfo?.locationName,
+        location: selectedLocation,
+        locationName: selectedLocationName,
         additionalInfo: values.additionalInfo,
         transportType: values.transportType,
       }
 
       try {
+        // Convert form values to the format expected by generateSearchTitle
+        const titleFormValues = {
+          ...values,
+          locationName: selectedLocationName,
+        }
+
         // Only generate title when explicitly starting a new search (via "New Search" button)
         const titleGenerationPromise = (
           isNewSearch
-            ? generateSearchTitle({
-                ...values,
-                locationName: locationInfo?.locationName,
-              })
+            ? generateSearchTitle(titleFormValues)
             : Promise.resolve({
                 success: true,
                 data: { title: generatedTitle },
@@ -445,7 +474,7 @@ function DiscoverPageComponent() {
             console.error('Failed to generate search title:', error)
             return null
           })
-        // Convert payload to the format expected by discover actions
+        // Convert payload to the format expected by discover actions (old format without location selection fields)
         const actionPayload = {
           activity: finalActivity,
           when: finalWhen,
@@ -453,11 +482,8 @@ function DiscoverPageComponent() {
           activityLevel: values.activityLevel,
           activityDurationValue: values.activityDurationValue,
           activityDurationUnit: values.activityDurationUnit,
-          location: {
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-          },
-          locationName: locationInfo?.locationName,
+          location: selectedLocation,
+          locationName: selectedLocationName,
           specialCare: values.specialCare,
           otherSpecialCare: values.otherSpecialCare,
           additionalInfo: values.additionalInfo,
@@ -673,6 +699,8 @@ function DiscoverPageComponent() {
         onNewSearch={() => {
           // Reset form to default values for new search
           form.reset({
+            locationType: 'custom',
+            customLocation: undefined,
             activity: '',
             otherActivity: '',
             when: '',
@@ -700,6 +728,8 @@ function DiscoverPageComponent() {
           // Pre-fill form with current search values for editing
           if (currentSearchQuery) {
             form.reset({
+              locationType: currentSearchQuery.locationType || 'custom',
+              customLocation: currentSearchQuery.customLocation || undefined,
               activity: currentSearchQuery.activity || '',
               otherActivity: currentSearchQuery.otherActivity || '',
               when: currentSearchQuery.when || '',

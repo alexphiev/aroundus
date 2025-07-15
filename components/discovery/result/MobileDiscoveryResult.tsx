@@ -2,7 +2,6 @@
 
 import { getSavedPlacesAction, savePlaceAction } from '@/actions/place.actions'
 import PlaceDetailView from '@/components/discovery/result/details/PlaceDetailView'
-import DetailViewTopBar from '@/components/discovery/result/DetailViewTopBar'
 import EmptyState from '@/components/discovery/result/EmptyState'
 import LoadingState from '@/components/discovery/result/LoadingState'
 import PlaceMap from '@/components/discovery/result/Map'
@@ -246,32 +245,23 @@ export default function MobileDiscoveryResult({
   return (
     <div className={`flex h-full flex-col ${className}`}>
       {/* Fixed Top Bar */}
-      <div className="flex-shrink-0">
-        {selectedPlace && navigationContext === 'grid' ? (
-          <DetailViewTopBar
-            onBack={handleBackToCards}
-            placeName={selectedPlace.name}
-          />
-        ) : selectedPlace && navigationContext === 'map' ? (
-          <DetailViewTopBar
-            onBack={handleBackToCards}
-            placeName={selectedPlace.name}
-          />
-        ) : (
-          <MobileTopBar
-            searchQuery={searchQuery}
-            generatedTitle={generatedTitle}
-            onEditFilters={onEditFilters}
-            onNewSearch={onNewSearch}
-          />
+      {!selectedPlace &&
+        (navigationContext === 'grid' || navigationContext === 'map') && (
+          <div className="h-20">
+            <MobileTopBar
+              searchQuery={searchQuery}
+              generatedTitle={generatedTitle}
+              onEditFilters={onEditFilters}
+              onNewSearch={onNewSearch}
+            />
+          </div>
         )}
-      </div>
 
       {/* Main Content Area - Takes remaining space */}
       <div className="flex-1">
         {/* Background Map - Always show when not in detail view and not showing loading */}
         {!selectedPlace && !isLoadingNew && (
-          <div className="absolute inset-0 pt-24 pb-18">
+          <div className="inset-0 h-full">
             <PlaceMap
               placeResults={placeResults}
               baseLocation={userLocation}
@@ -285,16 +275,6 @@ export default function MobileDiscoveryResult({
               onPlaceDetailsClick={handlePlaceDetailsFromMap}
             />
           </div>
-        )}
-
-        {/* Map Toggle Button - Show in both states for easy switching */}
-        {!selectedPlace && placeResults && placeResults.length > 0 && (
-          <MapToggleButton
-            onClick={() =>
-              setVisibleView(visibleView === 'map' ? 'grid' : 'map')
-            }
-            showingMap={visibleView === 'map'}
-          />
         )}
 
         {/* Content Overlay */}
@@ -356,6 +336,14 @@ export default function MobileDiscoveryResult({
           ) : null}
         </AnimatePresence>
       </div>
+
+      {/* Map Toggle Button - Show in both states for easy switching */}
+      {!selectedPlace && placeResults && placeResults.length > 0 && (
+        <MapToggleButton
+          onClick={() => setVisibleView(visibleView === 'map' ? 'grid' : 'map')}
+          showingMap={visibleView === 'map'}
+        />
+      )}
     </div>
   )
 }

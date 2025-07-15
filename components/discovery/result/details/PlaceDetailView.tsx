@@ -54,7 +54,7 @@ export default function PlaceDetailView({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3 }}
-      className="flex h-full flex-col pb-24 md:pb-0"
+      className="flex h-full flex-col md:pb-0"
     >
       {/* Header with Back Button and Actions */}
       <PlaceHeader
@@ -74,8 +74,8 @@ export default function PlaceDetailView({
         />
 
         {place.photos && place.photos.length > 0 && (
-          <PlacePhotoGallery 
-            photos={place.photos} 
+          <PlacePhotoGallery
+            photos={place.photos}
             placeName={place.name}
             googleMapsUri={place.googleMapsUri || ''}
           />

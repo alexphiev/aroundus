@@ -39,7 +39,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 p-6">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 p-6">
       <div className="mx-auto w-full max-w-2xl space-y-8 text-center">
         {/* Title */}
         <div className="mb-16 space-y-4">

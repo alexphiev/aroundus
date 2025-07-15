@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button'
 import { PlaceResultItem } from '@/types/result.types'
-import { AnimatePresence } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import LoadingState from './LoadingState'
 import PlaceCard from './PlaceCard'
@@ -35,28 +34,26 @@ export default function PlaceResultsGrid({
   isMobile = false,
 }: Props) {
   return (
-    <div className="space-y-6 pt-22 pb-52 md:pt-0 md:pb-12">
+    <div className="space-y-6 py-20">
       <div
         className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}
       >
-        <AnimatePresence>
-          {placeResults.map((place, index) => (
-            <PlaceCard
-              key={place.id || index}
-              place={place}
-              index={index}
-              isActive={activeCardIndex === index}
-              isSaved={savedPlaceNames.has(place.name)}
-              showSaveButton={showSaveButton}
-              isSaving={isSaving}
-              onClick={() => onCardClick(index, place)}
-              onSave={(e) => {
-                e.stopPropagation()
-                onSavePlace(place)
-              }}
-            />
-          ))}
-        </AnimatePresence>
+        {placeResults.map((place, index) => (
+          <PlaceCard
+            key={place.id || index}
+            place={place}
+            index={index}
+            isActive={activeCardIndex === index}
+            isSaved={savedPlaceNames.has(place.name)}
+            showSaveButton={showSaveButton}
+            isSaving={isSaving}
+            onClick={() => onCardClick(index, place)}
+            onSave={(e) => {
+              e.stopPropagation()
+              onSavePlace(place)
+            }}
+          />
+        ))}
       </div>
 
       {/* Load More Button */}

@@ -32,8 +32,8 @@ export default function PlaceHeader({
   }
 
   return (
-    <div className="bg-background flex-shrink-0 border-b px-4 py-4">
-      <div className="mb-2 flex items-center justify-between">
+    <div className="bg-background flex-shrink-0 border-b px-3 py-2">
+      <div className="flex items-center justify-between">
         <Button
           variant="ghost"
           size="sm"
@@ -43,12 +43,15 @@ export default function PlaceHeader({
           <ArrowLeft className="mr-2 h-4 w-4" />
           {isMobile ? '' : 'Back to Places'}
         </Button>
+        {/* Place Title and Rating */}
+        <h1 className="text-xl font-semibold">{place.name}</h1>
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onShare}>
             <Share2 className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'}`} />
             {isMobile ? '' : 'Share'}
           </Button>
+
           {showSaveButton && (
             <Button
               variant={isSaved ? 'secondary' : 'outline'}
@@ -65,9 +68,6 @@ export default function PlaceHeader({
           )}
         </div>
       </div>
-
-      {/* Place Title and Rating */}
-      <h1 className="text-xl font-bold md:text-3xl">{place.name}</h1>
     </div>
   )
 }

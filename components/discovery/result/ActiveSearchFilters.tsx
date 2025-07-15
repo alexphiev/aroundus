@@ -56,6 +56,15 @@ export default function ActiveSearchFilters({
   if (!searchQuery) return null
 
   const allFilters = [
+    // Location filter - show first
+    {
+      icon: <MapPin className="h-4 w-4" />,
+      label: 'Location',
+      value:
+        searchQuery.locationName ||
+        searchQuery.customLocation?.name ||
+        'Location',
+    },
     {
       icon: <Activity className="h-4 w-4" />,
       label: 'Activity',
@@ -110,13 +119,13 @@ export default function ActiveSearchFilters({
   }
 
   return (
-    <Card className={`mb-4 ${className}`}>
-      <CardContent>
+    <Card className={`py-0 ${className}`}>
+      <CardContent className="px-4 py-3">
         {/* Search Query Row - Only show if additionalInfo exists */}
         {searchQuery.additionalInfo && (
-          <div className="mb-5 flex justify-between items-center">
+          <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <PawPrint className="h-4 w-4 text-muted-foreground" />
+              <PawPrint className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground">
                 {searchQuery.additionalInfo}
               </span>
@@ -137,7 +146,7 @@ export default function ActiveSearchFilters({
 
         {/* Filters Row - Show filters and edit button on same row when no search query */}
         <div
-          className={`flex ${searchQuery.additionalInfo ? 'flex-wrap gap-2' : 'justify-between items-center'} w-full`}
+          className={`flex ${searchQuery.additionalInfo ? 'flex-wrap gap-2' : 'items-center justify-between'} w-full`}
         >
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
@@ -157,7 +166,7 @@ export default function ActiveSearchFilters({
               variant="outline"
               size="sm"
               onClick={onEditFilters}
-              className="h-8 gap-1 flex-shrink-0"
+              className="h-8 flex-shrink-0 gap-1"
             >
               <Edit className="h-3 w-3" />
               Edit

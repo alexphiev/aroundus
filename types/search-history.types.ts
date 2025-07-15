@@ -62,6 +62,15 @@ export interface SaveSearchResponse {
 
 // Form values for simplified approach
 export interface FormValues {
+  // Location selection fields
+  locationType: 'current' | 'custom'
+  customLocation?: {
+    name: string
+    lat: number
+    lng: number
+  }
+
+  // Existing fields
   activity: string
   otherActivity?: string
   when: string // "today", "tomorrow", "this_weekend", or ISO date string for custom

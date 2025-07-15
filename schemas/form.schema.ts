@@ -2,6 +2,41 @@ import { z } from 'zod'
 
 // Base schema without refinements
 const baseDiscoverySchema = z.object({
+  // Location selection fields
+  locationType: z.enum(['current', 'custom'], {
+    message: 'Please select a location type.',
+  }),
+  customLocation: z
+    .object({
+      name: z.string(),
+      lat: z.number(),
+      lng: z.number(),
+    })
+    .optional(),
+
+  // Existing fields
+  activity: z.string().min(1, { message: 'Please select an activity.' }),
+  otherActivity: z.string().optional(),
+  when: z.string().min(1, { message: 'Please select when you want to go.' }),
+  customDate: z.date().optional(),
+  specialCare: z
+    .enum(['children', 'lowMobility', 'dogs', 'other'], {
+      message: 'Please select special care requirements.',
+    })
+    .optional(),
+  otherSpecialCare: z.string().optional(),
+  distance: z.string().min(1, { message: 'Please select a distance.' }),
+  transportType: z.enum(['foot', 'bike', 'public_transport', 'car'], {
+    message: 'Please select a transport type.',
+  }),
+  activityLevel: z.number().min(1).max(5),
+  activityDurationValue: z.coerce.number().min(1),
+  activityDurationUnit: z.enum(['hours', 'days']),
+  additionalInfo: z.string().optional(),
+})
+
+// API submission schema (old format without location selection fields)
+const baseApiSchema = z.object({
   activity: z.string().min(1, { message: 'Please select an activity.' }),
   otherActivity: z.string().optional(),
   when: z.string().min(1, { message: 'Please select when you want to go.' }),
@@ -24,6 +59,19 @@ const baseDiscoverySchema = z.object({
 
 // Form schema with validation refinements
 export const discoveryFormSchema = baseDiscoverySchema
+  .refine(
+    (data) => {
+      // If locationType is "custom", customLocation is required
+      if (data.locationType === 'custom' && !data.customLocation) {
+        return false
+      }
+      return true
+    },
+    {
+      message: 'Please select a location.',
+      path: ['customLocation'],
+    }
+  )
   .refine(
     (data) => {
       // If activity is "other", otherActivity is required
@@ -65,9 +113,10 @@ export const discoveryFormSchema = baseDiscoverySchema
     }
   )
 
-// API submission schema (extends base schema with location)
-export const discoverySubmissionSchema = baseDiscoverySchema
+// API submission schema (extends base API schema with resolved location)
+export const discoverySubmissionSchema = baseApiSchema
   .extend({
+    // For backward compatibility and API usage
     location: z.object({
       latitude: z.number(),
       longitude: z.number(),

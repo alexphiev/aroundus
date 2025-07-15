@@ -38,7 +38,7 @@ import {
   WHEN_OPTIONS,
 } from '@/constants/discover.constants'
 import { cn } from '@/lib/utils'
-import type { FormValues } from '@/types/search-history.types'
+import type { DiscoveryFormValues } from '@/schemas/form.schema'
 import { format } from 'date-fns'
 import {
   Activity,
@@ -53,6 +53,7 @@ import {
 } from 'lucide-react'
 import { UseFormReturn } from 'react-hook-form'
 import { CustomFormLabel } from './CustomFormLabel'
+import { LocationSelection } from './LocationSelection'
 import { TransportOption } from './TransportOptions'
 
 // Get activity level icon based on the selected level
@@ -77,8 +78,8 @@ const getActivityLevelIcon = (level: number) => {
 interface SearchFormModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  form: UseFormReturn<FormValues>
-  onSubmit: (values: FormValues) => void
+  form: UseFormReturn<DiscoveryFormValues>
+  onSubmit: (values: DiscoveryFormValues) => void
   isPending: boolean
   locationError: string | null
   onRetryLocation: () => void
@@ -140,7 +141,55 @@ export function SearchFormModal({
                     </div>
                   )}
 
-                  {/* Search Query - First Priority */}
+                  {/* Location Selection - First Priority */}
+                  <FormField
+                    control={form.control}
+                    name="locationType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <LocationSelection
+                            locationType={field.value}
+                            onLocationTypeChange={field.onChange}
+                            customLocation={
+                              form.watch('customLocation')
+                                ? {
+                                    id: 'custom',
+                                    name:
+                                      form.watch('customLocation')?.name || '',
+                                    displayName:
+                                      form.watch('customLocation')?.name || '',
+                                    lat: form.watch('customLocation')?.lat || 0,
+                                    lng: form.watch('customLocation')?.lng || 0,
+                                    type: 'custom',
+                                    importance: 1,
+                                  }
+                                : null
+                            }
+                            onCustomLocationChange={(location) => {
+                              form.setValue(
+                                'customLocation',
+                                location
+                                  ? {
+                                      name: location.name,
+                                      lat: location.lat,
+                                      lng: location.lng,
+                                    }
+                                  : undefined
+                              )
+                            }}
+                            userLocation={userLocation}
+                            locationError={locationError}
+                            onRetryLocation={onRetryLocation}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Search Query - Second Priority */}
                   <FormField
                     control={form.control}
                     name="additionalInfo"

@@ -56,7 +56,7 @@ const PopupContent = ({
   place: PlaceResultItem
   onDetailsClick?: () => void
 }) => (
-  <div className="p-0 pr-4 md:p-2">
+  <div className="px-3 md:p-4">
     <h6 className="mb-2 text-sm font-semibold md:text-base">{place.name}</h6>
     <p className="text-muted-foreground mb-3 line-clamp-3 hidden text-sm md:block">
       {place.description}
@@ -98,7 +98,7 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
     markersRef.current.forEach((marker) => {
       bounds.extend(marker.getLngLat())
     })
-    map.current.fitBounds(bounds, { padding: 100 })
+    map.current.fitBounds(bounds, { padding: 50 })
   }, [])
 
   useEffect(() => {
@@ -257,7 +257,7 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
   return (
     <div
       ref={mapContainer}
-      className={`bg-muted relative h-full w-full overflow-hidden rounded-lg shadow-md ${className} [&_.maplibregl-popup]:z-[1000] [&_.maplibregl-popup-close-button]:top-0.5 [&_.maplibregl-popup-close-button]:right-0.5 [&_.maplibregl-popup-close-button]:z-[1001] [&_.maplibregl-popup-close-button]:h-7 [&_.maplibregl-popup-close-button]:w-6 [&_.maplibregl-popup-close-button]:text-base`}
+      className={`bg-muted relative h-full w-full overflow-hidden rounded-lg shadow-md ${className} [&_.maplibregl-popup]:z-[1000] [&_.maplibregl-popup-close-button]:top-0.5 [&_.maplibregl-popup-close-button]:right-0.5 [&_.maplibregl-popup-close-button]:z-[1001] [&_.maplibregl-popup-close-button]:h-7 [&_.maplibregl-popup-close-button]:w-6 [&_.maplibregl-popup-close-button]:text-base [&_.maplibregl-popup-content]:rounded-lg`}
       aria-label="Map of place suggestions"
     >
       <Button

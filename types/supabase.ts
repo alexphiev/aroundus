@@ -89,6 +89,7 @@ export type Database = {
           current_batch: number | null
           has_more_results: boolean | null
           id: string
+          location: Json | null
           query: Json | null
           results: Json | null
           title: string | null
@@ -101,6 +102,7 @@ export type Database = {
           current_batch?: number | null
           has_more_results?: boolean | null
           id?: string
+          location?: Json | null
           query?: Json | null
           results?: Json | null
           title?: string | null
@@ -113,6 +115,7 @@ export type Database = {
           current_batch?: number | null
           has_more_results?: boolean | null
           id?: string
+          location?: Json | null
           query?: Json | null
           results?: Json | null
           title?: string | null
