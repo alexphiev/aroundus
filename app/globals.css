@@ -206,11 +206,11 @@
   }
 
   .skeleton-icon {
-    @apply bg-muted h-7 w-7 animate-pulse rounded rounded-full;
+    @apply bg-muted h-7 w-7 animate-pulse rounded-full;
   }
 
   .skeleton-button {
-    @apply bg-muted h-8 w-8 animate-pulse rounded rounded-md;
+    @apply bg-muted h-8 w-8 animate-pulse rounded-md;
   }
 
   .space-content {
@@ -297,6 +297,14 @@
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+  }
+
+  .mobile-no-zoom {
+    /* Prevent zoom on specific elements */
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 
   .mobile-drag-handle {

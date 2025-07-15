@@ -117,7 +117,7 @@ export default function PlacePhotoGallery({
             onClick={() => setSelectedPhotoIndex(null)}
           >
             <div
-              className="relative h-[90vh] max-h-[90vh] w-full max-w-4xl"
+              className="relative h-[90dvh] max-h-[90dvh] w-full max-w-4xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button

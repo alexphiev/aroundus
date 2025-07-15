@@ -302,17 +302,19 @@ export default function MobileDiscoveryResult({
               transition={{ duration: 0.2 }}
             >
               {/* Scrollable Content - Takes full height with proper overflow */}
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="mobile-scroll flex-1 overflow-y-auto p-4">
                 {/* Loading State */}
                 {isLoadingNew && <LoadingState />}
 
                 {/* No Results */}
                 {!isLoadingNew &&
                   (!placeResults || placeResults.length === 0) && (
-                    <EmptyState
-                      message={emptyStateMessage}
-                      onSearchClick={onSearchClick}
-                    />
+                    <div className="pt-20">
+                      <EmptyState
+                        message={emptyStateMessage}
+                        onSearchClick={onSearchClick}
+                      />
+                    </div>
                   )}
 
                 {/* Trip Results Grid - Mobile Optimized */}

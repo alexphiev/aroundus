@@ -1,7 +1,7 @@
+import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from 'next-themes'
 import { Geist } from 'next/font/google'
 import './globals.css'
-import { Toaster } from '@/components/ui/sonner'
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -11,6 +11,14 @@ export const metadata = {
   metadataBase: new URL(defaultUrl),
   title: 'NatureTrips AI',
   description: 'Find, plan, and save nature trips with AI.',
+}
+
+// Add viewport configuration to prevent mobile zoom issues
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 const geistSans = Geist({

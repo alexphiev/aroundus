@@ -100,7 +100,7 @@ export function SearchFormModal({
 }: SearchFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[95vh] flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="flex max-h-[95dvh] flex-col overflow-hidden sm:max-w-2xl">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Plan Your Next Adventure</DialogTitle>
         </DialogHeader>
