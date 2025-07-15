@@ -54,6 +54,7 @@ const searchResultSchema = z.object({
   estimatedActivityDuration: z.string().optional(),
   estimatedTransportTime: z.string().optional(),
   starRating: z.number().optional(),
+  starRatingReason: z.string().optional(),
   bestTimeToVisit: z.string().optional(),
   timeToAvoid: z.string().optional(),
   // Google Places data
@@ -61,10 +62,21 @@ const searchResultSchema = z.object({
   reviews: z.array(reviewSchema).optional(),
   googleRating: z.number().optional(),
   reviewCount: z.number().optional(),
+  googleMapsUri: z.string().optional(),
+  displayName: z.string().optional(),
+  operatingHours: z.string().optional(),
+  entranceFee: z.string().optional(),
+  parkingInfo: z.string().optional(),
+  accessibilityInfo: z.string().optional(),
+  // Enhanced location data from Google Search
+  googleMapsLink: z.string().optional(),
+  currentConditions: z.string().optional(),
+  isOtherCategory: z.boolean().optional(),
+  transportMode: z.enum(['foot', 'bike', 'public_transport', 'car']).optional(),
   // Other fields
   id: z.string().optional(),
-  transportMode: z.string().optional(),
   userFeedback: z.enum(['liked', 'disliked']).nullable().optional(),
+  created_at: z.string().optional(),
 })
 
 // Save search to history

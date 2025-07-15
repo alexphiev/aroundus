@@ -3,7 +3,8 @@
 import { Button } from '@/components/ui/button'
 import { PlaceResultItem } from '@/types/result.types'
 import { AnimatePresence } from 'framer-motion'
-import { Loader2, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import LoadingState from './LoadingState'
 import PlaceCard from './PlaceCard'
 
 interface Props {
@@ -59,7 +60,7 @@ export default function PlaceResultsGrid({
       </div>
 
       {/* Load More Button */}
-      {hasMoreResults && onLoadMore && (
+      {hasMoreResults && onLoadMore && !isLoadingMore && (
         <div className="flex justify-center">
           <Button
             onClick={onLoadMore}
@@ -68,20 +69,12 @@ export default function PlaceResultsGrid({
             size="lg"
             className="min-w-32"
           >
-            {isLoadingMore ? (
-              <>
-                <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Load More
-              </>
-            )}
+            <Plus className="mr-2 h-4 w-4" />
+            Load More
           </Button>
         </div>
       )}
+      {isLoadingMore && <LoadingState />}
     </div>
   )
 }

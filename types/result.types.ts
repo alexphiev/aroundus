@@ -60,6 +60,7 @@ export interface PlaceResultItem {
   googleRating?: number
   reviewCount?: number
   googleMapsUri?: string
+  displayName?: string // Google Places display name
 }
 
 // Minimal place context for optimized search iterations

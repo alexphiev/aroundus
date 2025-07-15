@@ -33,9 +33,9 @@ export default function MapToggleButton({
     >
       <Button
         onClick={onClick}
-        variant="link"
+        variant="outline"
         size="sm"
-        className="bg-background/95 border-border/20 hover:bg-background/100 h-10 rounded-full border px-4 shadow-lg backdrop-blur-sm"
+        className="text-primary border-border/20 hover:bg-background/100 h-10 rounded-full border px-4 shadow-lg backdrop-blur-sm"
       >
         <IconComponent className="mr-2 h-4 w-4" />
         <span className="text-sm font-medium">{text}</span>

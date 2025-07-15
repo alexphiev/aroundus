@@ -11,7 +11,7 @@ import ResultsHeader from '@/components/discovery/result/ResultsHeader'
 import { PlaceResultItem } from '@/types/result.types'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { DiscoveryResultProps } from './DiscoveryResult'
 
@@ -45,19 +45,18 @@ export default function DesktopDiscoveryResult({
   )
 
   // Handle marker clicks from the map
-  const handleMarkerClick = (index: number) => {
-    setActiveCardIndex(index)
-    if (onCardClick) {
-      onCardClick(index)
-    }
-  }
+  const handleMarkerClick = useCallback(
+    (index: number, place: PlaceResultItem) => {
+      setActiveCardIndex(index)
+      setSelectedPlace(place)
+    },
+    []
+  )
 
   // Handle popup close from the map
   const handlePopupClose = () => {
     setActiveCardIndex(-1)
-    if (onCardClick) {
-      onCardClick(-1)
-    }
+    setSelectedPlace(null)
   }
 
   // Handle card clicks to open detail view
@@ -291,11 +290,10 @@ export default function DesktopDiscoveryResult({
       <div className="h-screen w-full md:w-1/2">
         <PlaceMap
           placeResults={placeResults}
-          userLocation={userLocation}
+          baseLocation={userLocation}
           activeMarkerIndex={activeCardIndex}
+          activePlace={selectedPlace}
           className="h-full"
-          shouldUpdateBounds={true}
-          isProgressiveSearch={isLoadingMore}
           onMarkerClick={handleMarkerClick}
           onPopupClose={handlePopupClose}
         />

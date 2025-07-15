@@ -1,34 +1,79 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
 import { PlaceResultItem } from '@/types/result.types'
+import { FocusIcon, MapPin, TreesIcon } from 'lucide-react'
 import maplibregl, { LngLatBounds, Map, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import React, { useEffect, useRef, useState } from 'react'
-
-interface PlaceLocation {
-  latitude: number
-  longitude: number
-}
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 
 interface PlaceMapProps {
   placeResults: PlaceResultItem[] | null
-  userLocation?: PlaceLocation | null // Optional user location to center map initially
+  baseLocation?: {
+    latitude: number
+    longitude: number
+  } | null
   className?: string // Allow passing custom classes
-  activeMarkerIndex?: number // Index of the active marker to highlight (-1 for none)
+  activeMarkerIndex?: number
+  activePlace?: PlaceResultItem | null
   shouldUpdateBounds?: boolean // Whether to update map bounds when results change
   isProgressiveSearch?: boolean // Whether this is a progressive search
-  onMarkerClick?: (index: number) => void // Callback when marker is clicked
+  onMarkerClick?: (index: number, place: PlaceResultItem) => void // Callback when marker is clicked
   onPopupClose?: () => void // Callback when popup is closed
   onPlaceDetailsClick?: (index: number, place: PlaceResultItem) => void // Callback when place details button is clicked
 }
 
+const MarkerIcon = () => {
+  return (
+    <div className="text-primary bg-primary flex items-center justify-center rounded-full p-1">
+      <TreesIcon
+        size={18}
+        className="text-white"
+        style={{
+          imageRendering: 'crisp-edges',
+          shapeRendering: 'crispEdges',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+        }}
+      />
+    </div>
+  )
+}
+
+const BaseMarkerIcon = () => {
+  return (
+    <MapPin size={32} fill="#3b82f6" className="text-white" strokeWidth={1} />
+  )
+}
+
+const PopupContent = ({
+  place,
+  onDetailsClick,
+}: {
+  place: PlaceResultItem
+  onDetailsClick?: () => void
+}) => (
+  <div className="p-0 pr-4 md:p-2">
+    <h6 className="mb-2 text-sm font-semibold md:text-base">{place.name}</h6>
+    <p className="text-muted-foreground mb-3 line-clamp-3 hidden text-sm md:block">
+      {place.description}
+    </p>
+    {onDetailsClick && (
+      <Button onClick={onDetailsClick} variant="default" className="w-full">
+        View Details
+      </Button>
+    )}
+  </div>
+)
+
 const PlaceMap: React.FC<PlaceMapProps> = ({
   placeResults,
-  userLocation,
+  baseLocation,
   className = '',
-  activeMarkerIndex = -1,
-  shouldUpdateBounds = true,
-  isProgressiveSearch = false,
+  activePlace,
   onMarkerClick,
   onPopupClose,
   onPlaceDetailsClick,
@@ -37,25 +82,36 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
   const map = useRef<Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const markersRef = useRef<Marker[]>([])
-  const previousResultsLength = useRef<number>(0)
+  const activePopupRef = useRef<maplibregl.Popup | null>(null)
 
-  // A simple, publicly available style. Replace with your preferred style URL.
-  // Consider using MapTiler (https://www.maptiler.com/cloud/) for more robust and customizable maps.
   const mapStyle =
     'https://api.maptiler.com/maps/topo-v2/style.json?key=Gxxj1jCvJhu2HSp6n0tp'
 
-  useEffect(() => {
-    if (map.current || !mapContainer.current) return // Initialize map only once and if container is available
+  // Reset zoom and bounds when active place is null
+  const onViewAllPlaces = useCallback(() => {
+    if (!map.current) {
+      return
+    }
 
-    // Use a nice scenic default location (Yosemite Valley)
+    // Reset bounds based on all markers
+    const bounds = new LngLatBounds()
+    markersRef.current.forEach((marker) => {
+      bounds.extend(marker.getLngLat())
+    })
+    map.current.fitBounds(bounds, { padding: 100 })
+  }, [])
+
+  useEffect(() => {
+    if (map.current || !mapContainer.current) return
+
     let initialCenter: [number, number] = [2.3522, 48.8566] // Paris coordinates
     let initialZoom = 4
 
     if (placeResults && placeResults.length > 0) {
       initialCenter = [placeResults[0].long, placeResults[0].lat]
       initialZoom = 9
-    } else if (userLocation) {
-      initialCenter = [userLocation.longitude, userLocation.latitude]
+    } else if (baseLocation) {
+      initialCenter = [baseLocation.longitude, baseLocation.latitude]
       initialZoom = 10
     }
 
@@ -65,19 +121,15 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
         style: mapStyle,
         center: initialCenter,
         zoom: initialZoom,
+        attributionControl: false,
       })
 
       map.current.on('load', () => {
         setMapLoaded(true)
-        // Add navigation controls (zoom, rotation)
-        map.current?.addControl(
-          new maplibregl.NavigationControl(),
-          'bottom-right' // Move controls to bottom-right
-        )
+        map.current?.addControl(new maplibregl.NavigationControl(), 'top-right')
       })
     } catch (error) {
       console.error('Error initializing MapLibre:', error)
-      // Optionally, display an error message to the user in the map container
       if (mapContainer.current) {
         mapContainer.current.innerHTML =
           '<p class="text-red-500 p-4">Could not load map. Please try again later.</p>'
@@ -90,314 +142,137 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
       map.current = null
       setMapLoaded(false)
     }
-  }, [placeResults, userLocation]) // Re-run if userLocation changes and map not yet initialized with it.
+  }, [placeResults, baseLocation])
 
   useEffect(() => {
     if (!map.current || !mapLoaded || !placeResults) return
 
-    // Remove existing markers before adding new ones
-    markersRef.current.forEach((marker) => marker.remove())
-    markersRef.current = []
+    const bounds = new LngLatBounds()
 
     // Add user location marker if available
-    if (userLocation) {
-      const userEl = document.createElement('div')
-      userEl.className = 'user-location-marker'
-      userEl.style.width = '18px'
-      userEl.style.height = '18px'
-      userEl.style.borderRadius = '50%'
-      userEl.style.background = '#3b82f6' // Blue color for user location
-      userEl.style.cursor = 'pointer'
-      userEl.style.border = '2px solid white'
-      userEl.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)'
-      userEl.style.zIndex = '3' // Higher than other markers
+    if (baseLocation) {
+      const el = document.createElement('div')
+      const root = createRoot(el)
+      root.render(<BaseMarkerIcon key={el.id} />)
 
-      // Add a ripple effect
-      userEl.innerHTML = `
-        <div style="
-          position: absolute;
-          top: -3px;
-          left: -3px;
-          right: -3px;
-          bottom: -3px;
-          border-radius: 50%;
-          border: 2px solid #3b82f680;
-          animation: ripple 1.5s infinite;
-        "></div>
-        <style>
-          @keyframes ripple {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(1.4); opacity: 0; }
-          }
-        </style>
-      `
-
-      const userMarker = new maplibregl.Marker({ element: userEl })
-        .setLngLat([userLocation.longitude, userLocation.latitude])
-        .setPopup(
-          new maplibregl.Popup().setHTML(
-            `<h6 class="font-bold">Your Location</h6>`
-          )
-        )
+      const userMarker = new maplibregl.Marker({ element: el })
+        .setLngLat([baseLocation.longitude, baseLocation.latitude])
         .addTo(map.current!)
 
       markersRef.current.push(userMarker)
+      bounds.extend([baseLocation.longitude, baseLocation.latitude])
     }
 
-    // Always set up bounds if we have user location or place results
-    if (placeResults.length > 0 || userLocation) {
-      const bounds = new LngLatBounds()
-
-      // If user location exists, extend bounds to include it
-      if (userLocation) {
-        bounds.extend([userLocation.longitude, userLocation.latitude])
-      }
-
+    // Add places markers
+    if (placeResults.length > 0) {
       placeResults.forEach((place, index) => {
-        // Create a custom HTML element for the marker that matches card styling
-        const el = document.createElement('div')
-        el.className = 'custom-marker'
-        el.style.cursor = 'pointer'
-        el.style.transform = 'scale(1)' // No auto-scaling on initial load
-        el.style.zIndex = '1'
-        el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+        const markerNode = document.createElement('div')
+        const root = createRoot(markerNode)
+        root.render(<MarkerIcon key={markerNode.id} />)
 
-        // Create tree icons based on star rating
-        const starRating = place.starRating || 1 // Default to 1 if no rating
-        const numTrees = Math.min(Math.max(starRating, 1), 3) // Ensure between 1-3 trees
-
-        const iconContainer = document.createElement('div')
-        iconContainer.style.display = 'flex'
-        iconContainer.style.alignItems = 'center'
-        iconContainer.style.justifyContent = 'center'
-        iconContainer.style.position = 'relative'
-
-        // Tree icon SVG in primary color with accent border - crisp rendering
-        const treeIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="hsl(var(--primary))" stroke="hsl(var(--accent))" stroke-width="1.5" style="shape-rendering: crispEdges; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17z"/><path d="M12 22v-3"/></svg>`
-
-        // Add the appropriate number of tree icons with overlapping positioning
-        for (let i = 0; i < numTrees; i++) {
-          const treeIcon = document.createElement('div')
-          treeIcon.innerHTML = treeIconSvg
-          treeIcon.style.display = 'flex'
-          treeIcon.style.alignItems = 'center'
-          treeIcon.style.justifyContent = 'center'
-          treeIcon.style.position = 'absolute'
-          treeIcon.style.left = `${i * 8.5}px` // Overlap by positioning each tree 8.5px apart
-          treeIcon.style.zIndex = `${numTrees - i}` // Stack them properly
-          // Ensure crisp rendering
-          treeIcon.style.imageRendering = 'crisp-edges'
-          treeIcon.style.imageRendering = '-webkit-optimize-contrast'
-          treeIcon.style.transform = 'translateZ(0)' // Force hardware acceleration
-          iconContainer.appendChild(treeIcon)
-        }
-
-        // Set container width to accommodate overlapping trees
-        iconContainer.style.width = `${36 + (numTrees - 1) * 12}px`
-        iconContainer.style.height = '36px'
-
-        el.appendChild(iconContainer)
-
-        // Add popping animation for new markers
-        const prevLength = previousResultsLength.current
-        const isNewMarker = index >= prevLength
-
-        if (isNewMarker && isProgressiveSearch) {
-          // Initial state for animation
-          el.style.transform = 'scale(0)'
-          el.style.opacity = '0'
-
-          // Trigger pop animation after a slight delay
-          setTimeout(() => {
-            el.style.transform =
-              index === activeMarkerIndex ? 'scale(1.3)' : 'scale(1.1)'
-            el.style.opacity = '1'
-
-            // Settle to normal size
-            setTimeout(() => {
-              el.style.transform =
-                index === activeMarkerIndex ? 'scale(1.2)' : 'scale(1)'
-            }, 200)
-          }, index * 100) // Stagger animations for multiple new markers
-        }
-
-        // Add click handler to marker
-        el.addEventListener('click', () => {
+        markerNode.addEventListener('click', () => {
           if (onMarkerClick) {
-            onMarkerClick(index)
+            if (activePopupRef.current) {
+              console.log('Closing popup')
+              activePopupRef.current.remove()
+              activePopupRef.current = null
+            }
+
+            onMarkerClick(index, place)
           }
         })
 
-        const popup = new maplibregl.Popup({
-          closeButton: true,
-          closeOnClick: false,
-          offset: [0, -10],
-          className: 'custom-popup',
-        }).setHTML(
-          `<div class="p-3 pr-4">
-            <h6 class="font-bold text-sm mb-2">${place.name}</h6>
-            <button 
-              id="place-details-btn-${index}" 
-              class="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"
-            >
-              View Details
-            </button>
-           </div>`
-        )
-
-        // Add close event listener to popup
-        popup.on('close', () => {
-          if (onPopupClose) {
-            onPopupClose()
-          }
-        })
-
-        // Add event listener for place details button after popup is opened
-        popup.on('open', () => {
-          const detailsButton = document.getElementById(`place-details-btn-${index}`)
-          if (detailsButton && onPlaceDetailsClick) {
-            detailsButton.addEventListener('click', () => {
-              onPlaceDetailsClick(index, place)
-            })
-          }
-        })
-
-        const marker = new maplibregl.Marker({ element: el })
+        const marker = new maplibregl.Marker({ element: markerNode })
           .setLngLat([place.long, place.lat])
-          .setPopup(popup)
           .addTo(map.current!)
 
-        // Don't auto-show popup for active marker on initial load
-
         markersRef.current.push(marker)
-        bounds.extend([place.long, place.lat])
+        onViewAllPlaces()
+      })
+    }
+  }, [placeResults, mapLoaded, onMarkerClick, baseLocation, onViewAllPlaces])
+
+  // Add popup for active place
+  useEffect(() => {
+    if (!map.current) return
+
+    // Remove existing popup if any
+    if (activePopupRef.current) {
+      activePopupRef.current.remove()
+      activePopupRef.current = null
+    }
+
+    // Create new popup if there's an active place
+    if (activePlace) {
+      const popupNode = document.createElement('div')
+      const popupRoot = createRoot(popupNode)
+      popupRoot.render(
+        <PopupContent
+          place={activePlace}
+          onDetailsClick={
+            onPlaceDetailsClick
+              ? () => {
+                  // Find the index of the active place
+                  const placeIndex =
+                    placeResults?.findIndex(
+                      (p) =>
+                        p.name === activePlace.name &&
+                        p.lat === activePlace.lat &&
+                        p.long === activePlace.long
+                    ) ?? -1
+                  if (placeIndex >= 0) {
+                    onPlaceDetailsClick?.(placeIndex, activePlace)
+                  }
+                }
+              : undefined
+          }
+        />
+      )
+
+      const popup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: false,
+        offset: [0, -25],
+      })
+        .setLngLat([activePlace.long, activePlace.lat])
+        .setDOMContent(popupNode)
+        .addTo(map.current!)
+
+      popup.on('close', () => {
+        if (onPopupClose) {
+          onPopupClose()
+        }
       })
 
-      // Update bounds when new results are added or when showing just user location
-      if (shouldUpdateBounds && !bounds.isEmpty()) {
-        const currentLength = placeResults.length
-        const prevLength = previousResultsLength.current
+      // Center map on active place
+      map.current.flyTo({
+        center: [activePlace.long, activePlace.lat],
+        duration: 500,
+      })
 
-        // Always update on first results or when search is complete
-        // For progressive search, also update when new results are added
-        // Also update when we only have user location (no place results)
-        if (
-          prevLength === 0 ||
-          currentLength > prevLength ||
-          !isProgressiveSearch ||
-          (placeResults.length === 0 && userLocation)
-        ) {
-          if (placeResults.length === 0 && userLocation) {
-            // When only showing user location, zoom to a reasonable level
-            map.current.flyTo({
-              center: [userLocation.longitude, userLocation.latitude],
-              zoom: 11,
-              duration: 1000,
-            })
-          } else {
-            map.current.fitBounds(bounds, { padding: 60, maxZoom: 15 })
-          }
-        }
-
-        // Update the previous results length
-        previousResultsLength.current = currentLength
-      }
+      activePopupRef.current = popup
     }
-  }, [
-    placeResults,
-    mapLoaded,
-    userLocation,
-    shouldUpdateBounds,
-    isProgressiveSearch,
-    activeMarkerIndex,
-    onMarkerClick,
-    onPopupClose,
-    onPlaceDetailsClick,
-  ])
-
-  // Update active marker when activeMarkerIndex changes
-  useEffect(() => {
-    if (
-      !map.current ||
-      !mapLoaded ||
-      !placeResults ||
-      placeResults.length === 0
-    )
-      return
-
-    markersRef.current.forEach((marker, index) => {
-      if (index === 0 && userLocation) return // Skip user location marker
-
-      const actualPlaceIndex = userLocation ? index - 1 : index
-      if (actualPlaceIndex < 0 || actualPlaceIndex >= placeResults.length)
-        return
-
-      const place = placeResults[actualPlaceIndex]
-      const el = marker.getElement()
-
-      // Update marker styles based on active state
-      const isActive =
-        actualPlaceIndex === activeMarkerIndex && activeMarkerIndex >= 0
-      el.style.transform = isActive ? 'scale(1.2)' : 'scale(1)'
-      el.style.zIndex = isActive ? '2' : '1'
-      el.style.filter = isActive
-        ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
-        : 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-
-      // Hide all popups first
-      marker.getPopup().remove()
-
-      // Show popup and pan only for active marker (when user clicks)
-      if (isActive) {
-        marker.togglePopup()
-
-        // Pan to the active marker
-        map.current?.flyTo({
-          center: [place.long, place.lat],
-          zoom: 11,
-          duration: 1000,
-        })
-      }
-    })
-  }, [activeMarkerIndex, placeResults, mapLoaded, userLocation])
+  }, [activePlace, onPlaceDetailsClick, onPopupClose, placeResults])
 
   return (
-    <>
-      <style>{`
-        .custom-popup {
-          z-index: 1000 !important;
-        }
-        .custom-popup .maplibregl-popup-content {
-          padding: 0;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          z-index: 1000 !important;
-        }
-        .custom-popup .maplibregl-popup-close-button {
-          right: 2px;
-          top: 2px;
-          font-size: 16px;
-          width: 24px;
-          height: 28px;
-          z-index: 1001 !important;
-        }
-        .custom-popup .maplibregl-popup-tip {
-          border-top-color: white;
-          z-index: 1000 !important;
-        }
-      `}</style>
-      <div
-        ref={mapContainer}
-        className={`w-full h-full rounded-lg shadow-md bg-muted overflow-hidden relative ${className}`}
-        aria-label="Map of place suggestions"
+    <div
+      ref={mapContainer}
+      className={`bg-muted relative h-full w-full overflow-hidden rounded-lg shadow-md ${className} [&_.maplibregl-popup]:z-[1000] [&_.maplibregl-popup-close-button]:top-0.5 [&_.maplibregl-popup-close-button]:right-0.5 [&_.maplibregl-popup-close-button]:z-[1001] [&_.maplibregl-popup-close-button]:h-7 [&_.maplibregl-popup-close-button]:w-6 [&_.maplibregl-popup-close-button]:text-base`}
+      aria-label="Map of place suggestions"
+    >
+      <Button
+        onClick={onViewAllPlaces}
+        variant="outline"
+        className="text-primary absolute top-4 left-3 z-10 h-10 transform rounded-full border text-sm shadow-lg backdrop-blur-sm"
       >
-        {!mapLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-            <p className="text-muted-foreground">Loading map...</p>
-          </div>
-        )}
-      </div>
-    </>
+        <FocusIcon className="h-4 w-4" />
+      </Button>
+      {!mapLoaded && (
+        <div className="bg-muted/50 absolute inset-0 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading map...</p>
+        </div>
+      )}
+    </div>
   )
 }
 

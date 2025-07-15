@@ -757,6 +757,7 @@ export async function handlePlaceSearchBatch(
               googleRating: googleData.googleRating,
               reviewCount: googleData.reviewCount,
               googleMapsUri: googleData.googleMapsUri,
+              displayName: googleData.displayName,
               // Only update these fields if they're not already set by AI or if Google has better info
               operatingHours: googleData.operatingHours || place.operatingHours,
               parkingInfo: googleData.parkingInfo || place.parkingInfo,

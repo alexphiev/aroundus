@@ -12,7 +12,7 @@ import PlaceResultsGrid from '@/components/discovery/result/PlaceResultsGrid'
 import { PlaceResultItem } from '@/types/result.types'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { DiscoveryResultProps } from './DiscoveryResult'
 
@@ -46,6 +46,12 @@ export default function MobileDiscoveryResult({
     'map'
   )
 
+  const activePlace = useMemo(() => {
+    return activeCardIndex >= 0 && placeResults
+      ? placeResults[activeCardIndex]
+      : null
+  }, [activeCardIndex, placeResults])
+
   // Initialize overlay state based on content
   useEffect(() => {
     // Only show loading state in full view, otherwise stay collapsed to show map
@@ -54,20 +60,17 @@ export default function MobileDiscoveryResult({
     }
   }, [isLoadingNew, selectedPlace])
 
-  // Handle marker clicks from the map
+  // Handle marker clicks from the map - only show popup on mobile
   const handleMarkerClick = (index: number) => {
     setActiveCardIndex(index)
-    if (onCardClick) {
-      onCardClick(index)
-    }
+    // Don't set selectedPlace here - just show popup
+    // selectedPlace will be set when user clicks "View Details" in popup
   }
 
   // Handle popup close from the map
   const handlePopupClose = () => {
     setActiveCardIndex(-1)
-    if (onCardClick) {
-      onCardClick(-1)
-    }
+    setSelectedPlace(null)
   }
 
   // Handle card clicks to open detail view
@@ -129,6 +132,7 @@ export default function MobileDiscoveryResult({
       }
     } else {
       setVisibleView('map') // Go back to map view
+      // Keep activeCardIndex for map view to maintain popup
     }
 
     // Remove URL parameters when going back to cards view
@@ -243,7 +247,12 @@ export default function MobileDiscoveryResult({
     <div className={`flex h-full flex-col ${className}`}>
       {/* Fixed Top Bar */}
       <div className="flex-shrink-0">
-        {selectedPlace ? (
+        {selectedPlace && navigationContext === 'grid' ? (
+          <DetailViewTopBar
+            onBack={handleBackToCards}
+            placeName={selectedPlace.name}
+          />
+        ) : selectedPlace && navigationContext === 'map' ? (
           <DetailViewTopBar
             onBack={handleBackToCards}
             placeName={selectedPlace.name}
@@ -265,8 +274,9 @@ export default function MobileDiscoveryResult({
           <div className="absolute inset-0 pt-24 pb-18">
             <PlaceMap
               placeResults={placeResults}
-              userLocation={userLocation}
+              baseLocation={userLocation}
               activeMarkerIndex={activeCardIndex}
+              activePlace={activePlace}
               className="h-full w-full"
               shouldUpdateBounds={true}
               isProgressiveSearch={isLoadingMore}
