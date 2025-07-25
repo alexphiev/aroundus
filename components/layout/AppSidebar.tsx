@@ -37,7 +37,7 @@ function SidebarButton({
     <button
       onClick={onClick}
       className={cn(
-        'group/sidebar flex w-full items-center justify-start gap-2 rounded-md px-2 py-2 transition-colors',
+        'group/sidebar flex w-full items-center justify-start gap-2 rounded-md px-2 py-2 transition-colors cursor-pointer',
         'hover:bg-neutral-150 dark:hover:bg-neutral-750 text-neutral-700 dark:text-neutral-200'
       )}
     >

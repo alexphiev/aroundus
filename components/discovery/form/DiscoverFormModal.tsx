@@ -84,6 +84,12 @@ interface SearchFormModalProps {
   locationError: string | null
   onRetryLocation: () => void
   userLocation: { latitude: number; longitude: number } | null
+  userLocationInfo: {
+    locationName: string
+    city?: string
+    region?: string
+    country?: string
+  } | null
   isLoadingAIFilters?: boolean
 }
 
@@ -96,6 +102,7 @@ export function SearchFormModal({
   locationError,
   onRetryLocation,
   userLocation,
+  userLocationInfo,
   isLoadingAIFilters = false,
 }: SearchFormModalProps) {
   return (
@@ -179,6 +186,7 @@ export function SearchFormModal({
                               )
                             }}
                             userLocation={userLocation}
+                            userLocationInfo={userLocationInfo}
                             locationError={locationError}
                             onRetryLocation={onRetryLocation}
                             disabled={isPending}
@@ -439,7 +447,7 @@ export function SearchFormModal({
                     name="distance"
                     render={({ field }) => (
                       <FormItem>
-                        <CustomFormLabel>Max Distance From You</CustomFormLabel>
+                        <CustomFormLabel>Distance from you</CustomFormLabel>
                         <div className="flex w-full flex-row items-start gap-4">
                           <div className="min-w-0 flex-1">
                             <FormControl>
@@ -532,11 +540,7 @@ export function SearchFormModal({
             </div>
 
             <div className="border-muted flex-shrink-0 border-t pt-6">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isPending || !userLocation}
-              >
+              <Button type="submit" className="w-full" disabled={isPending}>
                 {isPending ? (
                   <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" />
                 ) : (

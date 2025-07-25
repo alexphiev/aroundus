@@ -481,7 +481,7 @@ export async function handlePlaceSearchBatch(
       'en-US',
       { weekday: 'long' }
     )})
-    - Maximum travel time to location: ${validatedData.distance} (ONE WAY)
+    - Desired travel time range to location: ${validatedData.distance} (ONE WAY)
     - Preferred transport method: ${getTransportDescription(
       validatedData.transportType
     )}
@@ -537,13 +537,16 @@ export async function handlePlaceSearchBatch(
       validatedData.activityDurationValue - 1
     )} and ${validatedData.activityDurationValue + 1} days
     
-    For travel distance of ${validatedData.distance} via ${getTransportDescription(
+    For travel distance preference of ${validatedData.distance} via ${getTransportDescription(
       validatedData.transportType
     )}:
-    - ONLY suggest places that are realistically reachable within ${validatedData.distance} travel time from ${locationName} (coordinates: ${validatedData.location.latitude}, ${validatedData.location.longitude}) using ${getTransportDescription(
+    - Suggest places that fall within the user's preferred travel time range: ${validatedData.distance} from ${locationName} (coordinates: ${validatedData.location.latitude}, ${validatedData.location.longitude}) using ${getTransportDescription(
       validatedData.transportType
     )}
-    - Use Google Search to verify actual travel times from the starting location to ensure destinations are within the specified time limit
+    - Understand this as a range preference, not a strict maximum - the user wants destinations that match their ideal travel time
+    - For "less than" ranges: prioritize closer destinations but can include places up to that time
+    - For "between" ranges: focus on destinations that fall within that specific time window
+    - Use Google Search to verify actual travel times from the starting location to match the user's distance preference
     - Consider realistic routes, traffic patterns, and connections for the chosen transport method
     - Factor in any transport-specific limitations (bike paths, transit schedules, parking requirements)
     
@@ -572,23 +575,27 @@ export async function handlePlaceSearchBatch(
   `
 
   const responseFormat = `
-    For each suggestion, provide these details:
-    - name: A catchy and descriptive name for the spot/activity
-    - description: A brief, engaging description (2-3 sentences) including specific activities and how to get there
+    🌿 NATURE-ONLY VALIDATION: Before suggesting any place, verify it is 100% natural and outdoor-focused. Reject any place that has primarily artificial, commercial, or indoor elements.
+    
+    For each NATURAL suggestion, provide these details:
+    - name: A catchy and descriptive name for the NATURAL spot/activity (emphasize natural features)
+    - description: A brief, engaging description (2-3 sentences) highlighting the NATURAL elements, outdoor activities, and how to get there. Focus on trees, water, rocks, wildlife, natural terrain, and scenic beauty.
     - lat: The precise latitude of the starting point of the activity (use Google Search to find exact coordinates with full precision, e.g., 40.594721)
     - long: The precise longitude of the starting point of the activity (use Google Search to find exact coordinates with full precision, e.g., -4.156937)
-    - landscape: Must be ONE of: "mountain", "forest", "lake", "beach", "river", "park", "wetland", "desert"
-    - activity: Must be ONE of: "hiking", "biking", "camping", "photography", "wildlife", "walking", "swimming"
-    - estimatedActivityDuration: The estimated time range for the activity (e.g., "1-4 hours", "2-3 days")
+    - landscape: Must be ONE of these NATURAL categories: "mountain", "forest", "lake", "beach", "river", "park", "wetland", "desert"
+    - activity: Must be ONE of these NATURE activities: "hiking", "biking", "camping", "photography", "wildlife", "walking", "swimming"
+    - estimatedActivityDuration: The estimated time range for the outdoor activity (e.g., "1-4 hours", "2-3 days")
     - estimatedTransportTime: The estimated one-way travel time from starting location (e.g., "45 minutes", "2 hours")
     - transportMode: The primary transport mode used (must be one of: "foot", "bike", "public_transport", "car")
-    - starRating: Rate from 1-3 stars based on how well this destination fulfills the user's specific request (3 = perfect match and must-go, 2 = very good match, 1 = good option but less ideal)
-    - starRatingReason: A comprehensive explanation (2-3 sentences) combining both why you recommend this place and why you gave it this specific star rating. Explain how well it matches the user's criteria (activity type, distance, duration, special requirements), highlight the place's unique qualities, and justify the rating based on overall fit and quality
-    - bestTimeToVisit: Recommended time range for optimal experience based on the weather forecast and crowds (e.g., "8:00 AM - 11:00 AM before rain starts", "early morning when clear skies", "afternoon after 2 PM when temperatures cool")
-    - timeToAvoid: Times or conditions to avoid (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
+    - starRating: Rate from 1-3 stars based on how well this NATURAL destination fulfills the user's specific request (3 = perfect match and must-go, 2 = very good match, 1 = good option but less ideal)
+    - starRatingReason: A comprehensive explanation (2-3 sentences) combining both why you recommend this NATURAL place and why you gave it this specific star rating. Explain how well it matches the user's criteria (activity type, distance, duration, special requirements), highlight the place's natural qualities and outdoor features, and justify the rating based on overall fit and natural beauty
+    - bestTimeToVisit: Recommended time range for optimal OUTDOOR experience based on the weather forecast and crowds (e.g., "8:00 AM - 11:00 AM before rain starts", "early morning when clear skies", "afternoon after 2 PM when temperatures cool")
+    - timeToAvoid: Times or conditions to avoid for OUTDOOR activities (e.g., "midday during rain", "weekends 10 AM-4 PM", "avoid if temperature below 5°C")
     
-    CRITICAL: For coordinates, use Google Search to find the exact latitude and longitude of each location. 
+    CRITICAL: For coordinates, use Google Search to find the exact latitude and longitude of each NATURAL location. 
     Provide coordinates with full precision (6 decimal places minimum) - do not round or truncate them.
+    
+    CRITICAL: Every single suggestion MUST be a natural outdoor place. If you cannot find 4 natural places that meet the criteria, return fewer suggestions rather than including non-natural places.
     
     CRITICAL: Return ONLY a valid JSON array with NO additional text, explanations, introductions, or markdown formatting.
     Start your response immediately with [ and end with ].
@@ -598,15 +605,49 @@ export async function handlePlaceSearchBatch(
   try {
     // Create a simpler prompt that requests 4 high-quality destinations
     const prompt = `
-      You are an expert nature concierge. Find 4 excellent nature destinations near ${locationName} that match the user's criteria.
+      You are an expert nature concierge specializing EXCLUSIVELY in natural outdoor destinations. Find 4 excellent NATURE destinations near ${locationName} that match the user's criteria.
+      
+      🌿 CRITICAL NATURE-ONLY REQUIREMENT:
+      You MUST ONLY suggest natural outdoor places. This app is exclusively for nature discovery and outdoor experiences.
+      
+      ✅ ACCEPTABLE NATURE PLACES (Examples):
+      - Natural forests, woodlands, and tree groves
+      - Mountains, hills, cliffs, and rocky outcrops  
+      - Natural lakes, ponds, rivers, streams, and waterfalls
+      - Ocean beaches, natural coastlines, and seaside cliffs
+      - Natural parks with hiking trails, meadows, and wildlife
+      - Wetlands, marshes, and nature reserves
+      - Deserts, canyons, and natural geological formations
+      - Nature trails through wilderness areas
+      - Natural swimming holes and wild beaches
+      - Scenic overlooks with natural vistas
+      - Botanical gardens with natural landscapes
+      - Wildlife sanctuaries and nature preserves
+      
+      ❌ ABSOLUTELY FORBIDDEN - NEVER SUGGEST:
+      - Museums, art galleries, or cultural centers (even outdoor ones)
+      - Theme parks, amusement parks, or entertainment venues
+      - Sports facilities, stadiums, or recreational complexes
+      - Shopping areas, markets, or commercial districts
+      - Urban parks with primarily artificial features
+      - Public pools, water parks, or artificial beaches
+      - Zoos (even outdoor ones) - only wildlife sanctuaries
+      - Historical monuments or architectural sites
+      - Restaurants, cafes, or food-focused destinations
+      - Churches, temples, or religious buildings
+      - City centers, downtown areas, or urban attractions
+      - Artificial lakes or man-made water features
+      - Playgrounds or primarily developed recreational areas
       
       ${baseCriteria}
       
-      Focus on finding diverse, high-quality destinations around ${locationName} that offer great nature experiences. 
-      Mix different types of locations (mountains, forests, lakes, etc.) to provide variety.
-      Prioritize places that are accessible, safe, and offer the type of experience the user is looking for.
+      Focus on finding diverse, high-quality NATURAL destinations around ${locationName} that offer authentic outdoor and nature experiences. 
+      Mix different types of natural landscapes (mountains, forests, lakes, etc.) to provide variety.
+      Prioritize places where people can directly experience and interact with natural environments.
       
-      LOCATION CONTEXT: The user is starting from ${locationName}, so suggest destinations that make sense geographically from this location.
+      NATURE EXPERIENCE FOCUS: Every suggestion must provide direct contact with natural elements - trees, water, rocks, wildlife, natural terrain, fresh air, and natural beauty.
+      
+      LOCATION CONTEXT: The user is starting from ${locationName}, so suggest natural destinations that make sense geographically from this location.
       
       ${
         currentContext.previousPlaces.length > 0
@@ -628,7 +669,17 @@ export async function handlePlaceSearchBatch(
       
       Consider the user's activity preferences, timing, distance, transport method, and especially their additional search info when rating.
       
-      Return exactly 4 destinations.
+      🚨 FINAL NATURE-ONLY VERIFICATION:
+      Before generating your response, double-check that EVERY suggestion is:
+      ✅ A natural outdoor environment (forests, mountains, lakes, beaches, rivers, etc.)
+      ✅ Provides direct contact with nature elements (trees, water, rocks, wildlife, natural terrain)
+      ✅ Offers outdoor activities in natural settings
+      ❌ NOT artificial, commercial, urban, or primarily man-made
+      ❌ NOT museums, pools, zoos, theme parks, or indoor attractions
+      
+      If any suggestion doesn't meet these nature criteria, REPLACE it with a different natural place.
+      
+      Return exactly 4 NATURAL destinations.
       ${responseFormat}
     `
 

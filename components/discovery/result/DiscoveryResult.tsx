@@ -22,8 +22,6 @@ const DesktopDiscoveryResult = dynamic(
 export interface DiscoveryResultProps {
   placeResults: PlaceResultItem[] | null
   title: string
-  subtitle: string
-  onSearchClick?: () => void
   baseLocation?: { latitude: number; longitude: number } | null
   showSaveButton?: boolean
   emptyStateMessage?: string

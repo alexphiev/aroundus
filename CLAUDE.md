@@ -9,6 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Use Clean Code principles.
 - Question the user if needed instead of guessing.
 - Never run `pnpm dev` or `pnpm build` at the end of tasks. The user will handle these checks manually.
+- **Always verify both mobile (`md:hidden`) and desktop (`hidden md:block`) layouts when implementing UI features.** Test both responsive breakpoints and ensure consistent functionality across platforms.
+- **Comment Policy: Only add critically important comments that explain WHY, not WHAT.** Avoid descriptive comments that can be easily understood from the code itself. Focus on business logic, complex algorithms, or non-obvious implementation decisions.
 
 ## App buisiness logic
 

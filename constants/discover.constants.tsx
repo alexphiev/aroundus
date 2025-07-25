@@ -85,15 +85,14 @@ export const WHEN_OPTIONS: FormOptionWithIcon[] = [
   },
 ]
 
-// Distance options (simplified - no encoding needed)
+// Distance options as ranges
 export const DISTANCE_OPTIONS: FormOption[] = [
-  { value: '10 minutes', label: '10 minutes' },
-  { value: '30 minutes', label: '30 minutes' },
-  { value: '45 minutes', label: '45 minutes' },
-  { value: '1 hour', label: '1 hour' },
-  { value: '2 hours', label: '2 hours' },
-  { value: '3 hours', label: '3 hours' },
-  { value: '5 hours', label: '5 hours' },
+  { value: 'less than 30 min', label: 'Less than 30 minutes' },
+  { value: 'less than 1 hour', label: 'Less than 1 hour' },
+  { value: 'less than 2 hours', label: 'Less than 2 hours' },
+  { value: 'between 1 and 2 hours', label: 'Between 1 and 2 hours' },
+  { value: 'between 2 and 3 hours', label: 'Between 2 and 3 hours' },
+  { value: 'between 4 and 5 hours', label: 'Between 4 and 5 hours' },
 ]
 
 // Transport type options

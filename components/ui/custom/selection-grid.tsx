@@ -20,17 +20,8 @@ export function SelectionGrid({
   onChange,
   maxColumns = 6,
 }: SelectionGridProps) {
-  // Calculate grid layout based on number of options with max 6 per row
-  const maxCols = Math.min(maxColumns, options.length)
-
   return (
-    <div
-      className={cn(
-        'grid gap-3',
-        `grid-cols-2 md:grid-cols-${maxCols}`,
-        options.length <= 3 && 'max-w-md'
-      )}
-    >
+    <div className={`grid grid-cols-2 gap-3 md:grid-cols-${maxColumns}`}>
       {options.map((option) => {
         const isSelected = value === option.value
         return (
@@ -38,7 +29,7 @@ export function SelectionGrid({
             key={option.value}
             type="button"
             className={cn(
-              'flex flex-col items-center justify-center p-3 rounded-lg border-1 transition-all h-16 min-w-0 cursor-pointer hover:scale-105 hover:border-primary/50 hover:bg-primary/5 hover:text-primary',
+              'hover:border-primary/50 hover:bg-primary/5 hover:text-primary flex h-16 min-w-0 cursor-pointer flex-col items-center justify-center rounded-lg border-1 p-3 transition-all hover:scale-105',
               isSelected
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-muted-foreground/20 bg-background hover:border-primary/50 hover:bg-primary/5'
@@ -46,7 +37,7 @@ export function SelectionGrid({
             onClick={() => onChange(isSelected ? undefined : option.value)}
           >
             <div className="mb-1.5 flex-shrink-0">{option.icon}</div>
-            <span className="text-sm font-medium text-center leading-tight">
+            <span className="text-center text-sm leading-tight font-medium">
               {option.label}
             </span>
           </button>

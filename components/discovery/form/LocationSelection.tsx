@@ -4,9 +4,14 @@ import { Button } from '@/components/ui/button'
 import { SelectionGrid } from '@/components/ui/custom/selection-grid'
 import { FormControl, FormItem, FormMessage } from '@/components/ui/form'
 import { type LocationSuggestion } from '@/lib/location-autocomplete.service'
-import { cn } from '@/lib/utils'
-import { MapPin, Navigation } from 'lucide-react'
-import { useState } from 'react'
+import {
+  CheckCircle,
+  Loader2,
+  MapPin,
+  Navigation,
+  RefreshCw,
+} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { CustomFormLabel } from './CustomFormLabel'
 import { LocationAutocomplete } from './LocationAutocomplete'
 
@@ -16,6 +21,12 @@ interface LocationSelectionProps {
   customLocation?: LocationSuggestion | null
   onCustomLocationChange: (location: LocationSuggestion | null) => void
   userLocation: { latitude: number; longitude: number } | null
+  userLocationInfo?: {
+    locationName: string
+    city?: string
+    region?: string
+    country?: string
+  } | null
   locationError: string | null
   onRetryLocation: () => void
   disabled?: boolean
@@ -28,38 +39,67 @@ export function LocationSelection({
   customLocation,
   onCustomLocationChange,
   userLocation,
+  userLocationInfo,
   locationError,
   onRetryLocation,
   disabled = false,
   className,
 }: LocationSelectionProps) {
   const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [isGeocoding, setIsGeocoding] = useState(false)
 
-  const handleGetCurrentLocation = async () => {
+  const handleGetCurrentLocation = useCallback(async () => {
     setIsGettingLocation(true)
     try {
-      await onRetryLocation()
+      onRetryLocation()
     } finally {
       setIsGettingLocation(false)
     }
-  }
+  }, [onRetryLocation])
+
+  // Auto-trigger location request when current location is selected and no location exists
+  useEffect(() => {
+    if (
+      locationType === 'current' &&
+      !userLocation &&
+      !locationError &&
+      !isGettingLocation
+    ) {
+      handleGetCurrentLocation()
+    }
+  }, [
+    locationType,
+    userLocation,
+    locationError,
+    isGettingLocation,
+    handleGetCurrentLocation,
+  ])
+
+  // Track geocoding state
+  useEffect(() => {
+    if (userLocation && !userLocationInfo && !locationError) {
+      setIsGeocoding(true)
+    } else {
+      setIsGeocoding(false)
+    }
+  }, [userLocation, userLocationInfo, locationError])
 
   // Location options for the grid
   const locationOptions = [
-    {
-      value: 'current',
-      icon: <Navigation className="h-5 w-5" />,
-      label: 'Current Location',
-    },
     {
       value: 'custom',
       icon: <MapPin className="h-5 w-5" />,
       label: 'Custom Location',
     },
+    {
+      value: 'current',
+      icon: <Navigation className="h-5 w-5" />,
+      label: 'Current Location',
+    },
   ]
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={className}>
       <FormItem>
         <CustomFormLabel>Where would you like to search?</CustomFormLabel>
         <SelectionGrid
@@ -75,40 +115,86 @@ export function LocationSelection({
 
       {/* Current Location Status */}
       {locationType === 'current' && (
-        <div className="flex items-center justify-between">
-          {locationError ? (
-            <div className="flex items-center gap-3">
-              <span className="text-destructive text-sm">{locationError}</span>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            {locationError ? (
+              <div className="flex items-center gap-3">
+                <span className="text-destructive text-sm">
+                  {locationError}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGetCurrentLocation}
+                  disabled={isGettingLocation || disabled}
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                >
+                  {isGettingLocation ? 'Getting...' : 'Retry'}
+                </Button>
+              </div>
+            ) : (
+              !userLocation && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGetCurrentLocation}
+                  disabled={isGettingLocation || disabled}
+                >
+                  {isGettingLocation ? 'Getting...' : 'Get Location'}
+                </Button>
+              )
+            )}
+          </div>
+
+          {/* Loading States */}
+          {isGettingLocation && (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Getting your current location...
+              </p>
+            </div>
+          )}
+
+          {isGeocoding && (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Loading...
+              </p>
+            </div>
+          )}
+
+          {/* Current Location Display */}
+          {userLocation && userLocationInfo && !isGeocoding && (
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <div className="min-w-0">
+                <p className="truncate text-xs text-green-600 dark:text-green-400">
+                  {userLocationInfo.locationName}
+                </p>
+              </div>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={handleGetCurrentLocation}
                 disabled={isGettingLocation || disabled}
-                className="text-destructive border-destructive hover:bg-destructive/10"
+                className="h-8 w-8 flex-shrink-0 p-0 text-green-600 hover:bg-green-100 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-900/20 dark:hover:text-green-300"
+                title="Refresh location"
               >
-                {isGettingLocation ? 'Getting...' : 'Retry'}
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            !userLocation && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleGetCurrentLocation}
-                disabled={isGettingLocation || disabled}
-              >
-                {isGettingLocation ? 'Getting...' : 'Get Location'}
-              </Button>
-            )
           )}
         </div>
       )}
 
       {/* Custom Location Input - Shows when custom is selected */}
       {locationType === 'custom' && (
-        <FormItem>
+        <FormItem className="mt-4">
           <CustomFormLabel>Search for a location</CustomFormLabel>
           <FormControl>
             <LocationAutocomplete

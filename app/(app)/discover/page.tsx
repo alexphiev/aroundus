@@ -11,7 +11,7 @@ import { mapSearchToFormFilters } from '@/actions/map-search-to-form.actions'
 import { savePlaceAction } from '@/actions/place.actions'
 import { SearchFormModal } from '@/components/discovery/form/DiscoverFormModal'
 import DiscoveryResult from '@/components/discovery/result/DiscoveryResult'
-import { useLocationContext } from '@/components/providers/LocationProvider'
+import { reverseGeocode } from '@/lib/geocoding.service'
 import {
   discoveryFormSchema,
   type DiscoveryFormValues,
@@ -81,8 +81,18 @@ function reconstructSearchContext(
 
 function DiscoverPageComponent() {
   const searchParams = useSearchParams()
-  const { userLocation, locationInfo, locationError, setUserLocation } =
-    useLocationContext()
+  // Local state for location handling - no longer using LocationProvider
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number
+    longitude: number
+  } | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
+  const [userLocationInfo, setUserLocationInfo] = useState<{
+    locationName: string
+    city?: string
+    region?: string
+    country?: string
+  } | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false) // Start closed to prevent flash
   const [isPending, startTransition] = useTransition()
   const [placeResults, setPlaceResults] = useState<PlaceResultItem[] | null>(
@@ -111,15 +121,14 @@ function DiscoverPageComponent() {
   const form = useForm<DiscoveryFormValues>({
     resolver: zodResolver(discoveryFormSchema),
     defaultValues: {
-      locationType: 'custom', // Default to custom to avoid GPS permission request
-      customLocation: undefined,
+      locationType: 'custom',
       activity: '',
       otherActivity: '',
       when: '',
       customDate: undefined,
       specialCare: undefined,
       otherSpecialCare: '',
-      distance: '1 hour',
+      distance: 'less than 1 hour',
       transportType: 'public_transport',
       activityLevel: 3,
       activityDurationValue: 4,
@@ -128,26 +137,66 @@ function DiscoverPageComponent() {
     },
   })
 
-  // Get user location using the context
+  // Get user location - only called when user selects current location
   const getLocation = useCallback(() => {
+    setLocationError(null)
+    setUserLocationInfo(null)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
+        async (position) => {
+          const location = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          })
-          toast.success('Location acquired!')
+          }
+
+          console.log('new location', location)
+          setUserLocation(location)
+          setLocationError(null)
+
+          // Reverse geocode to get location name
+          try {
+            const locationInfo = await reverseGeocode(
+              location.latitude,
+              location.longitude
+            )
+            if (locationInfo) {
+              setUserLocationInfo(locationInfo)
+            }
+          } catch (error) {
+            console.error('Reverse geocoding failed:', error)
+          }
         },
         (error) => {
           console.error('Error getting location: ', error)
-          toast.error('Failed to acquire location.')
+          let errorMessage = 'Failed to acquire location.'
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage =
+                'Location access denied. Please enable location permissions.'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information unavailable.'
+              break
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out.'
+              break
+          }
+
+          setLocationError(errorMessage)
+          toast.error(errorMessage)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0, // Force fresh location, don't use cached data
         }
       )
     } else {
-      toast.error('Geolocation not supported.')
+      const errorMessage = 'Geolocation not supported by this browser.'
+      setLocationError(errorMessage)
+      toast.error(errorMessage)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Load latest search from history on component mount
@@ -161,7 +210,6 @@ function DiscoverPageComponent() {
 
         if (query || shortcut) {
           // User came from homepage with search params, start fresh
-          getLocation()
           setIsSearchOpen(false) // Will be opened by the URL params effect
         } else {
           // Normal page load, try to load previous search
@@ -208,7 +256,7 @@ function DiscoverPageComponent() {
               customDate: customDateValue,
               specialCare: query.specialCare || undefined,
               otherSpecialCare: query.otherSpecialCare || '',
-              distance: query.distance || '1 hour',
+              distance: query.distance || 'less than 1 hour',
               transportType:
                 query.transportType || ('public_transport' as const), // Use saved transport type or default
               activityLevel: query.activityLevel,
@@ -259,15 +307,13 @@ function DiscoverPageComponent() {
             // Don't open search modal if we have previous results
             setIsSearchOpen(false)
           } else {
-            // No previous search, get location and show search modal
-            getLocation()
+            // No previous search, show search modal
             setIsSearchOpen(true)
           }
         }
       } catch (error) {
         console.error('Error loading latest search:', error)
-        // Fallback to getting location and showing search modal
-        getLocation()
+        // Fallback to showing search modal
         setIsSearchOpen(true)
       } finally {
         setIsLoadingHistory(false)
@@ -338,7 +384,7 @@ function DiscoverPageComponent() {
               customDate: customDateValue,
               specialCare: mappedData.specialCare || undefined,
               otherSpecialCare: mappedData.otherSpecialCare || '',
-              distance: mappedData.distance || '1 hour',
+              distance: mappedData.distance || 'less than 1 hour',
               transportType: mappedData.transportType || 'public_transport',
               activityLevel: mappedData.activityLevel || 3,
               activityDurationValue: mappedData.activityDurationValue || 4,
@@ -377,10 +423,6 @@ function DiscoverPageComponent() {
 
       // Open the search modal so user can review and complete the form
       setIsSearchOpen(true)
-      // Get location if not already set
-      if (!userLocation) {
-        getLocation()
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasProcessedQuery, isLoadingHistory, userLocation])
@@ -393,12 +435,12 @@ function DiscoverPageComponent() {
 
     if (values.locationType === 'current') {
       if (!userLocation) {
-        toast.error('Please allow location access.')
+        toast.error('Please allow location access and try again.')
         getLocation() // Try to get location again
         return
       }
       selectedLocation = userLocation
-      selectedLocationName = locationInfo?.locationName
+      selectedLocationName = undefined // We no longer have locationInfo from context
     } else if (values.locationType === 'custom') {
       if (!values.customLocation) {
         toast.error('Please select a location.')
@@ -766,22 +808,20 @@ function DiscoverPageComponent() {
         locationError={locationError}
         onRetryLocation={getLocation}
         userLocation={userLocation}
+        userLocationInfo={userLocationInfo}
         isLoadingAIFilters={isLoadingAIFilters}
       />
 
-      {/* Use the new MapResult component */}
       <DiscoveryResult
         placeResults={placeResults as PlaceResultItem[] | null}
         title="Discover Nature Trips"
-        subtitle="Find the perfect nature spot based on your preferences"
         baseLocation={searchLocation || userLocation}
         isLoadingNew={isLoadingNew}
         isLoadingHistory={isLoadingHistory}
-        onSearchClick={() => setIsSearchOpen(true)}
         emptyStateMessage={
           hasPerformedSearch
             ? 'No trips found matching your criteria'
-            : 'Discover places around you'
+            : `Welcome to ${process.env.PRODUCT_NAME}! Start your first nature discovery...`
         }
         onSavePlace={handleSavePlace}
         hasMoreResults={hasMoreResults}
@@ -798,7 +838,7 @@ function DiscoverPageComponent() {
             customDate: undefined,
             specialCare: undefined,
             otherSpecialCare: '',
-            distance: '1 hour',
+            distance: 'less than 1 hour',
             transportType: 'public_transport',
             activityLevel: 3,
             activityDurationValue: 4,
@@ -827,7 +867,7 @@ function DiscoverPageComponent() {
               customDate: currentSearchQuery.customDate || undefined,
               specialCare: currentSearchQuery.specialCare || undefined,
               otherSpecialCare: currentSearchQuery.otherSpecialCare || '',
-              distance: currentSearchQuery.distance || '1 hour',
+              distance: currentSearchQuery.distance || 'less than 1 hour',
               transportType:
                 currentSearchQuery.transportType || 'public_transport',
               activityLevel: currentSearchQuery.activityLevel || 3,

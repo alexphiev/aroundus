@@ -18,8 +18,6 @@ import { DiscoveryResultProps } from './DiscoveryResult'
 export default function DesktopDiscoveryResult({
   placeResults,
   title,
-  subtitle,
-  onSearchClick,
   baseLocation,
   showSaveButton = true,
   emptyStateMessage = 'No trips to display',
@@ -232,11 +230,6 @@ export default function DesktopDiscoveryResult({
                   title={
                     searchQuery ? generatedTitle || 'Search in Progress' : title
                   }
-                  subtitle={
-                    searchQuery
-                      ? 'Refine your search by editing filters or view your results below'
-                      : subtitle
-                  }
                   onNewSearch={onNewSearch}
                   isGeneratedTitle={!!generatedTitle}
                   onTitleEdit={onTitleEdit}
@@ -259,10 +252,7 @@ export default function DesktopDiscoveryResult({
                 {/* No Results */}
                 {!isLoadingNew &&
                   (!placeResults || placeResults.length === 0) && (
-                    <EmptyState
-                      message={emptyStateMessage}
-                      onSearchClick={onSearchClick}
-                    />
+                    <EmptyState message={emptyStateMessage} />
                   )}
 
                 {/* Trip Results Grid */}

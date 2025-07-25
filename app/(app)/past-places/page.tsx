@@ -29,7 +29,6 @@ export default async function PastPlacesPage() {
     <DiscoveryResult
       placeResults={placeResults}
       title="Your Saved Places"
-      subtitle="View and explore places you've saved"
       showSaveButton={false}
       emptyStateMessage="You haven't saved any places yet"
     />

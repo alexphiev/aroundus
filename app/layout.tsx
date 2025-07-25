@@ -3,13 +3,11 @@ import { ThemeProvider } from 'next-themes'
 import { Geist } from 'next/font/google'
 import './globals.css'
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'http://localhost:3000'
-
 export const metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: 'NatureTrips AI',
+  metadataBase: new URL(
+    process.env.BASE_URL || 'https://around-us-ar09b.sevalla.app'
+  ),
+  title: 'Around Us',
   description: 'Find, plan, and save nature trips with AI.',
 }
 

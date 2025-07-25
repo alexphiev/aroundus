@@ -17,7 +17,6 @@ import { DiscoveryResultProps } from './DiscoveryResult'
 
 export default function MobileDiscoveryResult({
   placeResults,
-  onSearchClick,
   baseLocation,
   showSaveButton = true,
   emptyStateMessage = 'No trips to display',
@@ -311,10 +310,7 @@ export default function MobileDiscoveryResult({
                 {!isLoadingNew &&
                   (!placeResults || placeResults.length === 0) && (
                     <div className="pt-20">
-                      <EmptyState
-                        message={emptyStateMessage}
-                        onSearchClick={onSearchClick}
-                      />
+                      <EmptyState message={emptyStateMessage} />
                     </div>
                   )}
 
