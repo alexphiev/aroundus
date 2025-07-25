@@ -1,12 +1,12 @@
 import {
-  discoverySubmissionSchema,
-  DiscoverySubmissionValues,
-} from '@/schemas/form.schema'
-import {
   DiscoverError,
   DiscoverErrorType,
   DiscoverResult,
 } from '@/types/result.types'
+import {
+  discoverySubmissionSchema,
+  DiscoverySubmissionValues,
+} from '@/validation/discover-form.validation'
 
 // Validation function - extracted from main function
 export function validateDiscoverySubmission(

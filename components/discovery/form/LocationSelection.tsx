@@ -2,8 +2,15 @@
 
 import { Button } from '@/components/ui/button'
 import { SelectionGrid } from '@/components/ui/custom/selection-grid'
-import { FormControl, FormItem, FormMessage } from '@/components/ui/form'
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from '@/components/ui/form'
 import { type LocationSuggestion } from '@/lib/location-autocomplete.service'
+import { cn } from '@/lib/utils'
+import { DiscoveryFormValues } from '@/validation/discover-form.validation'
 import {
   CheckCircle,
   Loader2,
@@ -12,6 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { Control } from 'react-hook-form'
 import { CustomFormLabel } from './CustomFormLabel'
 import { LocationAutocomplete } from './LocationAutocomplete'
 
@@ -31,6 +39,8 @@ interface LocationSelectionProps {
   onRetryLocation: () => void
   disabled?: boolean
   className?: string
+  // Add form control for validation
+  control?: Control<DiscoveryFormValues>
 }
 
 export function LocationSelection({
@@ -44,6 +54,7 @@ export function LocationSelection({
   onRetryLocation,
   disabled = false,
   className,
+  control,
 }: LocationSelectionProps) {
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [isGeocoding, setIsGeocoding] = useState(false)
@@ -101,7 +112,16 @@ export function LocationSelection({
   return (
     <div className={className}>
       <FormItem>
-        <CustomFormLabel>Where would you like to search?</CustomFormLabel>
+        <CustomFormLabel
+          className={cn(
+            control?.getFieldState('customLocation')?.error &&
+              locationType === 'custom'
+              ? 'text-destructive'
+              : ''
+          )}
+        >
+          Where would you like to search?
+        </CustomFormLabel>
         <SelectionGrid
           options={locationOptions}
           value={locationType}
@@ -117,7 +137,7 @@ export function LocationSelection({
       {locationType === 'current' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            {locationError ? (
+            {locationError && (
               <div className="flex items-center gap-3">
                 <span className="text-destructive text-sm">
                   {locationError}
@@ -133,18 +153,6 @@ export function LocationSelection({
                   {isGettingLocation ? 'Getting...' : 'Retry'}
                 </Button>
               </div>
-            ) : (
-              !userLocation && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGetCurrentLocation}
-                  disabled={isGettingLocation || disabled}
-                >
-                  {isGettingLocation ? 'Getting...' : 'Get Location'}
-                </Button>
-              )
             )}
           </div>
 
@@ -172,7 +180,7 @@ export function LocationSelection({
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
               <div className="min-w-0">
-                <p className="truncate text-xs text-green-600 dark:text-green-400">
+                <p className="truncate text-sm text-green-600 dark:text-green-400">
                   {userLocationInfo.locationName}
                 </p>
               </div>
@@ -194,18 +202,35 @@ export function LocationSelection({
 
       {/* Custom Location Input - Shows when custom is selected */}
       {locationType === 'custom' && (
-        <FormItem className="mt-4">
-          <CustomFormLabel>Search for a location</CustomFormLabel>
-          <FormControl>
-            <LocationAutocomplete
-              value={customLocation}
-              onChange={onCustomLocationChange}
-              placeholder="Search for a city, region, or landmark..."
-              disabled={disabled}
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
+        <div className="relative mt-2">
+          <div className="bg-primary absolute top-0 bottom-0 left-0 w-1 rounded-full" />
+          <FormItem className="ml-4">
+            <CustomFormLabel className="mb-1 text-sm">
+              Search for a location
+            </CustomFormLabel>
+            <FormControl>
+              <LocationAutocomplete
+                value={customLocation}
+                onChange={onCustomLocationChange}
+                placeholder="Search for a city, region, or landmark..."
+                disabled={disabled}
+              />
+            </FormControl>
+            <FormMessage />
+            {/* Add validation error for customLocation field */}
+            {control && (
+              <FormField
+                control={control}
+                name="customLocation"
+                render={() => (
+                  <FormItem>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </FormItem>
+        </div>
       )}
     </div>
   )

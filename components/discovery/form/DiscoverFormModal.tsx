@@ -1,5 +1,11 @@
 'use client'
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -38,12 +44,13 @@ import {
   WHEN_OPTIONS,
 } from '@/constants/discover.constants'
 import { cn } from '@/lib/utils'
-import type { DiscoveryFormValues } from '@/schemas/form.schema'
+import type { DiscoveryFormValues } from '@/validation/discover-form.validation'
 import { format } from 'date-fns'
 import {
   Activity,
   CalendarIcon,
   Dumbbell,
+  FilterIcon,
   Flame,
   Footprints,
   Loader2,
@@ -157,7 +164,11 @@ export function SearchFormModal({
                         <FormControl>
                           <LocationSelection
                             locationType={field.value}
-                            onLocationTypeChange={field.onChange}
+                            onLocationTypeChange={(type) => {
+                              field.onChange(type)
+                              // Trigger validation for customLocation when location type changes
+                              form.trigger('customLocation')
+                            }}
                             customLocation={
                               form.watch('customLocation')
                                 ? {
@@ -184,12 +195,15 @@ export function SearchFormModal({
                                     }
                                   : undefined
                               )
+                              // Trigger validation for customLocation field
+                              form.trigger('customLocation')
                             }}
                             userLocation={userLocation}
                             userLocationInfo={userLocationInfo}
                             locationError={locationError}
                             onRetryLocation={onRetryLocation}
                             disabled={isPending}
+                            control={form.control}
                           />
                         </FormControl>
                         <FormMessage />
@@ -206,7 +220,10 @@ export function SearchFormModal({
                         <CustomFormLabel className="flex items-center gap-2">
                           <Stars className="h-4 w-4" />
                           Describe what you&apos;re looking for in your own
-                          words
+                          words{' '}
+                          <span className="text-muted-foreground font-light">
+                            - Optional
+                          </span>
                         </CustomFormLabel>
                         <FormControl>
                           <Textarea
@@ -257,183 +274,6 @@ export function SearchFormModal({
                               disabled={isPending}
                               className="text-sm placeholder:text-sm"
                             />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                  </div>
-
-                  {/* Physical Activity Level & Duration - Two Column Layout */}
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {/* Physical Activity Level Column */}
-                    <FormField
-                      control={form.control}
-                      name="activityLevel"
-                      render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <CustomFormLabel>
-                            Physical Activity Level
-                          </CustomFormLabel>
-                          <div className="flex flex-row gap-4">
-                            <div className="bg-primary/10 text-primary rounded-full p-2">
-                              {getActivityLevelIcon(field.value)}
-                            </div>
-                            <div className="flex flex-1 flex-col gap-2">
-                              <div className="mb-1 text-sm font-medium">
-                                {field.value === 1 && 'Very easy'}
-                                {field.value === 2 && 'Easy'}
-                                {field.value === 3 && 'Moderate'}
-                                {field.value === 4 && 'Challenging'}
-                                {field.value === 5 && 'Very Challenging'}
-                              </div>
-                              <FormControl>
-                                <Slider
-                                  min={1}
-                                  max={5}
-                                  step={1}
-                                  defaultValue={[field.value]}
-                                  onValueChange={(value: number[]) =>
-                                    field.onChange(value[0])
-                                  }
-                                  disabled={isPending}
-                                  className="w-[80%]"
-                                />
-                              </FormControl>
-                            </div>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Activity Duration Column */}
-                    <div className="space-y-3">
-                      <CustomFormLabel>Activity Duration</CustomFormLabel>
-                      <div className="grid grid-cols-2 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="activityDurationValue"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <FullWidthSelect
-                                  onValueChange={(value) =>
-                                    field.onChange(parseInt(value))
-                                  }
-                                  defaultValue={field.value.toString()}
-                                  disabled={isPending}
-                                  placeholder="Duration"
-                                >
-                                  {ACTIVITY_DURATION_VALUES.map((option) => (
-                                    <SelectItem
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </FullWidthSelect>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="activityDurationUnit"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <FullWidthSelect
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                  disabled={isPending}
-                                  placeholder="Unit"
-                                >
-                                  {ACTIVITY_DURATION_UNITS.map((option) => (
-                                    <SelectItem
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </FullWidthSelect>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* When Selection */}
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="when"
-                      render={({ field }) => (
-                        <FormItem>
-                          <CustomFormLabel>
-                            When would you like to go?
-                          </CustomFormLabel>
-                          <SelectionGrid
-                            options={WHEN_OPTIONS}
-                            value={field.value}
-                            onChange={field.onChange}
-                            maxColumns={4}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {form.watch('when') === 'custom' && (
-                      <FormField
-                        control={form.control}
-                        name="customDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <CustomFormLabel>
-                              Select custom date
-                            </CustomFormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      'w-full pl-3 text-left font-normal',
-                                      !field.value && 'text-muted-foreground'
-                                    )}
-                                    disabled={isPending}
-                                  >
-                                    {field.value ? (
-                                      format(field.value, 'PPP')
-                                    ) : (
-                                      <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) =>
-                                    date < new Date() ||
-                                    date < new Date('1900-01-01')
-                                  }
-                                />
-                              </PopoverContent>
-                            </Popover>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -494,47 +334,276 @@ export function SearchFormModal({
                     )}
                   />
 
-                  {/* Special Care - Advanced Options */}
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="specialCare"
-                      render={({ field }) => (
-                        <FormItem>
-                          <CustomFormLabel>
-                            Special Requirements (Optional)
+                  {/* Additional Filters - Collapsible Section */}
+                  <Accordion
+                    type="single"
+                    collapsible
+                    className="w-full"
+                    onValueChange={(value) => {
+                      // Auto-scroll when expanding to show first filter
+                      if (value === 'filters') {
+                        setTimeout(() => {
+                          const content = document.querySelector(
+                            '[data-accordion-content]'
+                          )
+                          if (content) {
+                            content.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'nearest',
+                              inline: 'nearest',
+                            })
+                          }
+                        }, 200)
+                      }
+                    }}
+                  >
+                    <AccordionItem value="filters">
+                      <AccordionTrigger
+                        data-accordion-trigger
+                        className="group border-border bg-muted/30 hover:bg-muted/50 [&[data-state=open]>div>span]:text-foreground [&[data-state=closed]>div>span]:text-muted-foreground flex w-full cursor-pointer items-center justify-between rounded-t-md border-b py-2 pr-4 pl-0 font-medium transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FilterIcon className="h-4 w-4" />
+                          <CustomFormLabel className="my-0 cursor-pointer">
+                            Additional Filters{' '}
+                            <span className="text-muted-foreground font-light">
+                              - Optional
+                            </span>
                           </CustomFormLabel>
-                          <SelectionGrid
-                            options={SPECIAL_CARE_OPTIONS}
-                            value={field.value}
-                            onChange={field.onChange}
-                            maxColumns={4}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent
+                        data-accordion-content
+                        className="border-border bg-muted/10 space-y-12 rounded-b-md border-r border-b border-l px-4 pt-6 pb-6"
+                      >
+                        {/* Physical Activity Level & Duration - Two Column Layout */}
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                          {/* Physical Activity Level Column */}
+                          <FormField
+                            control={form.control}
+                            name="activityLevel"
+                            render={({ field }) => (
+                              <FormItem className="space-y-3">
+                                <CustomFormLabel>
+                                  Physical Activity Level
+                                </CustomFormLabel>
+                                <div className="flex flex-row gap-4">
+                                  <div className="bg-primary/10 text-primary rounded-full p-2">
+                                    {getActivityLevelIcon(field.value || 3)}
+                                  </div>
+                                  <div className="flex flex-1 flex-col gap-2">
+                                    <div className="mb-1 text-sm font-medium">
+                                      {field.value === 1 && 'Very easy'}
+                                      {field.value === 2 && 'Easy'}
+                                      {field.value === 3 && 'Moderate'}
+                                      {field.value === 4 && 'Challenging'}
+                                      {field.value === 5 && 'Very Challenging'}
+                                    </div>
+                                    <FormControl>
+                                      <Slider
+                                        min={1}
+                                        max={5}
+                                        step={1}
+                                        defaultValue={[field.value || 3]}
+                                        onValueChange={(value: number[]) =>
+                                          field.onChange(value[0])
+                                        }
+                                        disabled={isPending}
+                                        className="w-[80%]"
+                                      />
+                                    </FormControl>
+                                  </div>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
                           />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    {form.watch('specialCare') === 'other' && (
-                      <FormField
-                        control={form.control}
-                        name="otherSpecialCare"
-                        render={({ field }) => (
-                          <FormItem>
-                            <CustomFormLabel>
-                              Describe your special requirements
-                            </CustomFormLabel>
-                            <Input
-                              placeholder="e.g., wheelchair accessible, quiet environment, pet-friendly..."
-                              {...field}
-                              disabled={isPending}
-                              className="text-sm placeholder:text-sm"
+
+                          {/* Activity Duration Column */}
+                          <div className="space-y-3">
+                            <CustomFormLabel>Activity Duration</CustomFormLabel>
+                            <div className="grid grid-cols-2 gap-3">
+                              <FormField
+                                control={form.control}
+                                name="activityDurationValue"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <FullWidthSelect
+                                        onValueChange={(value) =>
+                                          field.onChange(parseInt(value))
+                                        }
+                                        defaultValue={
+                                          field.value?.toString() || '4'
+                                        }
+                                        disabled={isPending}
+                                        placeholder="Duration"
+                                      >
+                                        {ACTIVITY_DURATION_VALUES.map(
+                                          (option) => (
+                                            <SelectItem
+                                              key={option.value}
+                                              value={option.value}
+                                            >
+                                              {option.label}
+                                            </SelectItem>
+                                          )
+                                        )}
+                                      </FullWidthSelect>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="activityDurationUnit"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <FullWidthSelect
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value || 'hours'}
+                                        disabled={isPending}
+                                        placeholder="Unit"
+                                      >
+                                        {ACTIVITY_DURATION_UNITS.map(
+                                          (option) => (
+                                            <SelectItem
+                                              key={option.value}
+                                              value={option.value}
+                                            >
+                                              {option.label}
+                                            </SelectItem>
+                                          )
+                                        )}
+                                      </FullWidthSelect>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* When Selection */}
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="when"
+                            render={({ field }) => (
+                              <FormItem>
+                                <CustomFormLabel>
+                                  When would you like to go?
+                                </CustomFormLabel>
+                                <SelectionGrid
+                                  options={WHEN_OPTIONS}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  maxColumns={4}
+                                />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch('when') === 'custom' && (
+                            <FormField
+                              control={form.control}
+                              name="customDate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <CustomFormLabel>
+                                    Select custom date
+                                  </CustomFormLabel>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant="outline"
+                                          className={cn(
+                                            'w-full pl-3 text-left font-normal',
+                                            !field.value &&
+                                              'text-muted-foreground'
+                                          )}
+                                          disabled={isPending}
+                                        >
+                                          {field.value ? (
+                                            format(field.value, 'PPP')
+                                          ) : (
+                                            <span>Pick a date</span>
+                                          )}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                      className="w-auto p-0"
+                                      align="start"
+                                    >
+                                      <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) =>
+                                          date < new Date() ||
+                                          date < new Date('1900-01-01')
+                                        }
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
                             />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                  </div>
+                          )}
+                        </div>
+
+                        {/* Special Care - Advanced Options */}
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="specialCare"
+                            render={({ field }) => (
+                              <FormItem>
+                                <CustomFormLabel>
+                                  Special Requirements (Optional)
+                                </CustomFormLabel>
+                                <SelectionGrid
+                                  options={SPECIAL_CARE_OPTIONS}
+                                  value={field.value}
+                                  onChange={field.onChange}
+                                  maxColumns={4}
+                                />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch('specialCare') === 'other' && (
+                            <FormField
+                              control={form.control}
+                              name="otherSpecialCare"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <CustomFormLabel>
+                                    Describe your special requirements
+                                  </CustomFormLabel>
+                                  <Input
+                                    placeholder="e.g., wheelchair accessible, quiet environment, pet-friendly..."
+                                    {...field}
+                                    disabled={isPending}
+                                    className="text-sm placeholder:text-sm"
+                                  />
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               )}
             </div>

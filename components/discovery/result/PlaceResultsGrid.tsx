@@ -34,7 +34,7 @@ export default function PlaceResultsGrid({
   isMobile = false,
 }: Props) {
   return (
-    <div className="space-y-6 py-20">
+    <div className={`space-y-6 ${isMobile && 'py-20'}`}>
       <div
         className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}
       >

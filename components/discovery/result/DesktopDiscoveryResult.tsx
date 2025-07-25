@@ -138,9 +138,6 @@ export default function DesktopDiscoveryResult({
       // Add to saved places set after successful save
       setSavedPlaceNames((prev) => new Set(prev).add(place.name))
     } else {
-      // Default save logic
-      toast.info(`Saving "${place.name}"...`)
-
       const placeToSave = {
         name: place.name,
         description: place.description,
@@ -228,7 +225,7 @@ export default function DesktopDiscoveryResult({
               >
                 <ResultsHeader
                   title={
-                    searchQuery ? generatedTitle || 'Search in Progress' : title
+                    searchQuery ? generatedTitle || 'New discovery' : title
                   }
                   onNewSearch={onNewSearch}
                   isGeneratedTitle={!!generatedTitle}

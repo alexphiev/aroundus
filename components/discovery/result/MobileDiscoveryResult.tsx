@@ -219,7 +219,6 @@ export default function MobileDiscoveryResult({
       await onSavePlace(place)
       setSavedPlaceNames((prev) => new Set(prev).add(place.name))
     } else {
-      toast.info(`Saving "${place.name}"...`)
       const result = await savePlaceAction(place)
       if (result.success) {
         toast.success(`"${place.name}" saved successfully!`)

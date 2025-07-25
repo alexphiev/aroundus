@@ -7,17 +7,22 @@ const baseDiscoverySchema = z.object({
     message: 'Please select a location type.',
   }),
   customLocation: z
-    .object({
-      name: z.string(),
-      lat: z.number(),
-      lng: z.number(),
-    })
+    .object(
+      {
+        name: z.string(),
+        lat: z.number(),
+        lng: z.number(),
+      },
+      {
+        message: 'Please enter a location.',
+      }
+    )
     .optional(),
 
   // Existing fields
   activity: z.string().min(1, { message: 'Please select an activity.' }),
   otherActivity: z.string().optional(),
-  when: z.string().min(1, { message: 'Please select when you want to go.' }),
+  when: z.string().optional(),
   customDate: z.date().optional(),
   specialCare: z
     .enum(['children', 'lowMobility', 'dogs', 'other'], {
@@ -29,9 +34,9 @@ const baseDiscoverySchema = z.object({
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car'], {
     message: 'Please select a transport type.',
   }),
-  activityLevel: z.number().min(1).max(5),
-  activityDurationValue: z.coerce.number().min(1),
-  activityDurationUnit: z.enum(['hours', 'days']),
+  activityLevel: z.number().min(1).max(5).optional(),
+  activityDurationValue: z.coerce.number().min(1).optional(),
+  activityDurationUnit: z.enum(['hours', 'days']).optional(),
   additionalInfo: z.string().optional(),
 })
 
@@ -39,7 +44,10 @@ const baseDiscoverySchema = z.object({
 const baseApiSchema = z.object({
   activity: z.string().min(1, { message: 'Please select an activity.' }),
   otherActivity: z.string().optional(),
-  when: z.string().min(1, { message: 'Please select when you want to go.' }),
+  when: z
+    .string()
+    .optional()
+    .transform((val) => (val === '' ? undefined : val)),
   customDate: z.date().optional(),
   specialCare: z
     .enum(['children', 'lowMobility', 'dogs', 'other'], {
@@ -51,9 +59,9 @@ const baseApiSchema = z.object({
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car'], {
     message: 'Please select a transport type.',
   }),
-  activityLevel: z.number().min(1).max(5),
-  activityDurationValue: z.coerce.number().min(1),
-  activityDurationUnit: z.enum(['hours', 'days']),
+  activityLevel: z.number().min(1).max(5).optional(),
+  activityDurationValue: z.coerce.number().min(1).optional(),
+  activityDurationUnit: z.enum(['hours', 'days']).optional(),
   additionalInfo: z.string().optional(),
 })
 

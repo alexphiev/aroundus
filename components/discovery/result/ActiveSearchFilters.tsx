@@ -56,7 +56,6 @@ export default function ActiveSearchFilters({
   if (!searchQuery) return null
 
   const allFilters = [
-    // Location filter - show first
     {
       icon: <MapPin className="h-4 w-4" />,
       label: 'Location',
@@ -74,11 +73,6 @@ export default function ActiveSearchFilters({
           : searchQuery.activity,
     },
     {
-      icon: <Calendar className="h-4 w-4" />,
-      label: 'When',
-      value: formatWhen(searchQuery.when),
-    },
-    {
       icon: <MapPin className="h-4 w-4" />,
       label: 'Distance',
       value: searchQuery.distance,
@@ -91,17 +85,31 @@ export default function ActiveSearchFilters({
           ? 'Public transport'
           : searchQuery.transportType,
     },
-    {
-      icon: <Clock className="h-4 w-4" />,
-      label: 'Duration',
-      value: `${searchQuery.activityDurationValue} ${searchQuery.activityDurationUnit}`,
-    },
-    {
+  ]
+
+  if (searchQuery.when) {
+    allFilters.push({
+      icon: <Calendar className="h-4 w-4" />,
+      label: 'When',
+      value: formatWhen(searchQuery.when),
+    })
+  }
+
+  if (searchQuery.activityLevel) {
+    allFilters.push({
       icon: <Activity className="h-4 w-4" />,
       label: 'Difficulty',
       value: getActivityLevelText(searchQuery.activityLevel),
-    },
-  ]
+    })
+  }
+
+  if (searchQuery.activityDurationValue && searchQuery.activityDurationUnit) {
+    allFilters.push({
+      icon: <Clock className="h-4 w-4" />,
+      label: 'Duration',
+      value: `${searchQuery.activityDurationValue} ${searchQuery.activityDurationUnit}`,
+    })
+  }
 
   if (searchQuery.specialCare) {
     const specialCareIcon = getIcon(

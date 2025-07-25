@@ -4,7 +4,6 @@ import { MODEL } from '@/constants/ai.constants'
 import { getAIError, getGenAI } from '@/lib/ai.service'
 import { authenticateUser } from '@/lib/auth.service'
 import { enrichPlaceWithGoogleData } from '@/lib/google-places.service'
-import { type DiscoverySubmissionValues } from '@/schemas/form.schema'
 import type {
   DiscoverError,
   DiscoverResult,
@@ -18,6 +17,7 @@ import {
   createDiscoverError,
   validateDiscoverySubmission,
 } from '@/utils/discover.utils'
+import { type DiscoverySubmissionValues } from '@/validation/discover-form.validation'
 import { getWeatherDataForAI } from './weather.actions'
 
 // Helper function to extract text from AI response with simplified fallbacks
@@ -373,6 +373,21 @@ export async function handlePlaceSearchBatch(
   }
 
   const validatedData = validationResult.data!
+  const {
+    activity,
+    activityDurationValue,
+    activityDurationUnit,
+    activityLevel,
+    distance,
+    transportType,
+    locationName,
+    location,
+    specialCare,
+    when,
+    additionalInfo,
+  } = validatedData
+
+  console.log({ validatedData })
 
   // Check AI availability
   if (!getGenAI()) {
@@ -410,38 +425,35 @@ export async function handlePlaceSearchBatch(
     }
   }
 
-  const targetDate = getTargetDate(validatedData.when)
-
-  // Use location name from the request (already geocoded on client)
-  const locationName = validatedData.locationName || 'your location'
+  const targetDate = when ? getTargetDate(when) : null
 
   // Get weather forecast for the target location and date
   const weatherData = await getWeatherDataForAI(
-    validatedData.location.latitude,
-    validatedData.location.longitude,
-    targetDate
+    location.latitude,
+    location.longitude,
+    targetDate || new Date()
   )
 
   // Create special care requirements text
   const specialCareRequirements = []
-  if (validatedData.specialCare === 'children') {
+  if (specialCare === 'children') {
     specialCareRequirements.push(
       '- CHILD-FRIENDLY: Must be safe and suitable for children, with easy trails, no dangerous cliffs/drops, and engaging activities'
     )
   }
-  if (validatedData.specialCare === 'lowMobility') {
+  if (specialCare === 'lowMobility') {
     specialCareRequirements.push(
       '- ACCESSIBILITY: Must be accessible for people with limited mobility (paved paths, minimal elevation, wheelchair accessible where possible)'
     )
   }
-  if (validatedData.specialCare === 'dogs') {
+  if (specialCare === 'dogs') {
     specialCareRequirements.push(
       '- DOG-FRIENDLY: Must allow dogs, have leash-friendly trails, and provide water sources'
     )
   }
 
   // Create transport method description
-  const getTransportDescription = (transportType?: string) => {
+  const getTransportDescription = (transportType: string) => {
     switch (transportType) {
       case 'foot':
         return 'traveling on foot/walking'
@@ -476,18 +488,20 @@ export async function handlePlaceSearchBatch(
   // Base criteria for all prompts
   const baseCriteria = `
     STRICT REQUIREMENTS:
-    - Preferred activity type: ${validatedData.activity}
-    - Visit date: ${targetDate.toDateString()} (${targetDate.toLocaleDateString(
-      'en-US',
-      { weekday: 'long' }
-    )})
-    - Desired travel time range to location: ${validatedData.distance} (ONE WAY)
-    - Preferred transport method: ${getTransportDescription(
-      validatedData.transportType
-    )}
-    - Desired activity duration at location: ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}
-    - Physical activity level: ${validatedData.activityLevel} (where 1 is very light and 5 is very strenuous)
-    - Starting location: ${locationName} (latitude ${validatedData.location.latitude}, longitude ${validatedData.location.longitude})
+    - Preferred activity type: ${activity}
+    ${
+      targetDate
+        ? `- Visit date: ${targetDate.toDateString()} (${targetDate.toLocaleDateString(
+            'en-US',
+            { weekday: 'long' }
+          )})`
+        : ''
+    }
+    - Desired travel time range to location: ${distance} (ONE WAY)
+    - Preferred transport method: ${getTransportDescription(transportType)}
+    ${activityDurationValue && activityDurationUnit ? `- Desired activity duration at location: ${activityDurationValue} ${activityDurationUnit}` : ''}
+    ${activityLevel ? `- Physical activity level: ${activityLevel} (where 1 is very light and 5 is very strenuous)` : ''}
+    - Starting location: ${locationName} (latitude ${location.latitude}, longitude ${location.longitude})
     
     ${
       specialCareRequirements.length > 0
@@ -499,7 +513,7 @@ export async function handlePlaceSearchBatch(
     
     TRANSPORT & ACCESSIBILITY:
     - Consider destinations that are accessible via ${getTransportDescription(
-      validatedData.transportType
+      transportType
     )}
     - Factor in parking availability, public transport stops, or bike-friendly routes as appropriate
     - Account for the practicality of reaching the destination with the chosen transport method
@@ -527,21 +541,25 @@ export async function handlePlaceSearchBatch(
     - Factor in precipitation chances when recommending specific times of day
     - Adjust activity duration recommendations based on weather comfort levels
     
-    CRITICAL: You must strictly adhere to the duration criteria. For activity duration of ${validatedData.activityDurationValue} ${validatedData.activityDurationUnit}:
+    ${
+      activityDurationValue && activityDurationUnit
+        ? `CRITICAL: You must strictly adhere to the duration criteria. For activity duration of ${activityDurationValue} ${activityDurationUnit}:
     - If specified in hours: suggest activities that take between ${Math.max(
       1,
-      validatedData.activityDurationValue - 1
-    )} and ${validatedData.activityDurationValue + 1} hours
+      activityDurationValue - 1
+    )} and ${activityDurationValue + 1} hours
     - If specified in days: suggest activities that take between ${Math.max(
       1,
-      validatedData.activityDurationValue - 1
-    )} and ${validatedData.activityDurationValue + 1} days
-    
-    For travel distance preference of ${validatedData.distance} via ${getTransportDescription(
-      validatedData.transportType
+      activityDurationValue - 1
+    )} and ${activityDurationValue + 1} days
+    `
+        : ''
+    }
+    For travel distance preference of ${distance} via ${getTransportDescription(
+      transportType
     )}:
-    - Suggest places that fall within the user's preferred travel time range: ${validatedData.distance} from ${locationName} (coordinates: ${validatedData.location.latitude}, ${validatedData.location.longitude}) using ${getTransportDescription(
-      validatedData.transportType
+    - Suggest places that fall within the user's preferred travel time range: ${distance} from ${locationName} (coordinates: ${location.latitude}, ${location.longitude}) using ${getTransportDescription(
+      transportType
     )}
     - Understand this as a range preference, not a strict maximum - the user wants destinations that match their ideal travel time
     - For "less than" ranges: prioritize closer destinations but can include places up to that time
@@ -550,13 +568,13 @@ export async function handlePlaceSearchBatch(
     - Consider realistic routes, traffic patterns, and connections for the chosen transport method
     - Factor in any transport-specific limitations (bike paths, transit schedules, parking requirements)
     
-    ACTIVITY FOCUS: Prioritize locations and experiences that align with "${validatedData.activity}" activities.
+    ACTIVITY FOCUS: Prioritize locations and experiences that align with "${activity}" activities.
     
     ${
-      validatedData.additionalInfo
+      additionalInfo
         ? `
     🔥 CRITICAL USER REQUEST - HIGHEST PRIORITY:
-    The user specifically searched for: "${validatedData.additionalInfo}"
+    The user specifically searched for: "${additionalInfo}"
     
     This is the user's direct input and represents their PRIMARY desire for this place. 
     You MUST prioritize this request above all other criteria. Every suggestion should strongly align with this user input.
@@ -691,8 +709,7 @@ export async function handlePlaceSearchBatch(
         ...place,
         id: place.id || `batch-${batchNumber}-${index}`,
         starRating: place.starRating || 2, // Default star rating
-        transportMode:
-          place.transportMode || validatedData.transportType || 'car', // Use user's selected transport type as fallback
+        transportMode: place.transportMode || transportType || 'car', // Use user's selected transport type as fallback
       }))
 
       // Enrich places with Google Photos and Reviews in parallel

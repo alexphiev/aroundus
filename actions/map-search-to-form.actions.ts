@@ -2,8 +2,11 @@
 
 import { MODEL } from '@/constants/ai.constants'
 import { getAIError, getGenAI, isAIAvailable } from '@/lib/ai.service'
-import { aiMappingSchema, type AiMappingValues } from '@/schemas/form.schema'
 import type { FormValues } from '@/types/search-history.types'
+import {
+  aiMappingSchema,
+  type AiMappingValues,
+} from '@/validation/discover-form.validation'
 
 export async function mapSearchToFormFilters(
   searchQuery: string,
@@ -144,7 +147,7 @@ Only return the JSON object, no other text.
       }
 
       parsedResponse = JSON.parse(cleanedText)
-    } catch (parseError) {
+    } catch {
       console.error('Failed to parse AI response:', text)
       return {
         success: false,

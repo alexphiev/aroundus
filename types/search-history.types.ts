@@ -1,18 +1,13 @@
 // Search query types for search history (simplified)
 export interface SearchQuery {
   activity: string
-  when: string // "today", "tomorrow", "this_weekend", or ISO date string for custom
+  when?: string // "today", "tomorrow", "this_weekend", or ISO date string for custom
   specialCare?: 'children' | 'lowMobility' | 'dogs' | 'other'
   otherSpecialCare?: string
   distance: string // Now uses readable text like "1 hour", "30 minutes"
-  activityLevel: number
-  activityDurationValue: number
-  activityDurationUnit: 'hours' | 'days'
-  location: {
-    latitude: number
-    longitude: number
-  }
-  locationName?: string // Human-readable location name (e.g., "Paris, France")
+  activityLevel?: number
+  activityDurationValue?: number
+  activityDurationUnit?: 'hours' | 'days'
   additionalInfo?: string // User's direct input from homepage search
   transportType?: 'foot' | 'bike' | 'public_transport' | 'car' // Transport mode
 }
@@ -40,6 +35,11 @@ export interface SearchHistoryRecord {
   results: SearchResult[]
   created_at: string
   updated_at: string | null
+  location: {
+    latitude: number
+    longitude: number
+    locationName?: string
+  } | null
   // Search session metadata
   current_batch?: number
   has_more_results?: boolean
@@ -73,15 +73,15 @@ export interface FormValues {
   // Existing fields
   activity: string
   otherActivity?: string
-  when: string // "today", "tomorrow", "this_weekend", or ISO date string for custom
+  when?: string // "today", "tomorrow", "this_weekend", or ISO date string for custom
   customDate?: Date
   specialCare?: 'children' | 'lowMobility' | 'dogs' | 'other'
   otherSpecialCare?: string
   distance: string // Now uses readable text like "1 hour", "30 minutes"
   transportType: 'foot' | 'bike' | 'public_transport' | 'car'
-  activityLevel: number
-  activityDurationValue: number
-  activityDurationUnit: 'hours' | 'days'
+  activityLevel?: number
+  activityDurationValue?: number
+  activityDurationUnit?: 'hours' | 'days'
   additionalInfo?: string // User's direct input from homepage search
   locationName?: string // Human-readable location name (e.g., "Paris, France")
 }

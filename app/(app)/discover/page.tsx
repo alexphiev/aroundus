@@ -12,16 +12,16 @@ import { savePlaceAction } from '@/actions/place.actions'
 import { SearchFormModal } from '@/components/discovery/form/DiscoverFormModal'
 import DiscoveryResult from '@/components/discovery/result/DiscoveryResult'
 import { reverseGeocode } from '@/lib/geocoding.service'
-import {
-  discoveryFormSchema,
-  type DiscoveryFormValues,
-} from '@/schemas/form.schema'
 import { OptimizedSearchContext, PlaceResultItem } from '@/types/result.types'
 import type {
   FormValues,
   SearchHistoryRecord,
   SearchQuery,
 } from '@/types/search-history.types'
+import {
+  discoveryFormSchema,
+  type DiscoveryFormValues,
+} from '@/validation/discover-form.validation'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -130,9 +130,9 @@ function DiscoverPageComponent() {
       otherSpecialCare: '',
       distance: 'less than 1 hour',
       transportType: 'public_transport',
-      activityLevel: 3,
-      activityDurationValue: 4,
-      activityDurationUnit: 'hours',
+      activityLevel: undefined, // Don't send unless user interacts
+      activityDurationValue: undefined, // Don't send unless user interacts
+      activityDurationUnit: undefined, // Don't send unless user interacts
       additionalInfo: '',
     },
   })
@@ -235,7 +235,7 @@ function DiscoverPageComponent() {
               query.when && !predefinedDates.includes(query.when)
             let customDateValue: Date | undefined = undefined
 
-            if (isCustomDate) {
+            if (isCustomDate && query.when) {
               try {
                 customDateValue = new Date(query.when)
                 // Validate the date
@@ -263,7 +263,7 @@ function DiscoverPageComponent() {
               activityDurationValue: query.activityDurationValue,
               activityDurationUnit: query.activityDurationUnit,
               additionalInfo: query.additionalInfo || '',
-              locationName: query.locationName,
+              locationName: historyRecord.location?.locationName,
             }
 
             // Set form values from saved search
@@ -272,12 +272,12 @@ function DiscoverPageComponent() {
 
             // Set location and results
             setUserLocation({
-              latitude: query.location.latitude,
-              longitude: query.location.longitude,
+              latitude: historyRecord.location?.latitude || 0,
+              longitude: historyRecord.location?.longitude || 0,
             })
             setSearchLocation({
-              latitude: query.location.latitude,
-              longitude: query.location.longitude,
+              latitude: historyRecord.location?.latitude || 0,
+              longitude: historyRecord.location?.longitude || 0,
             })
             setPlaceResults(results)
             setHasPerformedSearch(true) // Mark that we have previous search results
@@ -398,14 +398,11 @@ function DiscoverPageComponent() {
             // Update form with AI-mapped values
             form.reset(formValues)
             setCurrentSearchQuery(formValues)
-
-            toast.success('Search preferences pre-filled based on your query!')
           } else {
             // Fallback to original behavior
             if (query) {
               form.setValue('additionalInfo', decodeURIComponent(query))
             }
-            toast.info('Complete the form to search for trips')
           }
         } catch (error) {
           console.error('Error mapping search query:', error)
@@ -413,7 +410,6 @@ function DiscoverPageComponent() {
           if (query) {
             form.setValue('additionalInfo', decodeURIComponent(query))
           }
-          toast.info('Complete the form to search for trips')
         } finally {
           setIsLoadingAIFilters(false)
         }
@@ -494,10 +490,14 @@ function DiscoverPageComponent() {
         activityLevel: values.activityLevel,
         activityDurationValue: values.activityDurationValue,
         activityDurationUnit: values.activityDurationUnit,
-        location: selectedLocation,
-        locationName: selectedLocationName,
         additionalInfo: values.additionalInfo,
         transportType: values.transportType,
+      }
+
+      const locationData = {
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
+        locationName: selectedLocationName,
       }
 
       try {
@@ -593,6 +593,11 @@ function DiscoverPageComponent() {
             await saveSearchToHistory(
               payload,
               [], // Empty results for failed search
+              {
+                latitude: selectedLocation.latitude,
+                longitude: selectedLocation.longitude,
+                locationName: selectedLocationName,
+              },
               false, // No more results
               1,
               errorTitle
@@ -624,14 +629,13 @@ function DiscoverPageComponent() {
           }
 
           if (batchPlaces.length > 0) {
-            toast.success(`Found ${batchPlaces.length} great destinations!`)
-
             // Save successful search to history
             try {
               const generatedTitle = await titleGenerationPromise
               await saveSearchToHistory(
                 payload,
                 batchPlaces,
+                locationData,
                 batchResult.hasMore || false,
                 1,
                 generatedTitle || undefined
@@ -648,7 +652,14 @@ function DiscoverPageComponent() {
               const noResultsTitle = await getErrorTitle(
                 'No results found for this search'
               )
-              await saveSearchToHistory(payload, [], false, 1, noResultsTitle)
+              await saveSearchToHistory(
+                payload,
+                [],
+                locationData,
+                false,
+                1,
+                noResultsTitle
+              )
             } catch (error) {
               console.error(
                 'Failed to save no-results search to history:',
@@ -665,7 +676,14 @@ function DiscoverPageComponent() {
         // Save unexpected error to history
         try {
           const errorTitle = 'Unexpected error occurred during search'
-          await saveSearchToHistory(payload, [], false, 1, errorTitle)
+          await saveSearchToHistory(
+            payload,
+            [],
+            locationData,
+            false,
+            1,
+            errorTitle
+          )
         } catch (historyError) {
           console.error('Failed to save error search to history:', historyError)
         }
@@ -678,7 +696,6 @@ function DiscoverPageComponent() {
 
   // Save trip handler
   const handleSavePlace = async (place: PlaceResultItem) => {
-    toast.info(`Saving "${place.name}"...`)
     const result = await savePlaceAction(place)
     if (result.success) {
       toast.success(`"${place.name}" saved successfully!`)
@@ -762,8 +779,6 @@ function DiscoverPageComponent() {
             console.error('Failed to update search history:', error)
             // Don't show error to user as this is not critical
           }
-
-          toast.success(`Found ${newPlaces.length} more destinations!`)
         } else {
           setHasMoreResults(false)
           toast.info('No more destinations found.')
@@ -821,7 +836,7 @@ function DiscoverPageComponent() {
         emptyStateMessage={
           hasPerformedSearch
             ? 'No trips found matching your criteria'
-            : `Welcome to ${process.env.PRODUCT_NAME}! Start your first nature discovery...`
+            : `Welcome to ${process.env.NEXT_PUBLIC_PRODUCT_NAME}! Start your first nature discovery...`
         }
         onSavePlace={handleSavePlace}
         hasMoreResults={hasMoreResults}
@@ -840,9 +855,9 @@ function DiscoverPageComponent() {
             otherSpecialCare: '',
             distance: 'less than 1 hour',
             transportType: 'public_transport',
-            activityLevel: 3,
-            activityDurationValue: 4,
-            activityDurationUnit: 'hours',
+            activityLevel: undefined,
+            activityDurationValue: undefined,
+            activityDurationUnit: undefined,
             additionalInfo: '',
           })
           // Mark this as a new search that should generate a new title

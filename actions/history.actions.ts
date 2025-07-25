@@ -1,29 +1,23 @@
 'use server'
 
-import { getSupabaseClient } from '@/lib/auth.service'
-import { authenticateUser } from '@/lib/auth.service'
-import * as z from 'zod'
+import { authenticateUser, getSupabaseClient } from '@/lib/auth.service'
 import type {
   SaveSearchResponse,
   SearchHistoryResponse,
   SearchQuery,
   SearchResult,
 } from '@/types/search-history.types'
+import * as z from 'zod'
 
 // Schema for search criteria
 const searchCriteriaSchema = z.object({
   activity: z.string(),
-  when: z.string(),
-  specialCare: z.enum(['children', 'lowMobility', 'dogs']).optional(),
+  // when: z.string().optional(),
+  // specialCare: z.enum(['children', 'lowMobility', 'dogs']).optional(),
   distance: z.string(),
-  activityLevel: z.number().min(1).max(5),
-  activityDurationValue: z.number(),
-  activityDurationUnit: z.enum(['hours', 'days']),
-  location: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }),
-  locationName: z.string().optional(),
+  // activityLevel: z.number().min(1).max(5).optional(),
+  // activityDurationValue: z.number().optional(),
+  // activityDurationUnit: z.enum(['hours', 'days']).optional(),
   additionalInfo: z.string().optional(),
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car']).optional(),
 })
@@ -34,7 +28,7 @@ const photoSchema = z.object({
   attribution: z.string().optional(),
 })
 
-// Schema for review data  
+// Schema for review data
 const reviewSchema = z.object({
   author: z.string(),
   rating: z.number(),
@@ -83,6 +77,7 @@ const searchResultSchema = z.object({
 export async function saveSearchToHistory(
   query: SearchQuery,
   results: SearchResult[],
+  location: { latitude: number; longitude: number; locationName?: string },
   hasMoreResults: boolean = false,
   currentBatch: number = 1,
   title?: string
@@ -112,6 +107,11 @@ export async function saveSearchToHistory(
         has_more_results: hasMoreResults,
         total_results_loaded: validatedResults.length,
         title: title,
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          locationName: location.locationName,
+        },
       })
       .select()
       .single()
@@ -235,7 +235,7 @@ export async function updateSearchHistoryResults(
       total_results_loaded: validatedResults.length,
       updated_at: new Date().toISOString(),
     }
-    
+
     // Only update title if provided
     if (title) {
       updateData.title = title
