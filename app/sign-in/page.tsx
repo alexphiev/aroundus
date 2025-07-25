@@ -30,7 +30,7 @@ export default function SignInPage() {
 
   return (
     <div className="bg-background flex min-h-[100dvh] items-center justify-center">
-      <div className="bg-card text-card-foreground w-full max-w-md space-y-6 rounded-lg p-8 shadow-lg">
+      <div className="w-full max-w-md space-y-6 p-8 md:bg-card md:text-card-foreground md:rounded-lg md:shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold">Sign In</h1>
           <p className="text-muted-foreground">
