@@ -9,7 +9,7 @@ interface LoadingStateProps {
 
 export default function LoadingState({ message }: LoadingStateProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isVisible, setIsVisible] = useState(true)
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
   const animations = useMemo(
     () => [
@@ -48,14 +48,12 @@ export default function LoadingState({ message }: LoadingStateProps) {
   // Auto-switch every 10 seconds with smooth transition
   useEffect(() => {
     const interval = setInterval(() => {
-      // Start fade out
-      setIsVisible(false)
-
-      // After fade out completes, change content and fade in
+      setIsTransitioning(true)
+      
       setTimeout(() => {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % animations.length)
-        setIsVisible(true)
-      }, 300) // 300ms fade out duration
+        setIsTransitioning(false)
+      }, 150) // Half transition duration for smoother swap
     }, 10000)
 
     return () => clearInterval(interval)
@@ -67,23 +65,21 @@ export default function LoadingState({ message }: LoadingStateProps) {
   return (
     <div className="mobile-overlay flex h-full items-center justify-center p-8">
       <div className="text-center">
-        <div
-          className={`mobile-no-zoom relative mx-auto mb-4 flex h-40 w-40 items-center justify-center transition-opacity duration-300 ${
-            isVisible ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
+        <div className="mobile-no-zoom relative mx-auto mb-4 h-40 w-40">
           <Image
             src={loadingImage}
             alt="Loading animation"
             width={160}
             height={160}
-            className="mobile-no-zoom rounded-lg object-cover"
+            className={`mobile-no-zoom absolute inset-0 rounded-lg object-cover transition-opacity duration-300 ${
+              isTransitioning ? 'opacity-0' : 'opacity-100'
+            }`}
             unoptimized
           />
         </div>
         <p
           className={`mobile-no-zoom text-muted-foreground text-sm transition-opacity duration-300 ${
-            isVisible ? 'opacity-100' : 'opacity-0'
+            isTransitioning ? 'opacity-0' : 'opacity-100'
           }`}
         >
           {loadingMessage}

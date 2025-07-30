@@ -41,7 +41,6 @@ export default function PlaceHeader({
           className="text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          {isMobile ? '' : 'Back to Places'}
         </Button>
         {/* Place Title and Rating */}
         <h1 className="text-xl font-semibold">{place.name}</h1>
