@@ -6,7 +6,6 @@ import {
   CreditCard,
   ExternalLink,
   MapPin,
-  Navigation,
   ParkingCircle,
   Accessibility,
 } from 'lucide-react'
@@ -18,9 +17,32 @@ interface Props {
 export default function PlacePracticalInfo({ place }: Props) {
   const { googleMapsLink, operatingHours, entranceFee, parkingInfo, accessibilityInfo } = place
 
-  // Handle get directions
-  const handleGetDirections = () => {
-    const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.long}`
+  // Parse operating hours to check if open 24 hours all days
+  const parseOperatingHours = (hours: string) => {
+    if (!hours) return hours
+    
+    // Check if all days mention "Open 24 hours" or "24 hours"
+    const lines = hours.split('\n').filter(line => line.trim())
+    const allDays24Hours = lines.every(line => 
+      line.toLowerCase().includes('open 24 hours') || 
+      line.toLowerCase().includes('24 hours')
+    )
+    
+    if (allDays24Hours && lines.length >= 7) {
+      return 'Open 24 hours'
+    }
+    
+    return hours
+  }
+
+  // Handle opening in Google Maps
+  const handleOpenInMaps = () => {
+    let googleMapsUrl: string
+    if (place.placeId) {
+      googleMapsUrl = `https://www.google.com/maps/place/?q=place_id:${place.placeId}`
+    } else {
+      googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.long}`
+    }
     window.open(googleMapsUrl, '_blank')
   }
 
@@ -57,7 +79,7 @@ export default function PlacePracticalInfo({ place }: Props) {
             <div>
               <p className="font-medium">Operating Hours</p>
               <p className="text-sm text-muted-foreground">
-                {place.operatingHours}
+                {parseOperatingHours(place.operatingHours)}
               </p>
             </div>
           </div>
@@ -100,9 +122,9 @@ export default function PlacePracticalInfo({ place }: Props) {
         
         {/* Get Directions Button */}
         <div className={hasAnyInfo ? "pt-4 border-t border-muted" : ""}>
-          <Button onClick={handleGetDirections} className="w-full" size="lg">
-            <Navigation className="h-5 w-5 mr-2" />
-            Get Directions
+          <Button onClick={handleOpenInMaps} className="w-full" size="lg">
+            <MapPin className="h-5 w-5 mr-2" />
+            Open in Google Maps
           </Button>
         </div>
       </CardContent>

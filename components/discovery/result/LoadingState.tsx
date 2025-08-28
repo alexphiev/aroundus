@@ -51,7 +51,13 @@ export default function LoadingState({ message }: LoadingStateProps) {
       setIsTransitioning(true)
       
       setTimeout(() => {
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % animations.length)
+        setCurrentIndex((prevIndex) => {
+          let newIndex
+          do {
+            newIndex = Math.floor(Math.random() * animations.length)
+          } while (newIndex === prevIndex && animations.length > 1)
+          return newIndex
+        })
         setIsTransitioning(false)
       }, 150) // Half transition duration for smoother swap
     }, 10000)

@@ -91,6 +91,7 @@ export interface GooglePlacesData {
   parkingInfo?: string
   accessibilityInfo?: string
   displayName?: string
+  placeId?: string
 }
 
 // Simple in-memory cache for Google Places data
@@ -375,6 +376,7 @@ export async function enrichPlaceWithGoogleData(
       parkingInfo: detailsData.parkingInfo,
       accessibilityInfo: detailsData.accessibilityInfo,
       displayName: detailsData.displayName,
+      placeId,
     }
 
     // Cache the result
