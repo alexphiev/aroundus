@@ -1,8 +1,10 @@
 'use server'
 
 import { authenticateUser, getSupabaseClient } from '@/lib/auth.service'
+import { NominatimResponse } from '@/lib/geocoding.service'
 import type {
   SaveSearchResponse,
+  SearchHistoryRecord,
   SearchHistoryResponse,
   SearchQuery,
   SearchResult,
@@ -77,7 +79,14 @@ const searchResultSchema = z.object({
 export async function saveSearchToHistory(
   query: SearchQuery,
   results: SearchResult[],
-  location: { latitude: number; longitude: number; locationName?: string },
+  location: {
+    latitude: number
+    longitude: number
+    locationName: string
+    locationType: 'current' | 'custom'
+    address?: NominatimResponse['address']
+    displayName?: string
+  },
   hasMoreResults: boolean = false,
   currentBatch: number = 1,
   title?: string
@@ -111,6 +120,9 @@ export async function saveSearchToHistory(
           latitude: location.latitude,
           longitude: location.longitude,
           locationName: location.locationName,
+          locationType: location.locationType,
+          address: location.address,
+          displayName: location.displayName,
         },
       })
       .select()
@@ -121,7 +133,7 @@ export async function saveSearchToHistory(
       return { error: 'Failed to save search history.' }
     }
 
-    return { success: true, data: data as any }
+    return { success: true, data: data as unknown as SearchHistoryRecord }
   } catch (error) {
     console.error('Error validating or saving search history:', error)
     return { error: 'Failed to save search history due to validation error.' }
@@ -156,7 +168,7 @@ export async function getLatestSearchFromHistory(): Promise<SearchHistoryRespons
       return { error: 'Failed to get search history.' }
     }
 
-    return { success: true, data: data as any }
+    return { success: true, data: data as unknown as SearchHistoryRecord }
   } catch (error) {
     console.error('Error getting latest search history:', error)
     return { error: 'Failed to get search history.' }
@@ -185,7 +197,10 @@ export async function getUserSearchHistory(): Promise<SearchHistoryResponse> {
       return { error: 'Failed to get search history.' }
     }
 
-    return { success: true, data: (data || []) as any }
+    return {
+      success: true,
+      data: (data || []) as unknown as SearchHistoryRecord[],
+    }
   } catch (error) {
     console.error('Error getting user search history:', error)
     return { error: 'Failed to get search history.' }
@@ -228,7 +243,8 @@ export async function updateSearchHistoryResults(
     }
 
     // Update the results in the latest search
-    const updateData: any = {
+    const updateData = {
+      title: latestSearch.title,
       results: validatedResults,
       current_batch: currentBatch,
       has_more_results: hasMoreResults,
@@ -254,7 +270,7 @@ export async function updateSearchHistoryResults(
       return { error: 'Failed to update search history.' }
     }
 
-    return { success: true, data: data as any }
+    return { success: true, data: data as unknown as SearchHistoryRecord }
   } catch (error) {
     console.error('Error validating or updating search history:', error)
     return { error: 'Failed to update search history due to validation error.' }

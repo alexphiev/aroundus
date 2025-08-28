@@ -11,7 +11,7 @@ import { mapSearchToFormFilters } from '@/actions/map-search-to-form.actions'
 import { savePlaceAction } from '@/actions/place.actions'
 import { SearchFormModal } from '@/components/discovery/form/DiscoverFormModal'
 import DiscoveryResult from '@/components/discovery/result/DiscoveryResult'
-import { reverseGeocode } from '@/lib/geocoding.service'
+import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
 import { OptimizedSearchContext, PlaceResultItem } from '@/types/result.types'
 import type {
   FormValues,
@@ -87,12 +87,10 @@ function DiscoverPageComponent() {
     longitude: number
   } | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
-  const [userLocationInfo, setUserLocationInfo] = useState<{
-    locationName: string
-    city?: string
-    region?: string
-    country?: string
-  } | null>(null)
+  const [userLocationInfo, setUserLocationInfo] = useState<LocationInfo | null>(
+    null
+  )
+
   const [isSearchOpen, setIsSearchOpen] = useState(false) // Start closed to prevent flash
   const [isPending, startTransition] = useTransition()
   const [placeResults, setPlaceResults] = useState<PlaceResultItem[] | null>(
@@ -140,35 +138,42 @@ function DiscoverPageComponent() {
   // Get user location - only called when user selects current location
   const getLocation = useCallback(() => {
     setLocationError(null)
-    setUserLocationInfo(null)
+    setUserLocationInfo(null) // Clear previous location info
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
           const location = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
           }
 
-          console.log('new location', location)
           setUserLocation(location)
           setLocationError(null)
 
-          // Reverse geocode to get location name
-          try {
-            const locationInfo = await reverseGeocode(
-              location.latitude,
-              location.longitude
+          // Perform reverse geocoding for current location with timeout
+          const geocodePromise = reverseGeocode(
+            location.latitude,
+            location.longitude
+          )
+          const timeoutPromise = new Promise<LocationInfo | null>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Reverse geocoding timeout')),
+              10000
             )
-            if (locationInfo) {
-              setUserLocationInfo(locationInfo)
-            }
-          } catch (error) {
-            console.error('Reverse geocoding failed:', error)
-          }
+          )
+
+          Promise.race([geocodePromise, timeoutPromise])
+            .then((locationInfo) => {
+              if (locationInfo) {
+                setUserLocationInfo(locationInfo)
+              }
+            })
+            .catch(() => {
+              // Reverse geocoding failed, but we still have location coordinates
+            })
         },
         (error) => {
-          console.error('Error getting location: ', error)
-          let errorMessage = 'Failed to acquire location.'
+          let errorMessage = 'Failed to get location.'
 
           switch (error.code) {
             case error.PERMISSION_DENIED:
@@ -179,7 +184,7 @@ function DiscoverPageComponent() {
               errorMessage = 'Location information unavailable.'
               break
             case error.TIMEOUT:
-              errorMessage = 'Location request timed out.'
+              errorMessage = 'Location request timed out. Please try again.'
               break
           }
 
@@ -187,9 +192,9 @@ function DiscoverPageComponent() {
           toast.error(errorMessage)
         },
         {
-          enableHighAccuracy: true,
+          enableHighAccuracy: false, // Use false for better battery life and faster response
           timeout: 10000,
-          maximumAge: 0, // Force fresh location, don't use cached data
+          maximumAge: 300000, // 5 minutes cache
         }
       )
     } else {
@@ -248,8 +253,15 @@ function DiscoverPageComponent() {
             }
 
             const formValues = {
-              locationType: 'current' as const, // Assume current location for saved searches
-              customLocation: undefined,
+              locationType: historyRecord.location?.locationType || 'custom', // Use actual location type from history
+              customLocation:
+                historyRecord.location?.locationType === 'custom'
+                  ? {
+                      name: historyRecord.location?.locationName || '',
+                      lat: historyRecord.location?.latitude || 0,
+                      lng: historyRecord.location?.longitude || 0,
+                    }
+                  : undefined,
               activity: isOtherActivity ? 'other' : query.activity || '',
               otherActivity: isOtherActivity ? query.activity : '',
               when: isCustomDate ? 'custom' : query.when || 'today',
@@ -270,15 +282,14 @@ function DiscoverPageComponent() {
             form.reset(formValues)
             setCurrentSearchQuery(formValues)
 
-            // Set location and results
-            setUserLocation({
-              latitude: historyRecord.location?.latitude || 0,
-              longitude: historyRecord.location?.longitude || 0,
-            })
+            // Set search location (where the previous search was performed)
             setSearchLocation({
               latitude: historyRecord.location?.latitude || 0,
               longitude: historyRecord.location?.longitude || 0,
             })
+
+            // Don't restore userLocation/userLocationInfo from history
+            // These should only be set when user actively requests current location
             setPlaceResults(results)
             setHasPerformedSearch(true) // Mark that we have previous search results
 
@@ -436,7 +447,7 @@ function DiscoverPageComponent() {
         return
       }
       selectedLocation = userLocation
-      selectedLocationName = undefined // We no longer have locationInfo from context
+      selectedLocationName = userLocationInfo?.locationName
     } else if (values.locationType === 'custom') {
       if (!values.customLocation) {
         toast.error('Please select a location.')
@@ -453,7 +464,10 @@ function DiscoverPageComponent() {
     }
 
     // Store current search query for filter display FIRST to show filters immediately
-    setCurrentSearchQuery(values)
+    setCurrentSearchQuery({
+      ...values,
+      locationName: selectedLocationName || 'Unknown location',
+    })
 
     // Update search location to the selected location
     setSearchLocation(selectedLocation)
@@ -497,7 +511,16 @@ function DiscoverPageComponent() {
       const locationData = {
         latitude: selectedLocation.latitude,
         longitude: selectedLocation.longitude,
-        locationName: selectedLocationName,
+        locationName: selectedLocationName || 'Unknown location',
+        locationType: values.locationType,
+        address:
+          values.locationType === 'current'
+            ? userLocationInfo?.fullResponse?.address
+            : undefined,
+        displayName:
+          values.locationType === 'current'
+            ? userLocationInfo?.fullResponse?.display_name
+            : undefined,
       }
 
       try {
@@ -596,7 +619,8 @@ function DiscoverPageComponent() {
               {
                 latitude: selectedLocation.latitude,
                 longitude: selectedLocation.longitude,
-                locationName: selectedLocationName,
+                locationName: selectedLocationName || 'Unknown location',
+                locationType: values.locationType,
               },
               false, // No more results
               1,

@@ -56,16 +56,11 @@ export function LocationSelection({
   className,
   control,
 }: LocationSelectionProps) {
-  const [isGettingLocation, setIsGettingLocation] = useState(false)
-  const [isGeocoding, setIsGeocoding] = useState(false)
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false)
 
-  const handleGetCurrentLocation = useCallback(async () => {
-    setIsGettingLocation(true)
-    try {
-      onRetryLocation()
-    } finally {
-      setIsGettingLocation(false)
-    }
+  const handleGetCurrentLocation = useCallback(() => {
+    setIsRequestingLocation(true)
+    onRetryLocation()
   }, [onRetryLocation])
 
   // Auto-trigger location request when current location is selected and no location exists
@@ -74,7 +69,7 @@ export function LocationSelection({
       locationType === 'current' &&
       !userLocation &&
       !locationError &&
-      !isGettingLocation
+      !isRequestingLocation
     ) {
       handleGetCurrentLocation()
     }
@@ -82,18 +77,16 @@ export function LocationSelection({
     locationType,
     userLocation,
     locationError,
-    isGettingLocation,
+    isRequestingLocation,
     handleGetCurrentLocation,
   ])
 
-  // Track geocoding state
+  // Reset loading state when location is obtained or failed
   useEffect(() => {
-    if (userLocation && !userLocationInfo && !locationError) {
-      setIsGeocoding(true)
-    } else {
-      setIsGeocoding(false)
+    if (userLocationInfo || locationError) {
+      setIsRequestingLocation(false)
     }
-  }, [userLocation, userLocationInfo, locationError])
+  }, [userLocationInfo, locationError])
 
   // Location options for the grid
   const locationOptions = [
@@ -147,41 +140,36 @@ export function LocationSelection({
                   variant="outline"
                   size="sm"
                   onClick={handleGetCurrentLocation}
-                  disabled={isGettingLocation || disabled}
+                  disabled={isRequestingLocation || disabled}
                   className="text-destructive border-destructive hover:bg-destructive/10"
                 >
-                  {isGettingLocation ? 'Getting...' : 'Retry'}
+                  {isRequestingLocation ? 'Getting...' : 'Retry'}
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Loading States */}
-          {isGettingLocation && (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Getting your current location...
-              </p>
-            </div>
-          )}
+          {/* Only show geocoding state if we're actually requesting location but got coordinates without address */}
+          {isRequestingLocation &&
+            userLocation &&
+            !userLocationInfo &&
+            !locationError && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Finding your address...
+                </p>
+              </div>
+            )}
 
-          {isGeocoding && (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Loading...
-              </p>
-            </div>
-          )}
-
-          {/* Current Location Display */}
-          {userLocation && userLocationInfo && !isGeocoding && (
+          {/* Current Location Display - show when we have location and not currently requesting */}
+          {userLocation && !isRequestingLocation && (
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
               <div className="min-w-0">
                 <p className="truncate text-sm text-green-600 dark:text-green-400">
-                  {userLocationInfo.locationName}
+                  {userLocationInfo?.locationName ||
+                    `Location found (${userLocation.latitude.toFixed(4)}, ${userLocation.longitude.toFixed(4)})`}
                 </p>
               </div>
               <Button
@@ -189,7 +177,7 @@ export function LocationSelection({
                 variant="ghost"
                 size="sm"
                 onClick={handleGetCurrentLocation}
-                disabled={isGettingLocation || disabled}
+                disabled={isRequestingLocation || disabled}
                 className="h-8 w-8 flex-shrink-0 p-0 text-green-600 hover:bg-green-100 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-900/20 dark:hover:text-green-300"
                 title="Refresh location"
               >

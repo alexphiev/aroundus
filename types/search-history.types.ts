@@ -1,3 +1,5 @@
+import type { NominatimResponse } from '@/lib/geocoding.service'
+
 // Search query types for search history (simplified)
 export interface SearchQuery {
   activity: string
@@ -38,7 +40,10 @@ export interface SearchHistoryRecord {
   location: {
     latitude: number
     longitude: number
-    locationName?: string
+    locationName: string
+    locationType: 'current' | 'custom'
+    address?: NominatimResponse['address']
+    displayName?: string
   } | null
   // Search session metadata
   current_batch?: number

@@ -1,4 +1,4 @@
-interface NominatimResponse {
+export interface NominatimResponse {
   display_name: string
   address: {
     city?: string
@@ -14,11 +14,13 @@ interface NominatimResponse {
   error?: string
 }
 
-interface LocationInfo {
+export interface LocationInfo {
   locationName: string
   city?: string
   region?: string
   country?: string
+  // Store the original response for detailed address info
+  fullResponse?: NominatimResponse
 }
 
 // Simple in-memory cache for geocoding results
@@ -74,18 +76,12 @@ export async function reverseGeocode(
     })
 
     if (!response.ok) {
-      console.error(
-        'Nominatim API error:',
-        response.status,
-        response.statusText
-      )
       return null
     }
 
     const data: NominatimResponse = await response.json()
 
     if (data.error) {
-      console.error('Nominatim API error:', data.error)
       return null
     }
 
@@ -100,7 +96,7 @@ export async function reverseGeocode(
 
     return locationInfo
   } catch (error) {
-    console.error('Reverse geocoding failed:', error)
+    console.error('🔧 Geocoding: Reverse geocoding failed:', error)
     return null
   }
 }
@@ -145,6 +141,7 @@ function extractLocationInfo(data: NominatimResponse): LocationInfo {
     city,
     region,
     country,
+    fullResponse: data,
   }
 }
 
