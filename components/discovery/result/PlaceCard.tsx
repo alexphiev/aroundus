@@ -16,6 +16,7 @@ import {
   Bookmark,
   ChevronLeft,
   ChevronRight,
+  ImageIcon,
   Star,
   ThumbsDown,
   ThumbsUp,
@@ -85,56 +86,63 @@ export default function PlaceCard({
         }`}
         onClick={onClick}
       >
-        {/* Photo Carousel */}
-        {place.photos && place.photos.length > 0 && (
-          <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
-            <Image
-              src={place.photos[currentPhotoIndex].url}
-              alt={`${place.name} - Photo ${currentPhotoIndex + 1}`}
-              className="h-full w-full object-cover"
-              width={300}
-              height={300}
-              onError={(e) => {
-                // Hide image if it fails to load
-                e.currentTarget.style.display = 'none'
-              }}
-            />
+        {/* Photo Carousel or Placeholder */}
+        <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+          {place.photos && place.photos.length > 0 ? (
+            <>
+              <Image
+                src={place.photos[currentPhotoIndex].url}
+                alt={`${place.name} - Photo ${currentPhotoIndex + 1}`}
+                className="h-full w-full object-cover"
+                width={300}
+                height={300}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
 
-            {/* Photo Navigation */}
-            {place.photos.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-1/2 left-2 h-8 w-8 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
-                  onClick={prevPhoto}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-1/2 right-2 h-8 w-8 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
-                  onClick={nextPhoto}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+              {/* Photo Navigation */}
+              {place.photos.length > 1 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 left-2 h-8 w-8 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
+                    onClick={prevPhoto}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 right-2 h-8 w-8 -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
+                    onClick={nextPhoto}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
 
-                {/* Photo Indicators */}
-                <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
-                  {place.photos.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`h-2 w-2 rounded-full ${
-                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                  {/* Photo Indicators */}
+                  <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
+                    {place.photos.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-2 w-2 rounded-full ${
+                          index === currentPhotoIndex
+                            ? 'bg-white'
+                            : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-[#F5F5F5]">
+              <ImageIcon className="h-12 w-12 text-gray-400" />
+            </div>
+          )}
+        </div>
 
         <CardHeader className="flex-shrink-0">
           <div className="flex items-start justify-between">
