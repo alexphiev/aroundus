@@ -141,7 +141,7 @@ export function LocationAutocomplete({
       // Only clear if we don't have a value but input has text
       // This prevents clearing during typing
     }
-  }, [value])
+  }, [inputValue, value])
 
   // Click outside handler
   useEffect(() => {

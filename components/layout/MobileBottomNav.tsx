@@ -2,7 +2,7 @@
 
 import { useNavigation } from '@/components/NavigationLoader'
 import { signOutAction } from '@/app/actions'
-import { Compass, Home, LogOut, Map } from 'lucide-react'
+import { Compass, Home, LogOut, Map, Heart } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -19,9 +19,14 @@ const navLinks = [
     icon: Compass,
   },
   {
-    label: 'My Trips',
-    href: '/past-places',
+    label: 'Explore',
+    href: '/explore',
     icon: Map,
+  },
+  {
+    label: 'Favorites',
+    href: '/past-places',
+    icon: Heart,
     disabled: true,
   },
   {

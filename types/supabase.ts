@@ -7,13 +7,61 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
     Tables: {
+      places: {
+        Row: {
+          country: string | null
+          created_at: string
+          description: string | null
+          geometry: unknown | null
+          id: string
+          location: unknown
+          metadata: Json | null
+          name: string | null
+          region: string | null
+          source: string | null
+          source_id: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          geometry?: unknown | null
+          id?: string
+          location: unknown
+          metadata?: Json | null
+          name?: string | null
+          region?: string | null
+          source?: string | null
+          source_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          geometry?: unknown | null
+          id?: string
+          location?: unknown
+          metadata?: Json | null
+          name?: string | null
+          region?: string | null
+          source?: string | null
+          source_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       saved_places: {
         Row: {
           activity: string | null
@@ -130,7 +178,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      places_in_view: {
+        Args: {
+          max_lat: number
+          max_long: number
+          min_lat: number
+          min_long: number
+        }
+        Returns: {
+          description: string
+          id: string
+          lat: number
+          long: number
+          name: string
+          source: string
+          type: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

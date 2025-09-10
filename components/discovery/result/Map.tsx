@@ -210,6 +210,7 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
     placeResults,
     mapLoaded,
     onMarkerClick,
+    baseLocation,
   ])
 
   // Add popup for active place

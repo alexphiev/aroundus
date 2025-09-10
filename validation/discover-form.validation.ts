@@ -4,8 +4,8 @@ import { z } from 'zod'
 const baseDiscoverySchema = z.object({
   // Location selection fields
   locationType: z.enum(['current', 'custom'], {
-    message: 'Please select a location type.',
-  }),
+      error: 'Please select a location type.'
+}),
   customLocation: z
     .object(
       {
@@ -14,26 +14,30 @@ const baseDiscoverySchema = z.object({
         lng: z.number(),
       },
       {
-        message: 'Please enter a location.',
-      }
+          error: 'Please enter a location.'
+    }
     )
     .optional(),
 
   // Existing fields
-  activity: z.string().min(1, { message: 'Please select an activity.' }),
+  activity: z.string().min(1, {
+      error: 'Please select an activity.'
+}),
   otherActivity: z.string().optional(),
   when: z.string().optional(),
   customDate: z.date().optional(),
   specialCare: z
     .enum(['children', 'lowMobility', 'dogs', 'other'], {
-      message: 'Please select special care requirements.',
+        error: 'Please select special care requirements.'
     })
     .optional(),
   otherSpecialCare: z.string().optional(),
-  distance: z.string().min(1, { message: 'Please select a distance.' }),
+  distance: z.string().min(1, {
+      error: 'Please select a distance.'
+}),
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car'], {
-    message: 'Please select a transport type.',
-  }),
+      error: 'Please select a transport type.'
+}),
   activityLevel: z.number().min(1).max(5).optional(),
   activityDurationValue: z.coerce.number().min(1).optional(),
   activityDurationUnit: z.enum(['hours', 'days']).optional(),
@@ -42,7 +46,9 @@ const baseDiscoverySchema = z.object({
 
 // API submission schema (old format without location selection fields)
 const baseApiSchema = z.object({
-  activity: z.string().min(1, { message: 'Please select an activity.' }),
+  activity: z.string().min(1, {
+      error: 'Please select an activity.'
+}),
   otherActivity: z.string().optional(),
   when: z
     .string()
@@ -51,14 +57,16 @@ const baseApiSchema = z.object({
   customDate: z.date().optional(),
   specialCare: z
     .enum(['children', 'lowMobility', 'dogs', 'other'], {
-      message: 'Please select special care requirements.',
+        error: 'Please select special care requirements.'
     })
     .optional(),
   otherSpecialCare: z.string().optional(),
-  distance: z.string().min(1, { message: 'Please select a distance.' }),
+  distance: z.string().min(1, {
+      error: 'Please select a distance.'
+}),
   transportType: z.enum(['foot', 'bike', 'public_transport', 'car'], {
-    message: 'Please select a transport type.',
-  }),
+      error: 'Please select a transport type.'
+}),
   activityLevel: z.number().min(1).max(5).optional(),
   activityDurationValue: z.coerce.number().min(1).optional(),
   activityDurationUnit: z.enum(['hours', 'days']).optional(),

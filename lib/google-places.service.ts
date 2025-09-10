@@ -152,62 +152,10 @@ async function searchPlaceId(
 }
 
 /**
- * Get photos for a place using Google Places API
+ * Optimized function to get all place data in a single API call
  */
-async function getPlacePhotos(placeId: string): Promise<PlacePhoto[]> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY
-  if (!apiKey) {
-    console.error('Google Places API key not configured')
-    return []
-  }
-
-  try {
-    const response = await fetch(
-      `https://places.googleapis.com/v1/places/${placeId}`,
-      {
-        headers: {
-          'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'photos',
-        },
-      }
-    )
-
-    if (!response.ok) {
-      console.error('Google Places details failed:', response.statusText)
-      return []
-    }
-
-    const data: GooglePlace = await response.json()
-    if (!data.photos) return []
-
-    // Convert photo references to URLs and extract attributions
-    const photos: PlacePhoto[] = []
-
-    for (const photo of data.photos.slice(0, 5)) {
-      // Limit to 5 photos
-      const photoUrl = `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=800&key=${apiKey}`
-
-      const attribution = photo.authorAttributions?.[0]
-        ? photo.authorAttributions[0].displayName
-        : undefined
-
-      photos.push({
-        url: photoUrl,
-        attribution,
-      })
-    }
-
-    return photos
-  } catch (error) {
-    console.error('Error fetching place photos:', error)
-    return []
-  }
-}
-
-/**
- * Get reviews and practical info for a place using Google Places API
- */
-async function getPlaceDetailsAndReviews(placeId: string): Promise<{
+async function getPlaceDataOptimized(placeId: string): Promise<{
+  photos: PlacePhoto[]
   reviews: PlaceReview[]
   googleRating?: number
   reviewCount?: number
@@ -221,51 +169,65 @@ async function getPlaceDetailsAndReviews(placeId: string): Promise<{
   const apiKey = process.env.GOOGLE_PLACES_API_KEY
   if (!apiKey) {
     console.error('Google Places API key not configured')
-    return { reviews: [] }
+    return { photos: [], reviews: [] }
   }
 
   try {
     const response = await fetch(
       `https://places.googleapis.com/v1/places/${placeId}`,
       {
+        method: 'GET',
         headers: {
+          'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
           'X-Goog-FieldMask':
-            'displayName,reviews,rating,userRatingCount,googleMapsUri,regularOpeningHours,priceLevel,accessibilityOptions,parkingOptions',
+            'id,displayName,photos,reviews,rating,userRatingCount,googleMapsUri,regularOpeningHours.weekdayDescriptions,priceLevel,parkingOptions,accessibilityOptions',
         },
       }
     )
 
     if (!response.ok) {
-      console.error('Google Places reviews failed:', response.statusText)
-      return { reviews: [] }
+      console.error(
+        'Google Places details request failed:',
+        response.statusText
+      )
+      return { photos: [], reviews: [] }
     }
 
     const data: GooglePlace = await response.json()
 
-    const reviews: PlaceReview[] = []
+    // Process photos
+    const photos: PlacePhoto[] = []
+    if (data.photos) {
+      for (const photo of data.photos.slice(0, 5)) {
+        const photoUrl = `https://places.googleapis.com/v1/${photo.name}/media?maxWidthPx=800&key=${apiKey}`
+        const attribution = photo.authorAttributions?.[0]
+          ? photo.authorAttributions[0].displayName
+          : undefined
+        photos.push({ url: photoUrl, attribution })
+      }
+    }
 
+    // Process reviews
+    const reviews: PlaceReview[] = []
     if (data.reviews) {
       for (const review of data.reviews.slice(0, 5)) {
-        // Limit to 5 reviews
+        const publishTime = review.publishTime || ''
+        const authorPhotoUrl = review.authorAttribution?.photoUri
         reviews.push({
           author: review.authorAttribution?.displayName || 'Anonymous',
-          rating: review.rating,
+          rating: review.rating || 0,
           text: review.text?.text || '',
-          publishTime: review.publishTime,
-          authorPhotoUrl: review.authorAttribution?.photoUri,
+          publishTime,
+          authorPhotoUrl,
         })
       }
     }
 
-    // Process opening hours
+    // Process operating hours
     let operatingHours: string | undefined
     if (data.regularOpeningHours?.weekdayDescriptions) {
       operatingHours = data.regularOpeningHours.weekdayDescriptions.join('\n')
-    } else if (data.regularOpeningHours?.openNow !== undefined) {
-      operatingHours = data.regularOpeningHours.openNow
-        ? 'Currently open'
-        : 'Currently closed'
     }
 
     // Process price level
@@ -276,7 +238,7 @@ async function getPlaceDetailsAndReviews(placeId: string): Promise<{
         PRICE_LEVEL_INEXPENSIVE: 'Inexpensive ($)',
         PRICE_LEVEL_MODERATE: 'Moderate ($$)',
         PRICE_LEVEL_EXPENSIVE: 'Expensive ($$$)',
-        PRICE_LEVEL_VERY_EXPENSIVE: 'Very Expensive ($$$$)',
+        PRICE_LEVEL_VERY_EXPENSIVE: 'Very expensive ($$$$)',
       }
       priceLevel = priceLevelMap[data.priceLevel] || data.priceLevel
     }
@@ -320,6 +282,7 @@ async function getPlaceDetailsAndReviews(placeId: string): Promise<{
     }
 
     return {
+      photos,
       reviews,
       googleRating: data.rating,
       reviewCount: data.userRatingCount,
@@ -331,8 +294,8 @@ async function getPlaceDetailsAndReviews(placeId: string): Promise<{
       displayName: data.displayName?.text,
     }
   } catch (error) {
-    console.error('Error fetching place reviews:', error)
-    return { reviews: [] }
+    console.error('Error fetching optimized place data:', error)
+    return { photos: [], reviews: [] }
   }
 }
 
@@ -344,26 +307,47 @@ export async function enrichPlaceWithGoogleData(
   lat: number,
   lng: number
 ): Promise<GooglePlacesData> {
+  const enrichmentStartTime = performance.now()
+  console.log(`🏠 Starting Google Places enrichment for: ${placeName}`)
+
   // Check cache first
   const cacheKey = `${placeName}_${lat.toFixed(4)}_${lng.toFixed(4)}`
   const cached = placesCache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    const enrichmentEndTime = performance.now()
+    console.log(
+      `⚡ Cache hit for ${placeName} - took ${Math.round(enrichmentEndTime - enrichmentStartTime)}ms`
+    )
     return cached.data
   }
 
   try {
     // First, find the place_id
+    const searchStartTime = performance.now()
     const placeId = await searchPlaceId(placeName, lat, lng)
+    const searchEndTime = performance.now()
+    console.log(
+      `🔍 Google Places search for place ID took ${Math.round(searchEndTime - searchStartTime)}ms`
+    )
+
     if (!placeId) {
+      const enrichmentEndTime = performance.now()
+      console.log(
+        `❌ No place ID found for ${placeName} - took ${Math.round(enrichmentEndTime - enrichmentStartTime)}ms`
+      )
       const emptyData: GooglePlacesData = { photos: [], reviews: [] }
       return emptyData
     }
 
-    // Fetch photos and details in parallel
-    const [photos, detailsData] = await Promise.all([
-      getPlacePhotos(placeId),
-      getPlaceDetailsAndReviews(placeId),
-    ])
+    // Fetch all place data in a single optimized API call
+    const detailsStartTime = performance.now()
+    const combinedData = await getPlaceDataOptimized(placeId)
+    const detailsEndTime = performance.now()
+    console.log(
+      `🚀 Optimized Google Places data fetch took ${Math.round(detailsEndTime - detailsStartTime)}ms`
+    )
+
+    const { photos, ...detailsData } = combinedData
 
     const googleData: GooglePlacesData = {
       photos,
@@ -385,9 +369,18 @@ export async function enrichPlaceWithGoogleData(
       timestamp: Date.now(),
     })
 
+    const enrichmentEndTime = performance.now()
+    console.log(
+      `✅ Google Places enrichment for ${placeName} completed - total time: ${Math.round(enrichmentEndTime - enrichmentStartTime)}ms`
+    )
+
     return googleData
   } catch (error) {
-    console.error('Error enriching place with Google data:', error)
+    const enrichmentEndTime = performance.now()
+    console.error(
+      `❌ Error enriching place ${placeName} with Google data (took ${Math.round(enrichmentEndTime - enrichmentStartTime)}ms):`,
+      error
+    )
     return { photos: [], reviews: [] }
   }
 }

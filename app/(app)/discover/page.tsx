@@ -22,7 +22,7 @@ import {
   discoveryFormSchema,
   type DiscoveryFormValues,
 } from '@/validation/discover-form.validation'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { useSearchParams } from 'next/navigation'
 import {
   Suspense,
@@ -117,7 +117,7 @@ function DiscoverPageComponent() {
 
   // Initialize form
   const form = useForm<DiscoveryFormValues>({
-    resolver: zodResolver(discoveryFormSchema),
+    resolver: standardSchemaResolver(discoveryFormSchema),
     defaultValues: {
       locationType: 'custom',
       activity: '',
