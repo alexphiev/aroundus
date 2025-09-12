@@ -1,9 +1,13 @@
 'use client'
 
-import { PlacesInView } from '@/actions/explore.actions'
+import {
+  GeoJSONGeometry,
+  PlacesInView,
+  getPlaceGeometry,
+} from '@/actions/explore.actions'
 import { Button } from '@/components/ui/button'
-import { FocusIcon, TreesIcon } from 'lucide-react'
-import maplibregl, { LngLatBounds, Map, Marker } from 'maplibre-gl'
+import { FocusIcon } from 'lucide-react'
+import maplibregl, { LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -17,50 +21,6 @@ interface ExploreMapProps {
     west: number
   }) => void
   className?: string
-}
-
-const AdaptiveMarkerIcon = ({
-  size = 24,
-  zoom = 10,
-}: {
-  size?: number
-  zoom?: number
-}) => {
-  // Use simple dots for low zoom levels, detailed icons for high zoom
-  if (zoom < 12) {
-    return (
-      <div
-        className="bg-primary rounded-full transition-all duration-200"
-        style={{
-          width: size,
-          height: size,
-        }}
-      />
-    )
-  }
-
-  // Detailed icon for higher zoom levels
-  const adaptiveSize = Math.max(12, Math.min(size, 18 + (zoom - 10) * 2))
-
-  return (
-    <div
-      className="text-primary bg-primary flex items-center justify-center rounded-full p-1 transition-all duration-200"
-      style={{ width: adaptiveSize, height: adaptiveSize }}
-    >
-      <TreesIcon
-        size={Math.max(8, adaptiveSize - 6)}
-        className="text-white"
-        style={{
-          imageRendering: 'crisp-edges',
-          shapeRendering: 'crispEdges',
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden',
-          WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale',
-        }}
-      />
-    </div>
-  )
 }
 
 const PopupContent = ({ place }: { place: PlacesInView }) => (
@@ -97,51 +57,16 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   className = '',
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
-  const map = useRef<Map | null>(null)
+  const map = useRef<MapLibreMap | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(4)
-  const markersRef = useRef<Marker[]>([])
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
   const activePopupRef = useRef<maplibregl.Popup | null>(null)
+  const geometryLayerRef = useRef<string | null>(null)
+  const geometryCacheRef = useRef<{ [key: string]: GeoJSONGeometry | null }>({})
 
   const mapStyle =
     'https://api.maptiler.com/maps/topo-v2/style.json?key=Gxxj1jCvJhu2HSp6n0tp'
-
-  // Calculate marker density and adaptive sizing
-  const getAdaptiveMarkerSize = useCallback(
-    (zoom: number, placesInView: number) => {
-      // Base size calculation based on zoom level
-      let baseSize = 24
-
-      // Adjust for zoom level - make much smaller when zoomed out
-      if (zoom > 14) {
-        baseSize = 32
-      } else if (zoom > 12) {
-        baseSize = 20
-      } else if (zoom > 10) {
-        baseSize = 16
-      } else if (zoom > 8) {
-        baseSize = 6
-      } else if (zoom > 6) {
-        baseSize = 4
-      } else {
-        baseSize = 2 // Very small when zoomed out
-      }
-
-      // Adjust for density - make even smaller when there are many places
-      if (placesInView > 500) {
-        baseSize = Math.max(6, baseSize - 12)
-      } else if (placesInView > 200) {
-        baseSize = Math.max(8, baseSize - 10)
-      } else if (placesInView > 100) {
-        baseSize = Math.max(10, baseSize - 8)
-      } else if (placesInView > 50) {
-        baseSize = Math.max(12, baseSize - 4)
-      }
-
-      return baseSize
-    },
-    []
-  )
 
   const updateBounds = useCallback(() => {
     if (!map.current || !onBoundsChange) return
@@ -154,6 +79,346 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       west: bounds.getWest(),
     })
   }, [onBoundsChange])
+
+  const addGeometryLayer = useCallback(async (place: PlacesInView) => {
+    if (!map.current || !map.current.isStyleLoaded()) {
+      return
+    }
+
+    // Remove existing geometry layer if any
+    if (geometryLayerRef.current) {
+      const existingLayerId = geometryLayerRef.current
+      const existingSourceId = `geometry-source-${existingLayerId.split('-')[1]}`
+
+      try {
+        // Remove all possible layer variations
+        const layersToRemove = [
+          existingLayerId,
+          `${existingLayerId}-fill`,
+          `${existingLayerId}-outline`,
+        ]
+
+        layersToRemove.forEach((layer) => {
+          if (map.current!.getLayer(layer)) {
+            map.current!.removeLayer(layer)
+          }
+        })
+
+        if (map.current.getSource(existingSourceId)) {
+          map.current.removeSource(existingSourceId)
+        }
+      } catch (error) {
+        console.warn('Failed to remove geometry layer:', error)
+      }
+
+      geometryLayerRef.current = null
+    }
+
+    // Check cache first
+    let geometry = geometryCacheRef.current[place.id]
+
+    // If not in cache, fetch it
+    if (geometry === undefined) {
+      try {
+        geometry = await getPlaceGeometry(place.id)
+        geometryCacheRef.current[place.id] = geometry
+      } catch (error) {
+        console.warn('❌ Failed to fetch geometry:', error)
+        geometryCacheRef.current[place.id] = null
+        return
+      }
+    }
+
+    // If no geometry available, return
+    if (!geometry) {
+      return
+    }
+
+    const layerId = `geometry-${place.id}`
+    const sourceId = `geometry-source-${place.id}`
+
+    try {
+      // Check if source already exists, if so remove it first
+      if (map.current.getSource(sourceId)) {
+        // Remove any existing layers that use this source
+        const existingLayers = [
+          `${layerId}-fill`,
+          `${layerId}-outline`,
+          layerId,
+        ]
+        existingLayers.forEach((layer) => {
+          if (map.current!.getLayer(layer)) {
+            map.current!.removeLayer(layer)
+          }
+        })
+        map.current.removeSource(sourceId)
+      }
+
+      // Add source
+      map.current.addSource(sourceId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {
+            name: place.name,
+            id: place.id,
+          },
+          geometry: geometry as GeoJSON.Geometry,
+        },
+      })
+
+      // Add fill layer for polygons
+      if (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') {
+        map.current.addLayer({
+          id: `${layerId}-fill`,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': '#D3572C',
+            'fill-opacity': 0.3,
+          },
+        })
+
+        map.current.addLayer({
+          id: `${layerId}-outline`,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#D3572C',
+            'line-width': 2,
+            'line-opacity': 0.8,
+          },
+        })
+      }
+      // Add line layer for LineString
+      else if (
+        geometry.type === 'LineString' ||
+        geometry.type === 'MultiLineString'
+      ) {
+        map.current.addLayer({
+          id: layerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#D3572C',
+            'line-width': 3,
+            'line-opacity': 0.8,
+          },
+        })
+      }
+      // Add circle layer for points (in addition to marker)
+      else if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
+        map.current.addLayer({
+          id: layerId,
+          type: 'circle',
+          source: sourceId,
+          paint: {
+            'circle-color': '#D3572C',
+            'circle-radius': 8,
+            'circle-opacity': 0.6,
+            'circle-stroke-color': '#D3572C',
+            'circle-stroke-width': 2,
+            'circle-stroke-opacity': 1,
+          },
+        })
+      }
+
+      geometryLayerRef.current = layerId
+    } catch (error) {
+      console.warn('Failed to add geometry layer:', error)
+    }
+  }, [])
+
+  const removeGeometryLayer = useCallback(() => {
+    if (!map.current || !geometryLayerRef.current) return
+
+    const layerId = geometryLayerRef.current
+    const sourceId = `geometry-source-${layerId.split('-')[1]}`
+
+    try {
+      // Remove all possible layer variations
+      const layersToRemove = [layerId, `${layerId}-fill`, `${layerId}-outline`]
+
+      layersToRemove.forEach((layer) => {
+        if (map.current!.getLayer(layer)) {
+          map.current!.removeLayer(layer)
+        }
+      })
+
+      if (map.current.getSource(sourceId)) {
+        map.current.removeSource(sourceId)
+      }
+    } catch (error) {
+      console.warn('Failed to remove geometry layer:', error)
+    }
+
+    geometryLayerRef.current = null
+  }, [])
+
+  const addPlacesLayer = useCallback(() => {
+    if (!map.current || !mapLoaded || !map.current.isStyleLoaded()) return
+
+    const sourceId = 'nature-places'
+    const layerId = 'nature-places'
+
+    // Update existing source data if it exists, otherwise create new layer
+    if (map.current.getSource(sourceId)) {
+      const geojsonData = {
+        type: 'FeatureCollection' as const,
+        features: places.map((place) => ({
+          type: 'Feature' as const,
+          properties: {
+            id: place.id,
+            name: place.name,
+            description: place.description,
+            type: place.type,
+          },
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [place.long, place.lat],
+          },
+        })),
+      }
+
+      // Update the source data
+      const source = map.current.getSource(sourceId) as maplibregl.GeoJSONSource
+      source.setData(geojsonData)
+      return
+    }
+
+    // Create new layer only if it doesn't exist
+    if (places.length === 0) return
+
+    // Create GeoJSON data from places
+    const geojsonData = {
+      type: 'FeatureCollection' as const,
+      features: places.map((place) => ({
+        type: 'Feature' as const,
+        properties: {
+          id: place.id,
+          name: place.name,
+          description: place.description,
+          type: place.type,
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [place.long, place.lat],
+        },
+      })),
+    }
+
+    // Add source
+    map.current.addSource(sourceId, {
+      type: 'geojson',
+      data: geojsonData,
+    })
+
+    // Add layer with MapLibre native interpolation
+    map.current.addLayer({
+      id: layerId,
+      type: 'circle',
+      source: sourceId,
+      paint: {
+        'circle-radius': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          8,
+          3, // At zoom 8: radius 3px
+          12,
+          6, // At zoom 12: radius 6px
+          16,
+          12, // At zoom 16: radius 12px
+        ],
+        'circle-color': '#D3572C',
+        'circle-stroke-color': '#fff',
+        'circle-stroke-width': 1,
+      },
+    })
+
+    // Add click handler for the layer
+    map.current.on('click', layerId, (e) => {
+      if (!e.features || e.features.length === 0) return
+
+      const feature = e.features[0]
+      const placeId = feature.properties?.id
+      const place = places.find((p) => p.id === placeId)
+
+      if (!place) return
+
+      // Close existing popup
+      if (activePopupRef.current) {
+        activePopupRef.current.remove()
+        activePopupRef.current = null
+      }
+
+      // Handle geometry layer display
+      if (selectedPlaceId === place.id) {
+        removeGeometryLayer()
+        setSelectedPlaceId(null)
+      } else {
+        addGeometryLayer(place)
+        setSelectedPlaceId(place.id)
+      }
+
+      // Create new popup
+      const popupNode = document.createElement('div')
+      const popupRoot = createRoot(popupNode)
+      popupRoot.render(<PopupContent place={place} />)
+
+      const popup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: false,
+        offset: [0, -10],
+      })
+        .setLngLat([place.long, place.lat])
+        .setDOMContent(popupNode)
+        .addTo(map.current!)
+
+      popup.on('close', () => {
+        activePopupRef.current = null
+      })
+
+      activePopupRef.current = popup
+    })
+
+    // Change cursor on hover
+    map.current.on('mouseenter', layerId, () => {
+      if (map.current) {
+        map.current.getCanvas().style.cursor = 'pointer'
+      }
+    })
+
+    map.current.on('mouseleave', layerId, () => {
+      if (map.current) {
+        map.current.getCanvas().style.cursor = ''
+      }
+    })
+
+    // Add click handler for map background to clear selection
+    map.current.on('click', (e) => {
+      // Check if click was on our places layer
+      const features = map.current!.queryRenderedFeatures(e.point, {
+        layers: [layerId],
+      })
+
+      // If click was not on a place marker, clear selection
+      if (features.length === 0 && selectedPlaceId) {
+        removeGeometryLayer()
+        setSelectedPlaceId(null)
+        if (activePopupRef.current) {
+          activePopupRef.current.remove()
+          activePopupRef.current = null
+        }
+      }
+    })
+  }, [
+    places,
+    mapLoaded,
+    addGeometryLayer,
+    removeGeometryLayer,
+    selectedPlaceId,
+  ])
 
   const onViewAllPlaces = useCallback(() => {
     if (!map.current || places.length === 0) {
@@ -209,77 +474,35 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
     }
 
     return () => {
-      map.current?.remove()
-      map.current = null
+      if (map.current) {
+        removeGeometryLayer()
+        map.current.remove()
+        map.current = null
+      }
       setMapLoaded(false)
     }
-  }, [updateBounds])
+  }, [updateBounds, removeGeometryLayer])
 
-  // Update markers when places or zoom changes
+  // Update places layer when places change
   useEffect(() => {
     if (!map.current || !mapLoaded) return
 
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.remove())
-    markersRef.current = []
+    // Add places layer (will update existing or create new)
+    addPlacesLayer()
+  }, [places, mapLoaded, addPlacesLayer])
 
-    // Close any open popup
-    if (activePopupRef.current) {
-      activePopupRef.current.remove()
-      activePopupRef.current = null
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Close any open popup
+      if (activePopupRef.current) {
+        activePopupRef.current.remove()
+        activePopupRef.current = null
+      }
+      // Clear geometry layer
+      removeGeometryLayer()
     }
-
-    // Add markers for places
-    if (places.length > 0) {
-      const markerSize = getAdaptiveMarkerSize(currentZoom, places.length)
-
-      places.forEach((place) => {
-        const markerNode = document.createElement('div')
-        const root = createRoot(markerNode)
-        root.render(
-          <AdaptiveMarkerIcon
-            key={`${place.id}-${currentZoom}`}
-            size={markerSize}
-            zoom={currentZoom}
-          />
-        )
-
-        markerNode.addEventListener('click', () => {
-          // Close existing popup
-          if (activePopupRef.current) {
-            activePopupRef.current.remove()
-            activePopupRef.current = null
-          }
-
-          // Create new popup
-          const popupNode = document.createElement('div')
-          const popupRoot = createRoot(popupNode)
-          popupRoot.render(<PopupContent place={place} />)
-
-          const popup = new maplibregl.Popup({
-            closeButton: true,
-            closeOnClick: false,
-            offset: [0, -markerSize / 2 - 5],
-          })
-            .setLngLat([place.long, place.lat])
-            .setDOMContent(popupNode)
-            .addTo(map.current!)
-
-          popup.on('close', () => {
-            activePopupRef.current = null
-          })
-
-          activePopupRef.current = popup
-        })
-
-        const marker = new maplibregl.Marker({ element: markerNode })
-          .setLngLat([place.long, place.lat])
-          .addTo(map.current!)
-
-        markersRef.current.push(marker)
-      })
-    }
-  }, [places, mapLoaded, currentZoom, getAdaptiveMarkerSize])
+  }, [removeGeometryLayer])
 
   return (
     <div
@@ -298,7 +521,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
 
       <div className="absolute top-4 right-16 z-10">
         <div className="rounded-md bg-white px-3 py-1 text-sm shadow-md dark:bg-neutral-800">
-          {places.length} places
+          Zoom: {Math.round(currentZoom * 10) / 10}
         </div>
       </div>
 

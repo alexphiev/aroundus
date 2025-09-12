@@ -9,6 +9,11 @@ export interface BoundingBox {
   west: number
 }
 
+export interface GeoJSONGeometry {
+  type: 'Point' | 'LineString' | 'Polygon' | 'MultiPoint' | 'MultiLineString' | 'MultiPolygon'
+  coordinates: number[] | number[][] | number[][][]
+}
+
 export interface PlacesInView {
   id: string
   name: string
@@ -17,6 +22,7 @@ export interface PlacesInView {
   type: string
   lat: number
   long: number
+  quality: number
 }
 
 export async function getPlacesInBounds(
@@ -24,7 +30,7 @@ export async function getPlacesInBounds(
 ): Promise<PlacesInView[]> {
   const supabase = await createClient()
 
-  // Use PostGIS spatial query via RPC function
+  // Use PostGIS spatial query via RPC function to get basic place data
   const { data, error } = await supabase.rpc('places_in_view', {
     min_lat: bounds.south,
     min_long: bounds.west,
@@ -37,5 +43,50 @@ export async function getPlacesInBounds(
     throw new Error('Failed to fetch places from database')
   }
 
-  return data || []
+  if (!data || data.length === 0) {
+    return []
+  }
+
+  // Fetch quality scores for the places
+  const placeIds = data.map(place => place.id)
+  const { data: qualityData, error: qualityError } = await supabase
+    .from('places')
+    .select('id, quality')
+    .in('id', placeIds)
+
+  if (qualityError) {
+    console.warn('Failed to fetch quality data:', qualityError)
+    // Fallback to default quality if can't fetch
+    return data.map(place => ({ ...place, quality: 0 }))
+  }
+
+  // Create quality map
+  const qualityMap = new Map()
+  qualityData?.forEach(place => {
+    qualityMap.set(place.id, place.quality || 0)
+  })
+
+  // Combine data with quality scores
+  return data.map(place => ({
+    ...place,
+    quality: qualityMap.get(place.id) || 0
+  }))
+}
+
+export async function getPlaceGeometry(placeId: string): Promise<GeoJSONGeometry | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('places')
+    .select('geometry')
+    .eq('id', placeId)
+    .not('geometry', 'is', null)
+    .single()
+
+  if (error) {
+    console.warn('Failed to fetch geometry data:', error)
+    return null
+  }
+
+  return (data?.geometry as GeoJSONGeometry) || null
 }

@@ -21,9 +21,10 @@ export type Database = {
           description: string | null
           geometry: unknown | null
           id: string
-          location: unknown
+          location: unknown | null
           metadata: Json | null
           name: string | null
+          quality: number
           region: string | null
           source: string | null
           source_id: string | null
@@ -36,9 +37,10 @@ export type Database = {
           description?: string | null
           geometry?: unknown | null
           id?: string
-          location: unknown
+          location?: unknown | null
           metadata?: Json | null
           name?: string | null
+          quality?: number
           region?: string | null
           source?: string | null
           source_id?: string | null
@@ -51,9 +53,10 @@ export type Database = {
           description?: string | null
           geometry?: unknown | null
           id?: string
-          location?: unknown
+          location?: unknown | null
           metadata?: Json | null
           name?: string | null
+          quality?: number
           region?: string | null
           source?: string | null
           source_id?: string | null
