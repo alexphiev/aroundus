@@ -18,10 +18,11 @@ import {
   validateDiscoverySubmission,
 } from '@/utils/discover.utils'
 import { type DiscoverySubmissionValues } from '@/validation/discover-form.validation'
+import { GenerateContentResponse } from '@google/genai'
 import { getWeatherDataForAI } from './weather.actions'
 
 // Helper function to extract text from AI response with simplified fallbacks
-function extractResponseText(result: unknown): string {
+function extractResponseText(result: GenerateContentResponse): string {
   // Type guard for expected response structure
   const isValidCandidate = (
     candidate: unknown
