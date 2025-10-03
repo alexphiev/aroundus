@@ -19,49 +19,88 @@ export type Database = {
           country: string | null
           created_at: string
           description: string | null
+          enhancement_score: number | null
           geometry: unknown | null
           id: string
+          last_enhanced_at: string | null
           location: unknown | null
           metadata: Json | null
           name: string | null
-          quality: number
+          osm_id: string | null
+          reddit_data: Json | null
+          reddit_generated: string | null
           region: string | null
+          score: number
+          short_name: string | null
           source: string | null
           source_id: string | null
+          source_score: number | null
           type: string | null
           updated_at: string | null
+          website: string | null
+          website_generated: string | null
+          website_raw: string | null
+          wikipedia_generated: string | null
+          wikipedia_query: string | null
+          wikipedia_raw: string | null
         }
         Insert: {
           country?: string | null
           created_at?: string
           description?: string | null
+          enhancement_score?: number | null
           geometry?: unknown | null
           id?: string
+          last_enhanced_at?: string | null
           location?: unknown | null
           metadata?: Json | null
           name?: string | null
-          quality?: number
+          osm_id?: string | null
+          reddit_data?: Json | null
+          reddit_generated?: string | null
           region?: string | null
+          score: number
+          short_name?: string | null
           source?: string | null
           source_id?: string | null
+          source_score?: number | null
           type?: string | null
           updated_at?: string | null
+          website?: string | null
+          website_generated?: string | null
+          website_raw?: string | null
+          wikipedia_generated?: string | null
+          wikipedia_query?: string | null
+          wikipedia_raw?: string | null
         }
         Update: {
           country?: string | null
           created_at?: string
           description?: string | null
+          enhancement_score?: number | null
           geometry?: unknown | null
           id?: string
+          last_enhanced_at?: string | null
           location?: unknown | null
           metadata?: Json | null
           name?: string | null
-          quality?: number
+          osm_id?: string | null
+          reddit_data?: Json | null
+          reddit_generated?: string | null
           region?: string | null
+          score?: number
+          short_name?: string | null
           source?: string | null
           source_id?: string | null
+          source_score?: number | null
           type?: string | null
           updated_at?: string | null
+          website?: string | null
+          website_generated?: string | null
+          website_raw?: string | null
+          wikipedia_generated?: string | null
+          wikipedia_query?: string | null
+          wikipedia_raw?: string | null
         }
         Relationships: []
       }

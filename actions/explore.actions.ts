@@ -10,7 +10,13 @@ export interface BoundingBox {
 }
 
 export interface GeoJSONGeometry {
-  type: 'Point' | 'LineString' | 'Polygon' | 'MultiPoint' | 'MultiLineString' | 'MultiPolygon'
+  type:
+    | 'Point'
+    | 'LineString'
+    | 'Polygon'
+    | 'MultiPoint'
+    | 'MultiLineString'
+    | 'MultiPolygon'
   coordinates: number[] | number[][] | number[][][]
 }
 
@@ -48,32 +54,34 @@ export async function getPlacesInBounds(
   }
 
   // Fetch quality scores for the places
-  const placeIds = data.map(place => place.id)
+  const placeIds = data.map((place) => place.id)
   const { data: qualityData, error: qualityError } = await supabase
     .from('places')
-    .select('id, quality')
+    .select('id, score')
     .in('id', placeIds)
 
   if (qualityError) {
     console.warn('Failed to fetch quality data:', qualityError)
     // Fallback to default quality if can't fetch
-    return data.map(place => ({ ...place, quality: 0 }))
+    return data.map((place) => ({ ...place, quality: 0 }))
   }
 
   // Create quality map
   const qualityMap = new Map()
-  qualityData?.forEach(place => {
-    qualityMap.set(place.id, place.quality || 0)
+  qualityData?.forEach((place) => {
+    qualityMap.set(place.id, place.score || 0)
   })
 
   // Combine data with quality scores
-  return data.map(place => ({
+  return data.map((place) => ({
     ...place,
-    quality: qualityMap.get(place.id) || 0
+    quality: qualityMap.get(place.id) || 0,
   }))
 }
 
-export async function getPlaceGeometry(placeId: string): Promise<GeoJSONGeometry | null> {
+export async function getPlaceGeometry(
+  placeId: string
+): Promise<GeoJSONGeometry | null> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -89,4 +97,35 @@ export async function getPlaceGeometry(placeId: string): Promise<GeoJSONGeometry
   }
 
   return (data?.geometry as GeoJSONGeometry) || null
+}
+
+export interface ParkGeometry {
+  id: string
+  name: string
+  type: string
+  geometry: GeoJSONGeometry
+}
+
+export async function getAllParkGeometries(): Promise<ParkGeometry[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('places')
+    .select('id, name, type, geometry')
+    .in('type', ['national_park', 'regional_park'])
+    .not('geometry', 'is', null)
+
+  if (error) {
+    console.error('Failed to fetch park geometries:', error)
+    return []
+  }
+
+  return (
+    data?.map((place) => ({
+      id: place.id,
+      name: place.name || '',
+      type: place.type || '',
+      geometry: place.geometry as GeoJSONGeometry,
+    })) || []
+  )
 }

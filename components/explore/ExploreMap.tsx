@@ -2,6 +2,7 @@
 
 import {
   GeoJSONGeometry,
+  ParkGeometry,
   PlacesInView,
   getPlaceGeometry,
 } from '@/actions/explore.actions'
@@ -14,6 +15,7 @@ import { createRoot } from 'react-dom/client'
 
 interface ExploreMapProps {
   places: PlacesInView[]
+  parkGeometries?: ParkGeometry[]
   onBoundsChange?: (bounds: {
     north: number
     south: number
@@ -53,6 +55,7 @@ const PopupContent = ({ place }: { place: PlacesInView }) => (
 
 const ExploreMap: React.FC<ExploreMapProps> = ({
   places,
+  parkGeometries = [],
   onBoundsChange,
   className = '',
 }) => {
@@ -85,13 +88,11 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       return
     }
 
-    // Remove existing geometry layer if any
     if (geometryLayerRef.current) {
       const existingLayerId = geometryLayerRef.current
       const existingSourceId = `geometry-source-${existingLayerId.split('-')[1]}`
 
       try {
-        // Remove all possible layer variations
         const layersToRemove = [
           existingLayerId,
           `${existingLayerId}-fill`,
@@ -114,10 +115,8 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       geometryLayerRef.current = null
     }
 
-    // Check cache first
     let geometry = geometryCacheRef.current[place.id]
 
-    // If not in cache, fetch it
     if (geometry === undefined) {
       try {
         geometry = await getPlaceGeometry(place.id)
@@ -129,18 +128,16 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       }
     }
 
-    // If no geometry available, return
     if (!geometry) {
       return
     }
 
     const layerId = `geometry-${place.id}`
     const sourceId = `geometry-source-${place.id}`
+    const opacity = place.type === 'regional_park' ? 0.1 : 0.3
 
     try {
-      // Check if source already exists, if so remove it first
       if (map.current.getSource(sourceId)) {
-        // Remove any existing layers that use this source
         const existingLayers = [
           `${layerId}-fill`,
           `${layerId}-outline`,
@@ -154,7 +151,6 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
         map.current.removeSource(sourceId)
       }
 
-      // Add source
       map.current.addSource(sourceId, {
         type: 'geojson',
         data: {
@@ -167,7 +163,6 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
         },
       })
 
-      // Add fill layer for polygons
       if (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') {
         map.current.addLayer({
           id: `${layerId}-fill`,
@@ -175,23 +170,21 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
           source: sourceId,
           paint: {
             'fill-color': '#D3572C',
-            'fill-opacity': 0.3,
+            'fill-opacity': opacity,
           },
         })
 
-        map.current.addLayer({
-          id: `${layerId}-outline`,
-          type: 'line',
-          source: sourceId,
-          paint: {
-            'line-color': '#D3572C',
-            'line-width': 2,
-            'line-opacity': 0.8,
-          },
-        })
-      }
-      // Add line layer for LineString
-      else if (
+        // map.current.addLayer({
+        //   id: `${layerId}-outline`,
+        //   type: 'line',
+        //   source: sourceId,
+        //   paint: {
+        //     'line-color': '#D3572C',
+        //     'line-width': 0.5,
+        //     'line-opacity': 0.1,
+        //   },
+        // })
+      } else if (
         geometry.type === 'LineString' ||
         geometry.type === 'MultiLineString'
       ) {
@@ -205,9 +198,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
             'line-opacity': 0.8,
           },
         })
-      }
-      // Add circle layer for points (in addition to marker)
-      else if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
+      } else if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
         map.current.addLayer({
           id: layerId,
           type: 'circle',
@@ -357,7 +348,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
         removeGeometryLayer()
         setSelectedPlaceId(null)
       } else {
-        addGeometryLayer(place)
+        // addGeometryLayer(place)
         setSelectedPlaceId(place.id)
       }
 
@@ -415,7 +406,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   }, [
     places,
     mapLoaded,
-    addGeometryLayer,
+    // addGeometryLayer,
     removeGeometryLayer,
     selectedPlaceId,
   ])
@@ -487,19 +478,125 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   useEffect(() => {
     if (!map.current || !mapLoaded) return
 
-    // Add places layer (will update existing or create new)
     addPlacesLayer()
   }, [places, mapLoaded, addPlacesLayer])
+
+  // Add park geometries layer with pre-loaded data
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !map.current.isStyleLoaded()) {
+      return
+    }
+
+    if (parkGeometries.length === 0) {
+      return
+    }
+
+    const sourceId = 'park-geometries'
+    const fillLayerId = 'park-geometries-fill'
+    const outlineLayerId = 'park-geometries-outline'
+
+    const features: GeoJSON.Feature[] = parkGeometries
+      .filter(
+        (park) =>
+          park.geometry.type === 'Polygon' ||
+          park.geometry.type === 'MultiPolygon'
+      )
+      .map((park) => ({
+        type: 'Feature',
+        properties: {
+          id: park.id,
+          name: park.name,
+          type: park.type,
+        },
+        geometry: park.geometry as GeoJSON.Geometry,
+      }))
+
+    if (features.length === 0) {
+      return
+    }
+
+    try {
+      if (map.current.getSource(sourceId)) {
+        const source = map.current.getSource(
+          sourceId
+        ) as maplibregl.GeoJSONSource
+        source.setData({
+          type: 'FeatureCollection',
+          features,
+        })
+      } else {
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features,
+          },
+        })
+
+        map.current.addLayer({
+          id: fillLayerId,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': '#D3572C',
+            'fill-opacity': [
+              'case',
+              ['==', ['get', 'type'], 'regional_park'],
+              0.2,
+              0.4,
+            ],
+          },
+          filter: [
+            'any',
+            [
+              'all',
+              ['==', ['get', 'type'], 'national_park'],
+              ['>=', ['zoom'], 6],
+            ],
+            [
+              'all',
+              ['==', ['get', 'type'], 'regional_park'],
+              ['>=', ['zoom'], 6],
+            ],
+          ],
+        })
+
+        map.current.addLayer({
+          id: outlineLayerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': '#D3572C',
+            'line-width': 1,
+            'line-opacity': 0.3,
+          },
+          filter: [
+            'any',
+            [
+              'all',
+              ['==', ['get', 'type'], 'national_park'],
+              ['>=', ['zoom'], 6],
+            ],
+            [
+              'all',
+              ['==', ['get', 'type'], 'regional_park'],
+              ['>=', ['zoom'], 6],
+            ],
+          ],
+        })
+      }
+    } catch (error) {
+      console.warn('Failed to add park geometries layer:', error)
+    }
+  }, [parkGeometries, mapLoaded])
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
-      // Close any open popup
       if (activePopupRef.current) {
         activePopupRef.current.remove()
         activePopupRef.current = null
       }
-      // Clear geometry layer
       removeGeometryLayer()
     }
   }, [removeGeometryLayer])
