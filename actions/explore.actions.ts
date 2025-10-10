@@ -29,6 +29,9 @@ export interface PlacesInView {
   lat: number
   long: number
   quality: number
+  metadata?: {
+    tags?: Record<string, string>
+  }
 }
 
 export async function getPlacesInBounds(
@@ -53,7 +56,6 @@ export async function getPlacesInBounds(
     return []
   }
 
-  // Fetch quality scores for the places
   const placeIds = data.map((place) => place.id)
   const { data: qualityData, error: qualityError } = await supabase
     .from('places')
@@ -62,17 +64,14 @@ export async function getPlacesInBounds(
 
   if (qualityError) {
     console.warn('Failed to fetch quality data:', qualityError)
-    // Fallback to default quality if can't fetch
     return data.map((place) => ({ ...place, quality: 0 }))
   }
 
-  // Create quality map
   const qualityMap = new Map()
   qualityData?.forEach((place) => {
     qualityMap.set(place.id, place.score || 0)
   })
 
-  // Combine data with quality scores
   return data.map((place) => ({
     ...place,
     quality: qualityMap.get(place.id) || 0,
@@ -97,6 +96,30 @@ export async function getPlaceGeometry(
   }
 
   return (data?.geometry as GeoJSONGeometry) || null
+}
+
+export async function getPlaceMetadata(placeId: string): Promise<{
+  tags?: Record<string, string>
+  score?: number
+} | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('places')
+    .select('metadata, score')
+    .eq('id', placeId)
+    .single()
+
+  if (error) {
+    console.warn('Failed to fetch metadata:', error)
+    return null
+  }
+
+  return {
+    tags:
+      (data?.metadata as { tags?: Record<string, string> })?.tags || undefined,
+    score: data?.score,
+  }
 }
 
 export interface ParkGeometry {

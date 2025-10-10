@@ -5,6 +5,7 @@ import {
   ParkGeometry,
   PlacesInView,
   getPlaceGeometry,
+  getPlaceMetadata,
 } from '@/actions/explore.actions'
 import { Button } from '@/components/ui/button'
 import { FocusIcon } from 'lucide-react'
@@ -25,33 +26,50 @@ interface ExploreMapProps {
   className?: string
 }
 
-const PopupContent = ({ place }: { place: PlacesInView }) => (
-  <div className="max-w-xs px-3 md:p-4">
-    <h6 className="mb-2 text-sm font-semibold md:text-base">
-      {place.name || 'Unnamed Place'}
-    </h6>
-    {place.description && (
+const PopupContent = ({
+  place,
+  tags,
+  score,
+}: {
+  place: PlacesInView
+  tags?: Record<string, string>
+  score?: number
+}) => {
+  const tagEntries = tags ? Object.entries(tags) : []
+
+  return (
+    <div className="max-w-xs px-3 md:p-4">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <h6 className="text-sm font-semibold md:text-base">
+          {place.name || 'Unnamed Place'}
+        </h6>
+        {score !== undefined && (
+          <span className="bg-primary/10 text-primary shrink-0 rounded px-1.5 py-0.5 text-xs font-medium">
+            {score.toFixed(1)}
+          </span>
+        )}
+      </div>
       <p className="text-muted-foreground mb-2 line-clamp-3 text-sm">
-        {place.description}
+        {place.description || 'No description available'}
       </p>
-    )}
-    {place.type && (
-      <p className="mb-2 text-sm text-blue-600 capitalize">{place.type}</p>
-    )}
-    <Button
-      onClick={() =>
-        window.open(
-          `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.long}`,
-          '_blank'
-        )
-      }
-      variant="default"
-      className="w-full"
-    >
-      View on Maps
-    </Button>
-  </div>
-)
+      <p className="mb-3 text-sm text-blue-600 capitalize">
+        {place.type || 'Unknown type'}
+      </p>
+      {tagEntries.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {tagEntries.map(([key, value], index) => (
+            <span
+              key={index}
+              className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs select-none"
+            >
+              {key}: {value}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const ExploreMap: React.FC<ExploreMapProps> = ({
   places,
@@ -67,6 +85,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   const activePopupRef = useRef<maplibregl.Popup | null>(null)
   const geometryLayerRef = useRef<string | null>(null)
   const geometryCacheRef = useRef<{ [key: string]: GeoJSONGeometry | null }>({})
+  const placesRef = useRef<PlacesInView[]>(places)
 
   const mapStyle =
     'https://api.maptiler.com/maps/topo-v2/style.json?key=Gxxj1jCvJhu2HSp6n0tp'
@@ -249,6 +268,8 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   const addPlacesLayer = useCallback(() => {
     if (!map.current || !mapLoaded || !map.current.isStyleLoaded()) return
 
+    placesRef.current = places
+
     const sourceId = 'nature-places'
     const layerId = 'nature-places'
 
@@ -328,34 +349,42 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
     })
 
     // Add click handler for the layer
-    map.current.on('click', layerId, (e) => {
-      if (!e.features || e.features.length === 0) return
+    map.current.on('click', layerId, async (e) => {
+      if (!e.features || e.features.length === 0) {
+        console.warn('⚠️ Click detected but no features found')
+        return
+      }
 
       const feature = e.features[0]
       const placeId = feature.properties?.id
-      const place = places.find((p) => p.id === placeId)
+      console.log('🖱️ Clicked place ID:', placeId)
+      console.log('📍 Available places:', placesRef.current.length)
+      const place = placesRef.current.find((p) => p.id === placeId)
 
-      if (!place) return
+      if (!place) {
+        console.error('❌ Place not found in places array!', {
+          placeId,
+          availablePlaces: placesRef.current.length,
+          featureProperties: feature.properties
+        })
+        return
+      }
 
-      // Close existing popup
       if (activePopupRef.current) {
         activePopupRef.current.remove()
         activePopupRef.current = null
       }
 
-      // Handle geometry layer display
-      if (selectedPlaceId === place.id) {
-        removeGeometryLayer()
-        setSelectedPlaceId(null)
-      } else {
-        // addGeometryLayer(place)
-        setSelectedPlaceId(place.id)
+      if (place.type !== 'national_park' && place.type !== 'regional_park') {
+        addGeometryLayer(place).catch((error) => {
+          console.warn('Failed to add geometry layer:', error)
+        })
       }
+      setSelectedPlaceId(place.id)
 
-      // Create new popup
       const popupNode = document.createElement('div')
       const popupRoot = createRoot(popupNode)
-      popupRoot.render(<PopupContent place={place} />)
+      popupRoot.render(<PopupContent place={place} tags={undefined} score={undefined} />)
 
       const popup = new maplibregl.Popup({
         closeButton: true,
@@ -368,9 +397,25 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
 
       popup.on('close', () => {
         activePopupRef.current = null
+        removeGeometryLayer()
+        setSelectedPlaceId(null)
       })
 
       activePopupRef.current = popup
+
+      console.log('🔍 Fetching metadata for place:', place.id, place.name)
+      try {
+        const metadata = await getPlaceMetadata(place.id)
+        console.log('📦 Metadata fetched:', metadata)
+        if (popup.isOpen()) {
+          console.log('🎨 Updating popup with tags:', metadata?.tags, 'score:', metadata?.score)
+          popupRoot.render(<PopupContent place={place} tags={metadata?.tags} score={metadata?.score} />)
+        } else {
+          console.log('❌ Popup already closed, not updating')
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch metadata for place:', error)
+      }
     })
 
     // Change cursor on hover
@@ -403,13 +448,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
         }
       }
     })
-  }, [
-    places,
-    mapLoaded,
-    // addGeometryLayer,
-    removeGeometryLayer,
-    selectedPlaceId,
-  ])
+  }, [places, mapLoaded, addGeometryLayer, removeGeometryLayer, selectedPlaceId])
 
   const onViewAllPlaces = useCallback(() => {
     if (!map.current || places.length === 0) {
