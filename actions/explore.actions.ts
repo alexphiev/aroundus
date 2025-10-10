@@ -157,9 +157,9 @@ export async function getAllParkGeometries(): Promise<ParkGeometry[]> {
     data?.map(
       (place: {
         id: string
-        name: string
-        type: string
-        geometry: GeoJSONGeometry
+        name: string | null
+        type: string | null
+        geometry: unknown
       }) => ({
         id: place.id,
         name: place.name || '',
