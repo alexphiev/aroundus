@@ -20,6 +20,16 @@ export interface GeoJSONGeometry {
   coordinates: number[] | number[][] | number[][][]
 }
 
+interface PlaceFromRPC {
+  id: string
+  name: string
+  description: string
+  type: string
+  source: string
+  lat: number
+  long: number
+}
+
 export interface PlacesInView {
   id: string
   name: string
@@ -39,7 +49,6 @@ export async function getPlacesInBounds(
 ): Promise<PlacesInView[]> {
   const supabase = await createClient()
 
-  // Use PostGIS spatial query via RPC function to get basic place data
   const { data, error } = await supabase.rpc('places_in_view', {
     min_lat: bounds.south,
     min_long: bounds.west,
@@ -56,7 +65,8 @@ export async function getPlacesInBounds(
     return []
   }
 
-  const placeIds = data.map((place) => place.id)
+  const places = data as PlaceFromRPC[]
+  const placeIds = places.map((place) => place.id)
   const { data: qualityData, error: qualityError } = await supabase
     .from('places')
     .select('id, score')
@@ -64,15 +74,15 @@ export async function getPlacesInBounds(
 
   if (qualityError) {
     console.warn('Failed to fetch quality data:', qualityError)
-    return data.map((place) => ({ ...place, quality: 0 }))
+    return places.map((place) => ({ ...place, quality: 0 }))
   }
 
   const qualityMap = new Map()
-  qualityData?.forEach((place) => {
+  qualityData?.forEach((place: { id: string; score: number }) => {
     qualityMap.set(place.id, place.score || 0)
   })
 
-  return data.map((place) => ({
+  return places.map((place) => ({
     ...place,
     quality: qualityMap.get(place.id) || 0,
   }))
@@ -144,11 +154,18 @@ export async function getAllParkGeometries(): Promise<ParkGeometry[]> {
   }
 
   return (
-    data?.map((place) => ({
-      id: place.id,
-      name: place.name || '',
-      type: place.type || '',
-      geometry: place.geometry as GeoJSONGeometry,
-    })) || []
+    data?.map(
+      (place: {
+        id: string
+        name: string
+        type: string
+        geometry: GeoJSONGeometry
+      }) => ({
+        id: place.id,
+        name: place.name || '',
+        type: place.type || '',
+        geometry: place.geometry as GeoJSONGeometry,
+      })
+    ) || []
   )
 }

@@ -82,6 +82,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(4)
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
+  const selectedPlaceIdRef = useRef<string | null>(null)
   const activePopupRef = useRef<maplibregl.Popup | null>(null)
   const geometryLayerRef = useRef<string | null>(null)
   const geometryCacheRef = useRef<{ [key: string]: GeoJSONGeometry | null }>({})
@@ -381,6 +382,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
         })
       }
       setSelectedPlaceId(place.id)
+      selectedPlaceIdRef.current = place.id
 
       const popupNode = document.createElement('div')
       const popupRoot = createRoot(popupNode)
@@ -399,6 +401,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
         activePopupRef.current = null
         removeGeometryLayer()
         setSelectedPlaceId(null)
+        selectedPlaceIdRef.current = null
       })
 
       activePopupRef.current = popup
@@ -433,15 +436,14 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
 
     // Add click handler for map background to clear selection
     map.current.on('click', (e) => {
-      // Check if click was on our places layer
       const features = map.current!.queryRenderedFeatures(e.point, {
         layers: [layerId],
       })
 
-      // If click was not on a place marker, clear selection
-      if (features.length === 0 && selectedPlaceId) {
+      if (features.length === 0 && selectedPlaceIdRef.current) {
         removeGeometryLayer()
         setSelectedPlaceId(null)
+        selectedPlaceIdRef.current = null
         if (activePopupRef.current) {
           activePopupRef.current.remove()
           activePopupRef.current = null
