@@ -237,6 +237,31 @@ export type Database = {
           type: string
         }[]
       }
+      search_places_by_location: {
+        Args: {
+          min_score?: number
+          radius_km: number
+          result_limit?: number
+          search_lat: number
+          search_lng: number
+        }
+        Returns: {
+          country: string
+          description: string
+          distance_km: number
+          id: string
+          lat: number
+          long: number
+          metadata: Json
+          name: string
+          region: string
+          score: number
+          source: string
+          type: string
+          website: string
+          wikipedia_query: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

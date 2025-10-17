@@ -78,6 +78,13 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
   onPopupClose,
   onPlaceDetailsClick,
 }) => {
+  console.log('🗺️ PlaceMap RENDER', {
+    resultsCount: placeResults?.length,
+    baseLocation,
+    hasActivePlace: !!activePlace,
+    timestamp: Date.now(),
+  })
+
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
