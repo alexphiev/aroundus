@@ -1,5 +1,6 @@
 'use server'
 
+import { Json } from '@/types/supabase'
 import { createClient } from '@/utils/supabase/server'
 
 export interface BoundingBox {
@@ -20,28 +21,25 @@ export interface GeoJSONGeometry {
   coordinates: number[] | number[][] | number[][][]
 }
 
-interface PlaceFromRPC {
-  id: string
-  name: string
-  description: string
-  type: string
-  source: string
-  lat: number
-  long: number
-}
-
 export interface PlacesInView {
-  id: string
-  name: string
+  country: string
   description: string
-  source: string
-  type: string
+  distance_km: number
+  id: string
   lat: number
   long: number
-  quality: number
-  metadata?: {
-    tags?: Record<string, string>
-  }
+  name: string
+  region: string
+  score: number
+  source: string
+  type: string
+  website: string
+  wikipedia_query: string
+  metadata?: Json
+  photos?: {
+    url: string
+    caption: string
+  }[]
 }
 
 export async function getPlacesInBounds(
@@ -49,11 +47,13 @@ export async function getPlacesInBounds(
 ): Promise<PlacesInView[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase.rpc('places_in_view', {
+  const { data, error } = await supabase.rpc('search_places_in_view', {
     min_lat: bounds.south,
     min_long: bounds.west,
     max_lat: bounds.north,
     max_long: bounds.east,
+    max_results: 100,
+    min_score: 3,
   })
 
   if (error) {
@@ -61,31 +61,7 @@ export async function getPlacesInBounds(
     throw new Error('Failed to fetch places from database')
   }
 
-  if (!data || data.length === 0) {
-    return []
-  }
-
-  const places = data as PlaceFromRPC[]
-  const placeIds = places.map((place) => place.id)
-  const { data: qualityData, error: qualityError } = await supabase
-    .from('places')
-    .select('id, score')
-    .in('id', placeIds)
-
-  if (qualityError) {
-    console.warn('Failed to fetch quality data:', qualityError)
-    return places.map((place) => ({ ...place, quality: 0 }))
-  }
-
-  const qualityMap = new Map()
-  qualityData?.forEach((place: { id: string; score: number }) => {
-    qualityMap.set(place.id, place.score || 0)
-  })
-
-  return places.map((place) => ({
-    ...place,
-    quality: qualityMap.get(place.id) || 0,
-  }))
+  return data
 }
 
 export async function getPlaceGeometry(

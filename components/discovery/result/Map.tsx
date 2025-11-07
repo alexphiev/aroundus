@@ -15,10 +15,7 @@ interface PlaceMapProps {
     longitude: number
   } | null
   className?: string // Allow passing custom classes
-  activeMarkerIndex?: number
   activePlace?: PlaceResultItem | null
-  shouldUpdateBounds?: boolean // Whether to update map bounds when results change
-  isProgressiveSearch?: boolean // Whether this is a progressive search
   onMarkerClick?: (index: number, place: PlaceResultItem) => void // Callback when marker is clicked
   onPopupClose?: () => void // Callback when popup is closed
   onPlaceDetailsClick?: (index: number, place: PlaceResultItem) => void // Callback when place details button is clicked
@@ -78,6 +75,13 @@ const PlaceMap: React.FC<PlaceMapProps> = ({
   onPopupClose,
   onPlaceDetailsClick,
 }) => {
+  console.log('🗺️ PlaceMap RENDER', {
+    resultsCount: placeResults?.length,
+    baseLocation,
+    hasActivePlace: !!activePlace,
+    timestamp: Date.now(),
+  })
+
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)

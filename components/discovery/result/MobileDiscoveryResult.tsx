@@ -264,11 +264,8 @@ export default function MobileDiscoveryResult({
               key={`${baseLocation?.latitude}-${baseLocation?.longitude}`}
               placeResults={placeResults}
               baseLocation={baseLocation}
-              activeMarkerIndex={activeCardIndex}
               activePlace={activePlace}
               className="h-full w-full"
-              shouldUpdateBounds={true}
-              isProgressiveSearch={isLoadingMore}
               onMarkerClick={handleMarkerClick}
               onPopupClose={handlePopupClose}
               onPlaceDetailsClick={handlePlaceDetailsFromMap}

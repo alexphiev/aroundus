@@ -1,6 +1,6 @@
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/layout/sidebar'
 import { signOutAction } from '@/app/actions'
-import { Compass, Home, LogOut, Map, Heart } from 'lucide-react'
+import { Compass, Home, LogOut, Map, Heart, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,11 @@ const navLinks = [
     label: 'Discover',
     href: '/discover',
     icon: <Compass className="h-5 w-5" />,
+  },
+  {
+    label: 'Search',
+    href: '/search',
+    icon: <Search className="h-5 w-5" />,
   },
   {
     label: 'Explore',

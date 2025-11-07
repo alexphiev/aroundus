@@ -16,7 +16,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface PlacePhotoGalleryProps {
-  googleMapsUri: string
+  googleMapsUri?: string
   photos: PlacePhoto[]
   placeName: string
 }

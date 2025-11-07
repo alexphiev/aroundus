@@ -2,7 +2,7 @@
 
 import { useNavigation } from '@/components/NavigationLoader'
 import { signOutAction } from '@/app/actions'
-import { Compass, Home, LogOut, Map, Heart } from 'lucide-react'
+import { Compass, Home, LogOut, Map, Search } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -19,15 +19,14 @@ const navLinks = [
     icon: Compass,
   },
   {
+    label: 'Search',
+    href: '/search',
+    icon: Search,
+  },
+  {
     label: 'Explore',
     href: '/explore',
     icon: Map,
-  },
-  {
-    label: 'Favorites',
-    href: '/past-places',
-    icon: Heart,
-    disabled: true,
   },
   {
     label: 'Logout',
@@ -79,10 +78,8 @@ export default function MobileBottomNav() {
             <Link
               key={link.href}
               href={link.href}
-              onClick={() => (link.disabled ? null : handleNavClick(link.href))}
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center rounded-lg transition-colors ${
-                link.disabled ? 'pointer-events-none opacity-50' : ''
-              }`}
+              onClick={() => handleNavClick(link.href)}
+              className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-lg transition-colors"
             >
               <Icon
                 className={`mb-1 h-5 w-5 transition-colors ${

@@ -203,7 +203,6 @@ export function SearchFormModal({
                             locationError={locationError}
                             onRetryLocation={onRetryLocation}
                             disabled={isPending}
-                            control={form.control}
                           />
                         </FormControl>
                         <FormMessage />
