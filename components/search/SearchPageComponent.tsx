@@ -1,60 +1,39 @@
 'use client'
 
-import { searchPlaces } from '@/actions/search.actions'
+import {
+  BoundingBox,
+  getPlacesInBounds,
+  ParkGeometry,
+  PlacesInView,
+} from '@/actions/explore.actions'
+import { searchPlacesAction } from '@/actions/search.actions'
 import { SearchFormModal } from '@/components/search/form/SearchFormModal'
-import SearchResult from '@/components/search/result/SearchResult'
+import SearchFiltersBar from '@/components/search/result/SearchFiltersBar'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable'
 import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
-import { PlaceResultItem } from '@/types/result.types'
-import type { SearchFormValues } from '@/validation/search-form.validation'
+import type { SearchFilters, SearchFormValues } from '@/types/search.types'
+import { distanceToRadiusKm } from '@/utils/distance.utils'
+import { mapActivityToPlaceTypes } from '@/utils/place.utils'
+import { searchFormSchema } from '@/validation/search-form.validation'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState, useTransition } from 'react'
+// import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { searchFormSchema } from '@/validation/search-form.validation'
-import { savePlaceAction } from '@/actions/place.actions'
+import Map from './result/Map'
+import SearchResults from './result/SearchResults'
 
-interface SearchPlaceResult {
-  id: string
-  name: string
-  description: string
-  type: string
-  source: string
-  lat: number
-  long: number
-  score: number
-  distance_km: number
-  metadata: Record<string, unknown> | null
-  website: string | null
-  wikipedia_query: string | null
-  country: string | null
-  region: string | null
+interface SearchPageComponentProps {
+  parkGeometries: ParkGeometry[]
 }
 
-function convertPlaceToResultItem(place: SearchPlaceResult): PlaceResultItem {
-  return {
-    id: place.id,
-    name: place.name || 'Unnamed Place',
-    description: place.description || '',
-    lat: place.lat,
-    long: place.long,
-    landscape: place.type || undefined,
-    activity: undefined,
-    photos: [],
-    googleMapsLink: `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.long}`,
-    googleMapsUri: undefined,
-    starRating: undefined,
-    starRatingReason: undefined,
-  }
-}
-
-function SearchPageComponent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-
-  console.log('📄 SearchPageComponent RENDER', {
-    timestamp: Date.now(),
-  })
+function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
+  // const searchParams = useSearchParams()
+  // const router = useRouter()
 
   const [userLocation, setUserLocation] = useState<{
     latitude: number
@@ -66,18 +45,33 @@ function SearchPageComponent() {
   )
 
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
-  const [placeResults, setPlaceResults] = useState<PlaceResultItem[] | null>(
+  const [placeResults, setPlaceResults] = useState<PlacesInView[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [currentFilters, setCurrentFilters] = useState<SearchFilters | null>(
     null
   )
-  const [hasPerformedSearch, setHasPerformedSearch] = useState(false)
-  const [currentSearchQuery, setCurrentSearchQuery] =
-    useState<SearchFormValues | null>(null)
-  const [searchLocation, setSearchLocation] = useState<{
+  const [mapCenter, setMapCenter] = useState<{
+    latitude: number
+    longitude: number
+  }>({
+    latitude: 46.603354,
+    longitude: 1.888334,
+  })
+  const [selectedPlace, setSelectedPlace] = useState<PlacesInView | null>(null)
+  const [activeCardIndex, setActiveCardIndex] = useState<number>(-1)
+  const [hoveredPlace, setHoveredPlace] = useState<PlacesInView | null>(null)
+
+  const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isLoadingRef = useRef(false)
+  const lastSearchCenterRef = useRef<{
     latitude: number
     longitude: number
   } | null>(null)
-  const [isInitializing, setIsInitializing] = useState(true)
+  const lastBoundsRef = useRef<BoundingBox | null>(null)
+  const currentFiltersRef = useRef<SearchFilters | null>(null)
+  const mapCenterCallbackRef = useRef<
+    ((lat: number, lng: number) => void) | null
+  >(null)
 
   const form = useForm<SearchFormValues>({
     resolver: standardSchemaResolver(searchFormSchema),
@@ -88,9 +82,28 @@ function SearchPageComponent() {
     },
   })
 
+  // Set filters from search params
+  // useEffect(() => {
+  //   if (currentFilters === null) {
+  //     const distance = searchParams.get('distance')
+  //     const transport = searchParams.get('transport')
+  //     const locationName = searchParams.get('location')
+  //     const activity = searchParams.get('activity')
+
+  //     const filters: SearchFilters = {
+  //       distance: distance || 'less than 1 hour',
+  //       transportType: transport || 'public_transport',
+  //       activity: activity || undefined,
+  //       locationName: locationName || undefined,
+  //     }
+  //     setCurrentFilters(filters)
+  //   }
+  // }, [searchParams])
+
   const getLocation = useCallback(() => {
     setLocationError(null)
     setUserLocationInfo(null)
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -100,6 +113,7 @@ function SearchPageComponent() {
           }
 
           setUserLocation(location)
+          setMapCenter(location)
           setLocationError(null)
 
           const geocodePromise = reverseGeocode(
@@ -119,9 +133,7 @@ function SearchPageComponent() {
                 setUserLocationInfo(locationInfo)
               }
             })
-            .catch(() => {
-              // Reverse geocoding failed, but we still have location coordinates
-            })
+            .catch(() => {})
         },
         (error) => {
           let errorMessage = 'Failed to get location.'
@@ -155,77 +167,177 @@ function SearchPageComponent() {
     }
   }, [])
 
-  useEffect(() => {
-    const lat = searchParams.get('lat')
-    const lng = searchParams.get('lng')
-    const distance = searchParams.get('distance')
-    const transport = searchParams.get('transport')
-    const locationName = searchParams.get('location')
-
-    if (lat && lng && distance) {
-      const location = {
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lng),
-      }
-
-      const searchQuery: SearchFormValues = {
-        locationType: 'custom',
-        customLocation: {
-          name: locationName || 'Selected Location',
-          lat: location.latitude,
-          lng: location.longitude,
-        },
-        distance: distance || 'less than 1 hour',
-        transportType: (transport as 'public_transport' | 'car') || 'public_transport',
-        locationName: locationName || undefined,
-      }
-
-      form.reset(searchQuery)
-      setCurrentSearchQuery(searchQuery)
-      setSearchLocation(location)
-      setHasPerformedSearch(true)
-
-      performSearch(searchQuery, location)
-    } else {
-      getLocation()
-      setIsInitializing(false)
-    }
-  }, [searchParams])
-
-  async function performSearch(
-    values: SearchFormValues,
-    selectedLocation: { latitude: number; longitude: number }
-  ) {
-    try {
-      const result = await searchPlaces(
-        selectedLocation,
-        values.distance,
-        values.transportType
-      )
-
-      if (!result.success || !result.data) {
-        toast.error('Failed to find places. Please try again.')
-        setPlaceResults([])
-        setIsInitializing(false)
+  const performFilteredSearch = useCallback(
+    async (
+      filters: SearchFilters,
+      location: { latitude: number; longitude: number }
+    ) => {
+      if (isLoadingRef.current) {
         return
       }
 
-      const places = result.data as SearchPlaceResult[]
-      const convertedPlaces = places.map(convertPlaceToResultItem)
+      lastSearchCenterRef.current = location
 
-      if (convertedPlaces.length === 0) {
-        toast.info('No places found in this area.')
+      try {
+        isLoadingRef.current = true
+        setIsLoading(true)
+
+        const radiusKm = distanceToRadiusKm(
+          filters.distance,
+          filters.transportType
+        )
+
+        const places = await searchPlacesAction({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          radiusKm,
+          limit: 50,
+        })
+
+        if (!places) {
+          toast.error('Failed to find places. Please try again.')
+          setPlaceResults([])
+          return
+        }
+
+        const filteredPlaces = places.filter((place) => {
+          if (filters.activity) {
+            const activityTypes = mapActivityToPlaceTypes(filters.activity)
+            return activityTypes.includes(place.type)
+          }
+          return true
+        })
+
+        if (filteredPlaces.length === 0) {
+          toast.info('No places found matching your filters.')
+        }
+
+        setPlaceResults(places)
+      } catch (error) {
+        console.error('Search error:', error)
+        toast.error('An unexpected error occurred. Please try again.')
+        setPlaceResults([])
+      } finally {
+        setIsLoading(false)
+        isLoadingRef.current = false
       }
+    },
+    []
+  )
 
-      setPlaceResults(convertedPlaces)
-      setIsInitializing(false)
-    } catch (error) {
-      console.error('Search error:', error)
-      toast.error('An unexpected error occurred. Please try again.')
-      setPlaceResults([])
-      setIsInitializing(false)
+  // useEffect(() => {
+  //   if (hasInitializedFromUrlRef.current) {
+  //     return
+  //   }
+
+  //   const lat = searchParams.get('lat')
+  //   const lng = searchParams.get('lng')
+  //   const distance = searchParams.get('distance')
+  //   const transport = searchParams.get('transport')
+  //   const locationName = searchParams.get('location')
+  //   const activity = searchParams.get('activity')
+
+  //   if (lat && lng && distance && transport) {
+  //     hasInitializedFromUrlRef.current = true
+
+  //     const location = {
+  //       latitude: parseFloat(lat),
+  //       longitude: parseFloat(lng),
+  //     }
+
+  //     const filters: SearchFilters = {
+  //       distance,
+  //       transportType: transport as
+  //         | 'public_transport'
+  //         | 'car'
+  //         | 'foot'
+  //         | 'bike',
+  //       activity: activity || undefined,
+  //       locationName: locationName || undefined,
+  //     }
+
+  //     setCurrentFilters(filters)
+  //     setMapCenter(location)
+
+  //     form.reset({
+  //       locationType: 'custom',
+  //       customLocation: locationName
+  //         ? {
+  //             name: locationName,
+  //             lat: location.latitude,
+  //             lng: location.longitude,
+  //           }
+  //         : undefined,
+  //       distance,
+  //       transportType: transport as
+  //         | 'public_transport'
+  //         | 'car'
+  //         | 'foot'
+  //         | 'bike',
+  //       activity: activity || undefined,
+  //     })
+
+  //     performFilteredSearch(filters, location)
+  //   }
+  // }, [form, performFilteredSearch, searchParams])
+
+  const fetchPlacesInBounds = useCallback(async (bounds: BoundingBox) => {
+    if (isLoadingRef.current) {
+      return
     }
-  }
+
+    try {
+      isLoadingRef.current = true
+      setIsLoading(true)
+      const placesInBounds = await getPlacesInBounds(bounds)
+      setPlaceResults(placesInBounds)
+    } catch (error) {
+      console.error('Error fetching places:', error)
+      toast.error('Failed to load places')
+    } finally {
+      setIsLoading(false)
+      isLoadingRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    currentFiltersRef.current = currentFilters
+  }, [currentFilters])
+
+  const handleBoundsChange = useCallback((bounds: BoundingBox) => {
+    if (boundsChangeTimeoutRef.current) {
+      clearTimeout(boundsChangeTimeoutRef.current)
+    }
+
+    const lastBounds = lastBoundsRef.current
+    if (lastBounds) {
+      const latDiff =
+        Math.abs(bounds.north - lastBounds.north) +
+        Math.abs(bounds.south - lastBounds.south)
+      const lngDiff =
+        Math.abs(bounds.east - lastBounds.east) +
+        Math.abs(bounds.west - lastBounds.west)
+      const threshold = 0.001
+
+      if (latDiff < threshold && lngDiff < threshold) {
+        return
+      }
+    }
+
+    boundsChangeTimeoutRef.current = setTimeout(() => {
+      lastBoundsRef.current = bounds
+
+      if (!currentFiltersRef.current) {
+        fetchPlacesInBounds(bounds)
+      } else {
+        const center = {
+          latitude: (bounds.north + bounds.south) / 2,
+          longitude: (bounds.east + bounds.west) / 2,
+        }
+        performFilteredSearch(currentFiltersRef.current, center)
+      }
+    }, 1000)
+  }, [])
 
   function onSubmit(values: SearchFormValues) {
     let selectedLocation: { latitude: number; longitude: number }
@@ -254,42 +366,85 @@ function SearchPageComponent() {
       return
     }
 
-    setCurrentSearchQuery({
-      ...values,
-      locationName: selectedLocationName || 'Unknown location',
-    })
+    const filters: SearchFilters = {
+      distance: values.distance,
+      transportType: values.transportType,
+      activity: values.activity,
+      locationName: selectedLocationName,
+    }
 
-    setSearchLocation(selectedLocation)
+    setCurrentFilters(filters)
+    setMapCenter(selectedLocation)
     setIsSearchOpen(false)
 
-    const params = new URLSearchParams()
-    params.set('lat', selectedLocation.latitude.toString())
-    params.set('lng', selectedLocation.longitude.toString())
-    params.set('distance', values.distance)
-    params.set('transport', values.transportType)
-    if (selectedLocationName) {
-      params.set('location', selectedLocationName)
+    // const params = new URLSearchParams()
+    // params.set('lat', selectedLocation.latitude.toString())
+    // params.set('lng', selectedLocation.longitude.toString())
+    // params.set('distance', values.distance)
+    // params.set('transport', values.transportType)
+    // if (selectedLocationName) {
+    //   params.set('location', selectedLocationName)
+    // }
+    // if (values.activity) {
+    //   params.set('activity', values.activity)
+    // }
+
+    // router.push(`/search?${params.toString()}`, { scroll: false })
+
+    performFilteredSearch(filters, selectedLocation)
+  }
+
+  const handleEditFilters = () => {
+    setIsSearchOpen(true)
+  }
+
+  const handleClearFilters = useCallback(() => {
+    setCurrentFilters(null)
+  }, [])
+
+  const handlePlaceSelect = useCallback(
+    (index: number, place: PlacesInView | null, shouldCenterMap = false) => {
+      setActiveCardIndex(index)
+      setSelectedPlace(place)
+
+      // Clear hover state when going back to cards view
+      if (place === null) {
+        setHoveredPlace(null)
+      }
+
+      // Center map on place if requested (e.g., when clicking a card)
+      if (shouldCenterMap && place && mapCenterCallbackRef.current) {
+        mapCenterCallbackRef.current(place.lat, place.long)
+      }
+    },
+    []
+  )
+
+  const handlePlaceHover = useCallback((place: PlacesInView | null) => {
+    setHoveredPlace(place)
+  }, [])
+
+  const handleMapMarkerClick = useCallback(
+    (index: number, place: PlacesInView) => {
+      setActiveCardIndex(index)
+      setSelectedPlace(place)
+      // Note: We don't center the map here because the user clicked directly on the map
+    },
+    []
+  )
+
+  const handleMapPopupClose = useCallback(() => {
+    setActiveCardIndex(-1)
+    setSelectedPlace(null)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (boundsChangeTimeoutRef.current) {
+        clearTimeout(boundsChangeTimeoutRef.current)
+      }
     }
-
-    router.push(`/search?${params.toString()}`)
-
-    startTransition(() => {
-      performSearch(values, selectedLocation)
-    })
-  }
-
-  const handleSavePlace = async (place: PlaceResultItem) => {
-    const result = await savePlaceAction(place)
-    if (result.success) {
-      toast.success(`"${place.name}" saved successfully!`)
-    } else {
-      toast.error(result.error || 'Failed to save place. Please try again.')
-    }
-  }
-
-  if (isInitializing) {
-    return null
-  }
+  }, [])
 
   return (
     <>
@@ -298,37 +453,70 @@ function SearchPageComponent() {
         onOpenChange={setIsSearchOpen}
         form={form}
         onSubmit={onSubmit}
-        isPending={isPending}
+        isPending={false}
         locationError={locationError}
         onRetryLocation={getLocation}
         userLocation={userLocation}
         userLocationInfo={userLocationInfo}
       />
 
-      <SearchResult
-        placeResults={placeResults}
-        title="Search Results"
-        baseLocation={searchLocation || userLocation}
-        isLoadingNew={false}
-        emptyStateMessage={
-          hasPerformedSearch
-            ? 'No places found matching your search'
-            : 'Search for places nearby'
-        }
-        onSavePlace={handleSavePlace}
-        onNewSearch={() => {
-          form.reset({
-            locationType: 'custom',
-            customLocation: undefined,
-            distance: 'less than 1 hour',
-            transportType: 'public_transport',
-          })
-          setIsSearchOpen(true)
-        }}
-        searchQuery={currentSearchQuery}
-        showMapOnly={!hasPerformedSearch}
-        userLocation={userLocation}
-      />
+      <div className="ml-0 flex h-[100dvh] flex-col md:ml-[60px]">
+        {currentFilters && (
+          <SearchFiltersBar
+            filters={currentFilters}
+            onEdit={handleEditFilters}
+            onClear={handleClearFilters}
+          />
+        )}
+
+        <div className="hidden h-full flex-1 md:block">
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanel
+              defaultSize={50}
+              minSize={30}
+              className="h-full overflow-hidden"
+            >
+              <SearchResults
+                places={placeResults}
+                isLoading={isLoading}
+                onNewSearch={() => setIsSearchOpen(true)}
+                hasFilters={!!currentFilters}
+                selectedPlace={selectedPlace}
+                activeCardIndex={activeCardIndex}
+                onPlaceSelect={handlePlaceSelect}
+                onPlaceHover={handlePlaceHover}
+              />
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            <ResizablePanel defaultSize={50} minSize={30} className="h-full">
+              <Map
+                places={placeResults}
+                parkGeometries={parkGeometries}
+                onBoundsChange={handleBoundsChange}
+                activePlace={hoveredPlace || selectedPlace}
+                onMarkerClick={handleMapMarkerClick}
+                onPopupClose={handleMapPopupClose}
+                onMapReady={(centerMap) => {
+                  mapCenterCallbackRef.current = centerMap
+                }}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+
+        {/* <div className="block flex-1 md:hidden">
+          <div className="relative h-full">
+            <SearchMap
+              places={placeResults}
+              center={mapCenter}
+              onBoundsChange={handleBoundsChange}
+              userLocation={userLocation}
+            />
+          </div>
+        </div> */}
+      </div>
     </>
   )
 }

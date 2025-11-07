@@ -4,13 +4,10 @@ import { Button } from '@/components/ui/button'
 import { SelectionGrid } from '@/components/ui/custom/selection-grid'
 import {
   FormControl,
-  FormField,
   FormItem,
   FormMessage,
 } from '@/components/ui/form'
 import { type LocationSuggestion } from '@/lib/location-autocomplete.service'
-import { cn } from '@/lib/utils'
-import { DiscoveryFormValues } from '@/validation/discover-form.validation'
 import {
   CheckCircle,
   Loader2,
@@ -19,7 +16,6 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Control } from 'react-hook-form'
 import { CustomFormLabel } from './CustomFormLabel'
 import { LocationAutocomplete } from './LocationAutocomplete'
 
@@ -39,8 +35,6 @@ interface LocationSelectionProps {
   onRetryLocation: () => void
   disabled?: boolean
   className?: string
-  // Add form control for validation
-  control?: Control<DiscoveryFormValues>
 }
 
 export function LocationSelection({
@@ -54,7 +48,6 @@ export function LocationSelection({
   onRetryLocation,
   disabled = false,
   className,
-  control,
 }: LocationSelectionProps) {
   const [isRequestingLocation, setIsRequestingLocation] = useState(false)
 
@@ -105,14 +98,7 @@ export function LocationSelection({
   return (
     <div className={className}>
       <FormItem>
-        <CustomFormLabel
-          className={cn(
-            control?.getFieldState('customLocation')?.error &&
-              locationType === 'custom'
-              ? 'text-destructive'
-              : ''
-          )}
-        >
+        <CustomFormLabel>
           Where would you like to search?
         </CustomFormLabel>
         <SelectionGrid
@@ -205,18 +191,6 @@ export function LocationSelection({
               />
             </FormControl>
             <FormMessage />
-            {/* Add validation error for customLocation field */}
-            {control && (
-              <FormField
-                control={control}
-                name="customLocation"
-                render={() => (
-                  <FormItem>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
           </FormItem>
         </div>
       )}

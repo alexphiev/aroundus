@@ -40,7 +40,7 @@ export default function PlaceHeader({
           onClick={onBack}
           className="text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
         </Button>
         {/* Place Title and Rating */}
         <h1 className="text-xl font-semibold">{place.name}</h1>

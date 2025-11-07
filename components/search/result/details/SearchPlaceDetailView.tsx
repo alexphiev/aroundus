@@ -1,50 +1,39 @@
 'use client'
 
-import { PlaceResultItem } from '@/types/result.types'
-import { motion } from 'framer-motion'
+import { PlacesInView } from '@/actions/explore.actions'
 import PlaceInfoGrid from '@/components/discovery/result/PlaceInfoGrid'
 import PlaceTimingInfo from '@/components/discovery/result/PlaceTimingInfo'
+import PlaceCurrentConditions from '@/components/discovery/result/details/PlaceCurrentConditions'
 import PlaceDescription from '@/components/discovery/result/details/PlaceDescription'
 import PlaceHeader from '@/components/discovery/result/details/PlaceHeader'
 import PlacePhotoGallery from '@/components/discovery/result/details/PlacePhotoGallery'
 import PlacePracticalInfo from '@/components/discovery/result/details/PlacePracticalInfo'
-import PlaceReviews from '@/components/discovery/result/details/PlaceReviews'
 import WeatherForecast from '@/components/discovery/result/details/PlaceWeatherForecast'
-import PlaceCurrentConditions from '@/components/discovery/result/details/PlaceCurrentConditions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ExternalLink, Database, MapPin } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Database, ExternalLink, MapPin } from 'lucide-react'
 import Link from 'next/link'
 
 interface SearchPlaceDetailViewProps {
-  place: PlaceResultItem & {
-    metadata?: Record<string, unknown>
-    type?: string
-    source?: string
-    website?: string
-    wikipedia_query?: string
-  }
+  place: PlacesInView
   onBack: () => void
-  onSave?: (place: PlaceResultItem) => Promise<void>
-  isSaved?: boolean
   showSaveButton?: boolean
 }
 
 export default function SearchPlaceDetailView({
   place,
   onBack,
-  onSave,
-  isSaved = false,
   showSaveButton = true,
 }: SearchPlaceDetailViewProps) {
   const handleShare = async () => {
-    const shareText = `${place.name}: ${place.description}\n\nLocation: ${place.lat}, ${place.long}${place.googleMapsLink ? `\n\nGoogle Maps: ${place.googleMapsLink}` : ''}`
+    const shareText = `${place.name}: ${place.description}\n\nLocation: ${place.lat}, ${place.long}${place.website ? `\n\nWebsite: ${place.website}` : ''}`
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: place.name,
           text: shareText,
-          url: place.googleMapsLink || window.location.href,
+          url: place.website || window.location.href,
         })
       } catch {
         navigator.clipboard.writeText(shareText)
@@ -65,27 +54,17 @@ export default function SearchPlaceDetailView({
       <PlaceHeader
         place={place}
         onBack={onBack}
-        onSave={onSave}
         onShare={handleShare}
-        isSaved={isSaved}
         showSaveButton={showSaveButton}
       />
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
         {place.description && (
-          <PlaceDescription
-            description={place.description}
-            starRating={place.starRating}
-            starRatingReason={place.starRatingReason}
-          />
+          <PlaceDescription description={place.description} />
         )}
 
         {place.photos && place.photos.length > 0 && (
-          <PlacePhotoGallery
-            photos={place.photos}
-            placeName={place.name}
-            googleMapsUri={place.googleMapsUri || ''}
-          />
+          <PlacePhotoGallery photos={place.photos} placeName={place.name} />
         )}
 
         {(place.type || place.source) && (
@@ -116,7 +95,7 @@ export default function SearchPlaceDetailView({
                     href={place.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline flex items-center gap-1"
+                    className="text-primary flex items-center gap-1 hover:underline"
                   >
                     Visit site
                     <ExternalLink className="h-3 w-3" />
@@ -130,7 +109,7 @@ export default function SearchPlaceDetailView({
                     href={`https://en.wikipedia.org/wiki/${encodeURIComponent(place.wikipedia_query)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline flex items-center gap-1"
+                    className="text-primary flex items-center gap-1 hover:underline"
                   >
                     Learn more
                     <ExternalLink className="h-3 w-3" />
@@ -155,20 +134,26 @@ export default function SearchPlaceDetailView({
                   return null
                 }
 
-                const displayValue = typeof value === 'object'
-                  ? JSON.stringify(value, null, 2)
-                  : String(value)
+                const displayValue =
+                  typeof value === 'object'
+                    ? JSON.stringify(value, null, 2)
+                    : String(value)
 
                 if (displayValue.length > 100) {
                   return null
                 }
 
                 return (
-                  <div key={key} className="flex items-start justify-between gap-4">
+                  <div
+                    key={key}
+                    className="flex items-start justify-between gap-4"
+                  >
                     <span className="text-muted-foreground capitalize">
                       {key.replace(/_/g, ' ')}:
                     </span>
-                    <span className="text-right font-medium">{displayValue}</span>
+                    <span className="text-right font-medium">
+                      {displayValue}
+                    </span>
                   </div>
                 )
               })}
@@ -180,16 +165,6 @@ export default function SearchPlaceDetailView({
         <PlaceCurrentConditions place={place} />
         <PlacePracticalInfo place={place} />
         <PlaceTimingInfo place={place} />
-
-        {((place.reviews && place.reviews.length > 0) ||
-          place.googleRating) && (
-          <PlaceReviews
-            reviews={place.reviews || []}
-            googleRating={place.googleRating}
-            reviewCount={place.reviewCount}
-            googleMapsUri={place.googleMapsUri}
-          />
-        )}
 
         <WeatherForecast lat={place.lat} lon={place.long} />
       </div>

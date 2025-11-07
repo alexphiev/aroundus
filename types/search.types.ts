@@ -6,8 +6,9 @@ export interface SearchFormValues {
     lng: number
   }
   distance: string
-  transportType: 'public_transport' | 'car'
+  transportType: 'public_transport' | 'car' | 'foot' | 'bike'
   locationName?: string
+  activity?: string
 }
 
 export interface SearchQuery {
@@ -16,6 +17,13 @@ export interface SearchQuery {
     longitude: number
   }
   distance: string
-  transportType: 'public_transport' | 'car'
+  transportType: 'public_transport' | 'car' | 'foot' | 'bike'
+  locationName?: string
+}
+
+export interface SearchFilters {
+  distance: string
+  transportType: 'public_transport' | 'car' | 'foot' | 'bike'
+  activity?: string
   locationName?: string
 }

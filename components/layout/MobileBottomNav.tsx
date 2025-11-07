@@ -2,7 +2,7 @@
 
 import { useNavigation } from '@/components/NavigationLoader'
 import { signOutAction } from '@/app/actions'
-import { Compass, Home, LogOut, Map, Heart, Search } from 'lucide-react'
+import { Compass, Home, LogOut, Map, Search } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 

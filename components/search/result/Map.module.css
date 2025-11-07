@@ -1,0 +1,18 @@
+/* MapLibre popup styles */
+.mapWithPopups :global(.maplibregl-popup) {
+  z-index: 1000;
+}
+
+.mapWithPopups :global(.maplibregl-popup-content) {
+  padding: 0.5rem 0.75rem 0.75rem 0.75rem;
+  border-radius: 1rem;
+}
+
+.mapWithPopups :global(.maplibregl-popup-close-button) {
+  top: 0.125rem;
+  right: 0.125rem;
+  z-index: 1001;
+  height: 1.75rem;
+  width: 1.5rem;
+  font-size: 1rem;
+}

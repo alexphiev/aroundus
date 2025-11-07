@@ -8,13 +8,16 @@ import {
   getPlaceMetadata,
 } from '@/actions/explore.actions'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { FocusIcon } from 'lucide-react'
 import maplibregl, { LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import styles from './Map.module.css'
+import { PopupContent } from './PopupContent'
 
-interface ExploreMapProps {
+interface Props {
   places: PlacesInView[]
   parkGeometries?: ParkGeometry[]
   onBoundsChange?: (bounds: {
@@ -24,83 +27,68 @@ interface ExploreMapProps {
     west: number
   }) => void
   className?: string
+  activePlace?: PlacesInView | null
+  onMarkerClick?: (index: number, place: PlacesInView) => void
+  onPopupClose?: () => void
+  onMapReady?: (centerMap: (lat: number, lng: number) => void) => void
 }
 
-const PopupContent = ({
-  place,
-  tags,
-  score,
-}: {
-  place: PlacesInView
-  tags?: Record<string, string>
-  score?: number
-}) => {
-  const tagEntries = tags ? Object.entries(tags) : []
-
-  return (
-    <div className="max-w-xs px-3 md:p-4">
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <h6 className="text-sm font-semibold md:text-base">
-          {place.name || 'Unnamed Place'}
-        </h6>
-        {score !== undefined && (
-          <span className="bg-primary/10 text-primary shrink-0 rounded px-1.5 py-0.5 text-xs font-medium">
-            {score.toFixed(1)}
-          </span>
-        )}
-      </div>
-      <p className="text-muted-foreground mb-2 line-clamp-3 text-sm">
-        {place.description || 'No description available'}
-      </p>
-      <p className="mb-3 text-sm text-blue-600 capitalize">
-        {place.type || 'Unknown type'}
-      </p>
-      {tagEntries.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {tagEntries.map(([key, value], index) => (
-            <span
-              key={index}
-              className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs select-none"
-            >
-              {key}: {value}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-const ExploreMap: React.FC<ExploreMapProps> = ({
+const Map: React.FC<Props> = ({
   places,
   parkGeometries = [],
   onBoundsChange,
   className = '',
+  activePlace,
+  onMarkerClick,
+  onPopupClose,
+  onMapReady,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<MapLibreMap | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(4)
-  const selectedPlaceIdRef = useRef<string | null>(null)
   const activePopupRef = useRef<maplibregl.Popup | null>(null)
   const geometryLayerRef = useRef<string | null>(null)
   const geometryCacheRef = useRef<{ [key: string]: GeoJSONGeometry | null }>({})
   const placesRef = useRef<PlacesInView[]>(places)
+  const onBoundsChangeRef = useRef(onBoundsChange)
+  const isUserInteractingRef = useRef(false)
+  const isProgrammaticCloseRef = useRef(false)
+  const isPopupPinnedRef = useRef(false)
+  const currentHoveredPlaceRef = useRef<string | null>(null)
 
   const mapStyle =
     'https://api.maptiler.com/maps/topo-v2/style.json?key=Gxxj1jCvJhu2HSp6n0tp'
 
+  useEffect(() => {
+    onBoundsChangeRef.current = onBoundsChange
+  }, [onBoundsChange])
+
+  const centerMap = useCallback((lat: number, lng: number) => {
+    if (!map.current) return
+    const currentZoom = map.current.getZoom()
+    // Use zoom 10 as minimum, but keep current zoom if it's higher
+    const targetZoom = Math.max(currentZoom, 10)
+    map.current.flyTo({
+      center: [lng, lat],
+      zoom: targetZoom,
+      duration: 1000,
+    })
+  }, [])
+
   const updateBounds = useCallback(() => {
-    if (!map.current || !onBoundsChange) return
+    if (!map.current || !onBoundsChangeRef.current) {
+      return
+    }
 
     const bounds = map.current.getBounds()
-    onBoundsChange({
+    onBoundsChangeRef.current({
       north: bounds.getNorth(),
       south: bounds.getSouth(),
       east: bounds.getEast(),
       west: bounds.getWest(),
     })
-  }, [onBoundsChange])
+  }, [])
 
   const addGeometryLayer = useCallback(async (place: PlacesInView) => {
     if (!map.current || !map.current.isStyleLoaded()) {
@@ -266,10 +254,9 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   }, [])
 
   const addPlacesLayer = useCallback(() => {
-    if (!map.current || !mapLoaded || !map.current.isStyleLoaded()) return
+    if (!map.current || !map.current.isStyleLoaded()) return
 
-    placesRef.current = places
-
+    const currentPlaces = placesRef.current
     const sourceId = 'nature-places'
     const layerId = 'nature-places'
 
@@ -277,7 +264,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
     if (map.current.getSource(sourceId)) {
       const geojsonData = {
         type: 'FeatureCollection' as const,
-        features: places.map((place) => ({
+        features: currentPlaces.map((place) => ({
           type: 'Feature' as const,
           properties: {
             id: place.id,
@@ -299,12 +286,14 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
     }
 
     // Create new layer only if it doesn't exist
-    if (places.length === 0) return
+    if (currentPlaces.length === 0) {
+      return
+    }
 
     // Create GeoJSON data from places
     const geojsonData = {
       type: 'FeatureCollection' as const,
-      features: places.map((place) => ({
+      features: currentPlaces.map((place) => ({
         type: 'Feature' as const,
         properties: {
           id: place.id,
@@ -348,39 +337,36 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       },
     })
 
-    // Add click handler for the layer
-    map.current.on('click', layerId, async (e) => {
-      if (!e.features || e.features.length === 0) {
-        console.warn('⚠️ Click detected but no features found')
+    // Helper function to create and show popup
+    const showPopup = async (place: PlacesInView, isPinned: boolean) => {
+      // Don't recreate popup if it's already open for the same place
+      if (
+        activePopupRef.current &&
+        currentHoveredPlaceRef.current === place.id
+      ) {
+        // If clicking on an already hovered place, just pin it
+        if (isPinned) {
+          isPopupPinnedRef.current = true
+        }
         return
       }
 
-      const feature = e.features[0]
-      const placeId = feature.properties?.id
-      console.log('🖱️ Clicked place ID:', placeId)
-      console.log('📍 Available places:', placesRef.current.length)
-      const place = placesRef.current.find((p) => p.id === placeId)
-
-      if (!place) {
-        console.error('❌ Place not found in places array!', {
-          placeId,
-          availablePlaces: placesRef.current.length,
-          featureProperties: feature.properties,
-        })
-        return
-      }
-
+      // Remove existing popup
       if (activePopupRef.current) {
+        isProgrammaticCloseRef.current = true
         activePopupRef.current.remove()
         activePopupRef.current = null
+        isProgrammaticCloseRef.current = false
       }
+
+      currentHoveredPlaceRef.current = place.id
+      isPopupPinnedRef.current = isPinned
 
       if (place.type !== 'national_park' && place.type !== 'regional_park') {
         addGeometryLayer(place).catch((error) => {
           console.warn('Failed to add geometry layer:', error)
         })
       }
-      selectedPlaceIdRef.current = place.id
 
       const popupNode = document.createElement('div')
       const popupRoot = createRoot(popupNode)
@@ -389,7 +375,7 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       )
 
       const popup = new maplibregl.Popup({
-        closeButton: true,
+        closeButton: isPinned,
         closeOnClick: false,
         offset: [0, -10],
       })
@@ -399,23 +385,20 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
 
       popup.on('close', () => {
         activePopupRef.current = null
+        currentHoveredPlaceRef.current = null
+        isPopupPinnedRef.current = false
         removeGeometryLayer()
-        selectedPlaceIdRef.current = null
+        // Only call onPopupClose if this is a user-initiated close (not programmatic)
+        if (onPopupClose && !isProgrammaticCloseRef.current) {
+          onPopupClose()
+        }
       })
 
       activePopupRef.current = popup
 
-      console.log('🔍 Fetching metadata for place:', place.id, place.name)
       try {
         const metadata = await getPlaceMetadata(place.id)
-        console.log('📦 Metadata fetched:', metadata)
         if (popup.isOpen()) {
-          console.log(
-            '🎨 Updating popup with tags:',
-            metadata?.tags,
-            'score:',
-            metadata?.score
-          )
           popupRoot.render(
             <PopupContent
               place={place}
@@ -423,43 +406,100 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
               score={metadata?.score}
             />
           )
-        } else {
-          console.log('❌ Popup already closed, not updating')
         }
       } catch (error) {
-        console.error('❌ Failed to fetch metadata for place:', error)
+        console.error('Failed to fetch metadata for place:', error)
       }
-    })
+    }
 
-    // Change cursor on hover
-    map.current.on('mouseenter', layerId, () => {
+    // Hover to show popup
+    map.current.on('mouseenter', layerId, async (e) => {
       if (map.current) {
         map.current.getCanvas().style.cursor = 'pointer'
       }
+
+      // Don't show hover popup if there's a pinned popup
+      if (isPopupPinnedRef.current) {
+        return
+      }
+
+      if (!e.features || e.features.length === 0) {
+        return
+      }
+
+      const feature = e.features[0]
+      const placeId = feature.properties?.id
+      const place = placesRef.current.find((p) => p.id === placeId)
+
+      if (!place) {
+        return
+      }
+
+      await showPopup(place, false)
     })
 
+    // Click to pin popup
+    map.current.on('click', layerId, async (e) => {
+      if (!e.features || e.features.length === 0) {
+        return
+      }
+
+      const feature = e.features[0]
+      const placeId = feature.properties?.id
+      const place = placesRef.current.find((p) => p.id === placeId)
+
+      if (!place) {
+        console.error('Place not found in places array:', placeId)
+        return
+      }
+
+      if (onMarkerClick) {
+        const placeIndex = placesRef.current.findIndex((p) => p.id === placeId)
+        if (placeIndex >= 0) {
+          onMarkerClick(placeIndex, place)
+          return
+        }
+      }
+
+      await showPopup(place, true)
+    })
+
+    // Remove hover popup when leaving if not pinned
     map.current.on('mouseleave', layerId, () => {
       if (map.current) {
         map.current.getCanvas().style.cursor = ''
       }
+
+      // Only close if popup is not pinned
+      if (!isPopupPinnedRef.current && activePopupRef.current) {
+        isProgrammaticCloseRef.current = true
+        activePopupRef.current.remove()
+        activePopupRef.current = null
+        currentHoveredPlaceRef.current = null
+        isProgrammaticCloseRef.current = false
+        removeGeometryLayer()
+      }
     })
 
-    // Add click handler for map background to clear selection
+    // Add click handler for map background to clear pinned popup
     map.current.on('click', (e) => {
       const features = map.current!.queryRenderedFeatures(e.point, {
         layers: [layerId],
       })
 
-      if (features.length === 0 && selectedPlaceIdRef.current) {
+      if (features.length === 0 && isPopupPinnedRef.current) {
         removeGeometryLayer()
-        selectedPlaceIdRef.current = null
         if (activePopupRef.current) {
+          isProgrammaticCloseRef.current = true
           activePopupRef.current.remove()
           activePopupRef.current = null
+          currentHoveredPlaceRef.current = null
+          isPopupPinnedRef.current = false
+          isProgrammaticCloseRef.current = false
         }
       }
     })
-  }, [places, mapLoaded, addGeometryLayer, removeGeometryLayer])
+  }, [addGeometryLayer, onMarkerClick, onPopupClose, removeGeometryLayer])
 
   const onViewAllPlaces = useCallback(() => {
     if (!map.current || places.length === 0) {
@@ -493,13 +533,41 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       map.current.on('load', () => {
         setMapLoaded(true)
         map.current?.addControl(new maplibregl.NavigationControl(), 'top-right')
-        updateBounds()
+
+        // Expose the centerMap function to parent
+        if (onMapReady) {
+          onMapReady(centerMap)
+        }
+
+        setTimeout(() => {
+          if (map.current && onBoundsChangeRef.current) {
+            const bounds = map.current.getBounds()
+            onBoundsChangeRef.current({
+              north: bounds.getNorth(),
+              south: bounds.getSouth(),
+              east: bounds.getEast(),
+              west: bounds.getWest(),
+            })
+          }
+        }, 100)
+      })
+
+      map.current.on('dragstart', () => {
+        isUserInteractingRef.current = true
+      })
+
+      map.current.on('zoomstart', () => {
+        isUserInteractingRef.current = true
       })
 
       map.current.on('moveend', () => {
         const zoom = map.current?.getZoom() || 4
         setCurrentZoom(zoom)
-        updateBounds()
+
+        if (isUserInteractingRef.current) {
+          updateBounds()
+          isUserInteractingRef.current = false
+        }
       })
 
       map.current.on('zoomend', () => {
@@ -522,12 +590,15 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
       }
       setMapLoaded(false)
     }
-  }, [updateBounds, removeGeometryLayer])
+    // This is to prevent double reload on first render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Update places layer when places change
   useEffect(() => {
     if (!map.current || !mapLoaded) return
 
+    placesRef.current = places
     addPlacesLayer()
   }, [places, mapLoaded, addPlacesLayer])
 
@@ -640,12 +711,112 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
     }
   }, [parkGeometries, mapLoaded])
 
+  // Handle activePlace prop to show/hide popup (from card hover/click)
+  useEffect(() => {
+    if (!map.current || !mapLoaded) {
+      return
+    }
+
+    if (activePlace) {
+      // Don't override a pinned popup
+      if (
+        isPopupPinnedRef.current &&
+        currentHoveredPlaceRef.current === activePlace.id
+      ) {
+        return
+      }
+
+      // Close existing popup without triggering onPopupClose callback
+      if (activePopupRef.current) {
+        isProgrammaticCloseRef.current = true
+        activePopupRef.current.remove()
+        activePopupRef.current = null
+        isProgrammaticCloseRef.current = false
+      }
+
+      currentHoveredPlaceRef.current = activePlace.id
+      // Treat activePlace changes as hover (not pinned)
+      isPopupPinnedRef.current = false
+
+      const popupNode = document.createElement('div')
+      const popupRoot = createRoot(popupNode)
+      popupRoot.render(
+        <PopupContent place={activePlace} tags={undefined} score={undefined} />
+      )
+
+      const popup = new maplibregl.Popup({
+        closeButton: false, // No close button for hover popup
+        closeOnClick: false,
+        offset: [0, -10],
+      })
+        .setLngLat([activePlace.long, activePlace.lat])
+        .setDOMContent(popupNode)
+        .addTo(map.current!)
+
+      popup.on('close', () => {
+        activePopupRef.current = null
+        currentHoveredPlaceRef.current = null
+        isPopupPinnedRef.current = false
+        removeGeometryLayer()
+        // Only call onPopupClose if this is a user-initiated close (not programmatic)
+        if (onPopupClose && !isProgrammaticCloseRef.current) {
+          onPopupClose()
+        }
+      })
+
+      activePopupRef.current = popup
+
+      if (
+        activePlace.type !== 'national_park' &&
+        activePlace.type !== 'regional_park'
+      ) {
+        addGeometryLayer(activePlace).catch((error) => {
+          console.warn('Failed to add geometry layer:', error)
+        })
+      }
+
+      getPlaceMetadata(activePlace.id)
+        .then((metadata) => {
+          if (popup.isOpen()) {
+            popupRoot.render(
+              <PopupContent
+                place={activePlace}
+                tags={metadata?.tags}
+                score={metadata?.score}
+              />
+            )
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to fetch metadata for place:', error)
+        })
+    } else {
+      // When activePlace becomes null, close popup and clean up geometry (only if not pinned)
+      if (activePopupRef.current && !isPopupPinnedRef.current) {
+        isProgrammaticCloseRef.current = true
+        activePopupRef.current.remove()
+        activePopupRef.current = null
+        currentHoveredPlaceRef.current = null
+        isProgrammaticCloseRef.current = false
+        removeGeometryLayer()
+      }
+    }
+  }, [
+    activePlace,
+    mapLoaded,
+    addGeometryLayer,
+    removeGeometryLayer,
+    onPopupClose,
+  ])
+
   // Clean up on unmount
   useEffect(() => {
     return () => {
       if (activePopupRef.current) {
+        isProgrammaticCloseRef.current = true
         activePopupRef.current.remove()
         activePopupRef.current = null
+        isProgrammaticCloseRef.current = false
       }
       removeGeometryLayer()
     }
@@ -654,7 +825,11 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
   return (
     <div
       ref={mapContainer}
-      className={`bg-muted relative h-full w-full overflow-hidden rounded-lg shadow-md ${className} [&_.maplibregl-popup]:z-[1000] [&_.maplibregl-popup-close-button]:top-0.5 [&_.maplibregl-popup-close-button]:right-0.5 [&_.maplibregl-popup-close-button]:z-[1001] [&_.maplibregl-popup-close-button]:h-7 [&_.maplibregl-popup-close-button]:w-6 [&_.maplibregl-popup-close-button]:text-base [&_.maplibregl-popup-content]:rounded-lg`}
+      className={cn(
+        'bg-muted relative h-full w-full overflow-hidden rounded-lg shadow-md',
+        styles.mapWithPopups,
+        className
+      )}
       aria-label="Map of saved places"
     >
       <Button
@@ -671,14 +846,8 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
           Zoom: {Math.round(currentZoom * 10) / 10}
         </div>
       </div>
-
-      {!mapLoaded && (
-        <div className="bg-muted/50 absolute inset-0 flex items-center justify-center">
-          <p className="text-muted-foreground">Loading map...</p>
-        </div>
-      )}
     </div>
   )
 }
 
-export default ExploreMap
+export default Map

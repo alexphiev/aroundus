@@ -10,8 +10,9 @@ export const searchFormSchema = z.object({
     })
     .optional(),
   distance: z.string(),
-  transportType: z.enum(['public_transport', 'car']),
+  transportType: z.enum(['public_transport', 'car', 'foot', 'bike']),
   locationName: z.string().optional(),
+  activity: z.string().optional(),
 })
 
 export type SearchFormValues = z.infer<typeof searchFormSchema>

@@ -279,7 +279,6 @@ export default function DesktopDiscoveryResult({
           key={`${baseLocation?.latitude}-${baseLocation?.longitude}`}
           placeResults={placeResults}
           baseLocation={baseLocation}
-          activeMarkerIndex={activeCardIndex}
           activePlace={selectedPlace}
           className="h-full"
           onMarkerClick={handleMarkerClick}

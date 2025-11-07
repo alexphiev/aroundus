@@ -1,10 +1,14 @@
 'use client'
 
+import { CustomFormLabel } from '@/components/discovery/form/CustomFormLabel'
+import { LocationSelection } from '@/components/discovery/form/LocationSelection'
+import { TransportOption } from '@/components/discovery/form/TransportOptions'
 import { Button } from '@/components/ui/button'
 import {
   FullWidthSelect,
   SelectItem,
 } from '@/components/ui/custom/full-width-select'
+import { SelectionGrid } from '@/components/ui/custom/selection-grid'
 import {
   Dialog,
   DialogContent,
@@ -18,13 +22,14 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form'
-import { DISTANCE_OPTIONS, TRANSPORT_OPTIONS } from '@/constants/discover.constants'
-import { CustomFormLabel } from '@/components/discovery/form/CustomFormLabel'
-import { LocationSelection } from '@/components/discovery/form/LocationSelection'
-import { TransportOption } from '@/components/discovery/form/TransportOptions'
+import {
+  ACTIVITY_OPTIONS,
+  DISTANCE_OPTIONS,
+  TRANSPORT_OPTIONS,
+} from '@/constants/discover.constants'
+import type { SearchFormValues } from '@/validation/search-form.validation'
 import { Loader2, Search } from 'lucide-react'
 import { UseFormReturn } from 'react-hook-form'
-import type { SearchFormValues } from '@/validation/search-form.validation'
 
 interface SearchFormModalProps {
   isOpen: boolean
@@ -70,9 +75,7 @@ export function SearchFormModal({
               <div className="flex flex-col gap-12">
                 {locationError && (
                   <div className="border-destructive/50 bg-destructive/10 rounded-lg border p-3">
-                    <p className="text-destructive text-sm">
-                      {locationError}
-                    </p>
+                    <p className="text-destructive text-sm">{locationError}</p>
                     <Button
                       type="button"
                       variant="outline"
@@ -130,7 +133,28 @@ export function SearchFormModal({
                           locationError={locationError}
                           onRetryLocation={onRetryLocation}
                           disabled={isPending}
-                          control={form.control as any}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="activity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <CustomFormLabel>
+                        What would you like to do?
+                      </CustomFormLabel>
+                      <FormControl>
+                        <SelectionGrid
+                          options={ACTIVITY_OPTIONS.filter(
+                            (opt) => opt.value !== 'other'
+                          )}
+                          value={field.value || ''}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />

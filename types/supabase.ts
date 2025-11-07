@@ -262,6 +262,32 @@ export type Database = {
           wikipedia_query: string
         }[]
       }
+      search_places_in_view: {
+        Args: {
+          max_lat: number
+          max_long: number
+          max_results: number
+          min_lat: number
+          min_long: number
+          min_score: number
+        }
+        Returns: {
+          country: string
+          description: string
+          distance_km: number
+          id: string
+          lat: number
+          long: number
+          metadata: Json
+          name: string
+          region: string
+          score: number
+          source: string
+          type: string
+          website: string
+          wikipedia_query: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
