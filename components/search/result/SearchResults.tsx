@@ -1,28 +1,28 @@
 'use client'
 
-import { PlacesInView } from '@/actions/explore.actions'
 import EmptyState from '@/components/discovery/result/EmptyState'
 import LoadingState from '@/components/discovery/result/LoadingState'
 import PlaceResultsGrid from '@/components/search/result/PlaceResultsGrid'
 import SearchPlaceDetailView from '@/components/search/result/details/SearchPlaceDetailView'
 import { Button } from '@/components/ui/button'
+import { SearchPlaceInView } from '@/types/search.types'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search } from 'lucide-react'
 import { useEffect } from 'react'
 
 interface SearchResultsProps {
-  places: PlacesInView[]
+  places: SearchPlaceInView[]
   isLoading: boolean
   onNewSearch: () => void
   hasFilters: boolean
-  selectedPlace: PlacesInView | null
+  selectedPlace: SearchPlaceInView | null
   activeCardIndex: number
   onPlaceSelect: (
     index: number,
-    place: PlacesInView | null,
+    place: SearchPlaceInView | null,
     shouldCenterMap?: boolean
   ) => void
-  onPlaceHover: (place: PlacesInView | null) => void
+  onPlaceHover: (place: SearchPlaceInView | null) => void
 }
 
 export default function SearchResults({
@@ -35,7 +35,7 @@ export default function SearchResults({
   onPlaceSelect,
   onPlaceHover,
 }: SearchResultsProps) {
-  const handleCardClick = (index: number, place: PlacesInView) => {
+  const handleCardClick = (index: number, place: SearchPlaceInView) => {
     onPlaceSelect(index, place, true) // true = should center map
 
     // Only push to history if we're not already in detail view

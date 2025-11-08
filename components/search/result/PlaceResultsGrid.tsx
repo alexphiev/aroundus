@@ -1,19 +1,19 @@
 'use client'
 
-import { PlacesInView } from '@/actions/explore.actions'
 import { Button } from '@/components/ui/button'
+import { SearchPlaceInView } from '@/types/search.types'
 import { Plus } from 'lucide-react'
 import LoadingState from '../../discovery/result/LoadingState'
 import PlaceCard from './PlaceCard'
 
 interface Props {
-  placeResults: PlacesInView[]
+  placeResults: SearchPlaceInView[]
   activeCardIndex: number
   hasMoreResults: boolean
   isLoadingMore: boolean
   onLoadMore?: () => void
-  onCardClick: (index: number, place: PlacesInView) => void
-  onCardHover?: (place: PlacesInView | null) => void
+  onCardClick: (index: number, place: SearchPlaceInView) => void
+  onCardHover?: (place: SearchPlaceInView | null) => void
   isMobile?: boolean
 }
 

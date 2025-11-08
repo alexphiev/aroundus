@@ -8,53 +8,21 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel'
-import { PlacePhoto } from '@/types/result.types'
+import { SearchPlacePhoto } from '@/types/search.types'
 import { Camera, X } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
-interface PlacePhotoGalleryProps {
-  googleMapsUri?: string
-  photos: PlacePhoto[]
+interface SearchPlacePhotoGalleryProps {
+  photos: SearchPlacePhoto[]
   placeName: string
 }
 
-/**
- * Strip HTML tags from a string and return plain text
- * Also decodes HTML entities like &amp;, &lt;, etc.
- */
-function stripHtmlTags(html: string): string {
-  if (typeof document !== 'undefined') {
-    // Browser environment - use DOM parser for better accuracy
-    const tmp = document.createElement('div')
-    tmp.innerHTML = html
-    const text = tmp.textContent || tmp.innerText || ''
-    // Decode HTML entities
-    const decoded = document.createElement('textarea')
-    decoded.innerHTML = text
-    return decoded.value.trim()
-  }
-  // Server-side fallback - basic regex stripping and entity decoding
-  let cleaned = html.replace(/<[^>]*>/g, '') // Remove HTML tags
-  // Decode common HTML entities
-  cleaned = cleaned
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim()
-  return cleaned
-}
-
-export default function PlacePhotoGallery({
-  googleMapsUri,
+export default function SearchPlacePhotoGallery({
   photos,
   placeName,
-}: PlacePhotoGalleryProps) {
+}: SearchPlacePhotoGalleryProps) {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(
     null
   )
@@ -92,7 +60,7 @@ export default function PlacePhotoGallery({
             <CarouselContent className="-ml-2 md:-ml-4">
               {validPhotos.map((photo, index) => (
                 <CarouselItem
-                  key={index}
+                  key={photo.id}
                   className="basis-1/2 pl-2 md:basis-1/3 md:pl-4"
                 >
                   <div
@@ -121,17 +89,13 @@ export default function PlacePhotoGallery({
 
           {validPhotos.some((photo) => photo.attribution) && (
             <div className="border-muted mt-3 border-t pt-3">
-              {googleMapsUri ? (
-                <Link href={googleMapsUri} target="_blank">
-                  <p className="text-muted-foreground text-xs hover:underline">
-                    Source: Google Maps
-                  </p>
-                </Link>
-              ) : (
-                <p className="text-muted-foreground text-xs">
-                  Source: Google Maps
-                </p>
-              )}
+              <p className="text-muted-foreground text-xs">
+                {validPhotos
+                  .filter((p) => p.attribution)
+                  .map((p) => p.attribution)
+                  .filter(Boolean)
+                  .join(', ')}
+              </p>
             </div>
           )}
         </CardContent>
@@ -228,11 +192,7 @@ export default function PlacePhotoGallery({
 
               {validPhotos[selectedPhotoIndex].attribution && (
                 <div className="absolute bottom-4 left-4 rounded bg-black/70 px-3 py-1 text-xs text-white">
-                  {validPhotos[selectedPhotoIndex].attribution.startsWith(
-                    'Photo by'
-                  )
-                    ? stripHtmlTags(validPhotos[selectedPhotoIndex].attribution)
-                    : `Photo by ${stripHtmlTags(validPhotos[selectedPhotoIndex].attribution)}`}
+                  Photo by {validPhotos[selectedPhotoIndex].attribution}
                 </div>
               )}
             </div>
@@ -242,3 +202,4 @@ export default function PlacePhotoGallery({
     </>
   )
 }
+

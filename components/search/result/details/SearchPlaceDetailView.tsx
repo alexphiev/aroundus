@@ -1,6 +1,6 @@
 'use client'
 
-import { PlacesInView } from '@/actions/explore.actions'
+import { getPlacePhotos } from '@/actions/search.actions'
 import PlaceInfoGrid from '@/components/discovery/result/PlaceInfoGrid'
 import PlaceTimingInfo from '@/components/discovery/result/PlaceTimingInfo'
 import PlaceCurrentConditions from '@/components/discovery/result/details/PlaceCurrentConditions'
@@ -10,14 +10,38 @@ import PlacePhotoGallery from '@/components/discovery/result/details/PlacePhotoG
 import PlacePracticalInfo from '@/components/discovery/result/details/PlacePracticalInfo'
 import WeatherForecast from '@/components/discovery/result/details/PlaceWeatherForecast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PlaceResultItem } from '@/types/result.types'
+import { SearchPlaceInView, SearchPlacePhoto } from '@/types/search.types'
 import { motion } from 'framer-motion'
 import { Database, ExternalLink, MapPin } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 interface SearchPlaceDetailViewProps {
-  place: PlacesInView
+  place: SearchPlaceInView
   onBack: () => void
   showSaveButton?: boolean
+}
+
+/**
+ * Convert SearchPlaceInView to PlaceResultItem format for compatibility with shared components
+ * Only includes fields that are compatible between both types
+ */
+function adaptPlaceForSharedComponents(
+  place: SearchPlaceInView
+): PlaceResultItem {
+  return {
+    id: place.id,
+    name: place.name,
+    description: place.description,
+    lat: place.lat,
+    long: place.long,
+    // Convert SearchPlacePhoto[] to PlacePhoto[] format
+    photos: place.photos?.map((photo) => ({
+      url: photo.url,
+      attribution: photo.attribution || undefined,
+    })),
+  } as PlaceResultItem
 }
 
 export default function SearchPlaceDetailView({
@@ -25,6 +49,28 @@ export default function SearchPlaceDetailView({
   onBack,
   showSaveButton = true,
 }: SearchPlaceDetailViewProps) {
+  const [photos, setPhotos] = useState<SearchPlacePhoto[] | undefined>(
+    place.photos
+  )
+  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false)
+
+  // Load photos if not already loaded (no limit for detail view - show all photos)
+  useEffect(() => {
+    if (!photos && place.id) {
+      setIsLoadingPhotos(true)
+      getPlacePhotos(place.id)
+        .then((loadedPhotos) => {
+          setPhotos(loadedPhotos)
+        })
+        .catch((error) => {
+          console.error('Error loading photos:', error)
+        })
+        .finally(() => {
+          setIsLoadingPhotos(false)
+        })
+    }
+  }, [place.id, photos])
+
   const handleShare = async () => {
     const shareText = `${place.name}: ${place.description}\n\nLocation: ${place.lat}, ${place.long}${place.website ? `\n\nWebsite: ${place.website}` : ''}`
 
@@ -52,7 +98,7 @@ export default function SearchPlaceDetailView({
       className="flex h-full flex-col md:pb-0"
     >
       <PlaceHeader
-        place={place}
+        place={adaptPlaceForSharedComponents(place)}
         onBack={onBack}
         onShare={handleShare}
         showSaveButton={showSaveButton}
@@ -63,8 +109,21 @@ export default function SearchPlaceDetailView({
           <PlaceDescription description={place.description} />
         )}
 
-        {place.photos && place.photos.length > 0 && (
-          <PlacePhotoGallery photos={place.photos} placeName={place.name} />
+        {photos && photos.length > 0 && (
+          <PlacePhotoGallery
+            photos={photos.map((photo) => ({
+              url: photo.url,
+              attribution: photo.attribution || undefined,
+            }))}
+            placeName={place.name}
+          />
+        )}
+        {isLoadingPhotos && (
+          <Card>
+            <CardContent className="flex items-center justify-center py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-600"></div>
+            </CardContent>
+          </Card>
         )}
 
         {(place.type || place.source) && (
@@ -161,10 +220,10 @@ export default function SearchPlaceDetailView({
           </Card>
         )}
 
-        <PlaceInfoGrid place={place} />
-        <PlaceCurrentConditions place={place} />
-        <PlacePracticalInfo place={place} />
-        <PlaceTimingInfo place={place} />
+        <PlaceInfoGrid place={adaptPlaceForSharedComponents(place)} />
+        <PlaceCurrentConditions place={adaptPlaceForSharedComponents(place)} />
+        <PlacePracticalInfo place={adaptPlaceForSharedComponents(place)} />
+        <PlaceTimingInfo place={adaptPlaceForSharedComponents(place)} />
 
         <WeatherForecast lat={place.lat} lon={place.long} />
       </div>

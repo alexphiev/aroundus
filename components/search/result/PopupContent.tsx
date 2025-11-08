@@ -1,11 +1,11 @@
-import { PlacesInView } from '@/actions/explore.actions'
+import { SearchPlaceInView } from '@/types/search.types'
 
 export const PopupContent = ({
   place,
   tags,
   score,
 }: {
-  place: PlacesInView
+  place: SearchPlaceInView
   tags?: Record<string, string>
   score?: number
 }) => {

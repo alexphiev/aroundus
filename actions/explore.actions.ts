@@ -24,7 +24,7 @@ export interface GeoJSONGeometry {
 export interface PlacesInView {
   country: string
   description: string
-  distance_km: number
+  distance_km?: number // Optional because explore page doesn't always have distance
   id: string
   lat: number
   long: number
@@ -36,10 +36,6 @@ export interface PlacesInView {
   website: string
   wikipedia_query: string
   metadata?: Json
-  photos?: {
-    url: string
-    caption: string
-  }[]
 }
 
 export async function getPlacesInBounds(

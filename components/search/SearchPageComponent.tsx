@@ -4,7 +4,6 @@ import {
   BoundingBox,
   getPlacesInBounds,
   ParkGeometry,
-  PlacesInView,
 } from '@/actions/explore.actions'
 import { searchPlacesAction } from '@/actions/search.actions'
 import { SearchFormModal } from '@/components/search/form/SearchFormModal'
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/resizable'
 import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
 import type { SearchFilters, SearchFormValues } from '@/types/search.types'
+import { SearchPlaceInView } from '@/types/search.types'
 import { distanceToRadiusKm } from '@/utils/distance.utils'
 import { mapActivityToPlaceTypes } from '@/utils/place.utils'
 import { searchFormSchema } from '@/validation/search-form.validation'
@@ -45,7 +45,7 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
   )
 
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [placeResults, setPlaceResults] = useState<PlacesInView[]>([])
+  const [placeResults, setPlaceResults] = useState<SearchPlaceInView[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [currentFilters, setCurrentFilters] = useState<SearchFilters | null>(
     null
@@ -57,9 +57,13 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     latitude: 46.603354,
     longitude: 1.888334,
   })
-  const [selectedPlace, setSelectedPlace] = useState<PlacesInView | null>(null)
+  const [selectedPlace, setSelectedPlace] = useState<SearchPlaceInView | null>(
+    null
+  )
   const [activeCardIndex, setActiveCardIndex] = useState<number>(-1)
-  const [hoveredPlace, setHoveredPlace] = useState<PlacesInView | null>(null)
+  const [hoveredPlace, setHoveredPlace] = useState<SearchPlaceInView | null>(
+    null
+  )
 
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isLoadingRef = useRef(false)
@@ -290,7 +294,25 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
       isLoadingRef.current = true
       setIsLoading(true)
       const placesInBounds = await getPlacesInBounds(bounds)
-      setPlaceResults(placesInBounds)
+      // Convert PlacesInView[] to SearchPlaceInView[]
+      const searchPlaces: SearchPlaceInView[] = placesInBounds.map((place) => ({
+        id: place.id,
+        country: place.country,
+        description: place.description,
+        distance_km: place.distance_km ?? 0, // Default to 0 if undefined
+        lat: place.lat,
+        long: place.long,
+        name: place.name,
+        region: place.region,
+        score: place.score,
+        source: place.source,
+        type: place.type,
+        website: place.website,
+        wikipedia_query: place.wikipedia_query,
+        metadata: place.metadata,
+        photos: undefined, // Will be loaded lazily
+      }))
+      setPlaceResults(searchPlaces)
     } catch (error) {
       console.error('Error fetching places:', error)
       toast.error('Failed to load places')
@@ -403,7 +425,11 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
   }, [])
 
   const handlePlaceSelect = useCallback(
-    (index: number, place: PlacesInView | null, shouldCenterMap = false) => {
+    (
+      index: number,
+      place: SearchPlaceInView | null,
+      shouldCenterMap = false
+    ) => {
       setActiveCardIndex(index)
       setSelectedPlace(place)
 
@@ -420,12 +446,12 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     []
   )
 
-  const handlePlaceHover = useCallback((place: PlacesInView | null) => {
+  const handlePlaceHover = useCallback((place: SearchPlaceInView | null) => {
     setHoveredPlace(place)
   }, [])
 
   const handleMapMarkerClick = useCallback(
-    (index: number, place: PlacesInView) => {
+    (index: number, place: SearchPlaceInView) => {
       setActiveCardIndex(index)
       setSelectedPlace(place)
       // Note: We don't center the map here because the user clicked directly on the map

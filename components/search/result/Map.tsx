@@ -3,12 +3,12 @@
 import {
   GeoJSONGeometry,
   ParkGeometry,
-  PlacesInView,
   getPlaceGeometry,
   getPlaceMetadata,
 } from '@/actions/explore.actions'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { SearchPlaceInView } from '@/types/search.types'
 import { FocusIcon } from 'lucide-react'
 import maplibregl, { LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -18,7 +18,7 @@ import styles from './Map.module.css'
 import { PopupContent } from './PopupContent'
 
 interface Props {
-  places: PlacesInView[]
+  places: SearchPlaceInView[]
   parkGeometries?: ParkGeometry[]
   onBoundsChange?: (bounds: {
     north: number
@@ -27,8 +27,8 @@ interface Props {
     west: number
   }) => void
   className?: string
-  activePlace?: PlacesInView | null
-  onMarkerClick?: (index: number, place: PlacesInView) => void
+  activePlace?: SearchPlaceInView | null
+  onMarkerClick?: (index: number, place: SearchPlaceInView) => void
   onPopupClose?: () => void
   onMapReady?: (centerMap: (lat: number, lng: number) => void) => void
 }
@@ -50,7 +50,7 @@ const Map: React.FC<Props> = ({
   const activePopupRef = useRef<maplibregl.Popup | null>(null)
   const geometryLayerRef = useRef<string | null>(null)
   const geometryCacheRef = useRef<{ [key: string]: GeoJSONGeometry | null }>({})
-  const placesRef = useRef<PlacesInView[]>(places)
+  const placesRef = useRef<SearchPlaceInView[]>(places)
   const onBoundsChangeRef = useRef(onBoundsChange)
   const isUserInteractingRef = useRef(false)
   const isProgrammaticCloseRef = useRef(false)
@@ -90,7 +90,7 @@ const Map: React.FC<Props> = ({
     })
   }, [])
 
-  const addGeometryLayer = useCallback(async (place: PlacesInView) => {
+  const addGeometryLayer = useCallback(async (place: SearchPlaceInView) => {
     if (!map.current || !map.current.isStyleLoaded()) {
       return
     }
@@ -338,7 +338,7 @@ const Map: React.FC<Props> = ({
     })
 
     // Helper function to create and show popup
-    const showPopup = async (place: PlacesInView, isPinned: boolean) => {
+    const showPopup = async (place: SearchPlaceInView, isPinned: boolean) => {
       // Don't recreate popup if it's already open for the same place
       if (
         activePopupRef.current &&
