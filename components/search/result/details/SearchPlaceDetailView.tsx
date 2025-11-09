@@ -165,7 +165,7 @@ export default function SearchPlaceDetailView({
                 <div className="flex items-start justify-between">
                   <span className="text-muted-foreground">Wikipedia:</span>
                   <Link
-                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(place.wikipedia_query)}`}
+                    href={`https://fr.wikipedia.org/wiki/${place.wikipedia_query}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary flex items-center gap-1 hover:underline"

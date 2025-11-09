@@ -1,15 +1,11 @@
 import { SearchPlaceInView } from '@/types/search.types'
 
-export const PopupContent = ({
-  place,
-  tags,
-  score,
-}: {
-  place: SearchPlaceInView
-  tags?: Record<string, string>
-  score?: number
-}) => {
-  const tagEntries = tags ? Object.entries(tags).slice(0, 2) : []
+export const PopupContent = ({ place }: { place: SearchPlaceInView }) => {
+  const tagEntries = (place.metadata as { tags?: Record<string, string> })?.tags
+    ? Object.entries(
+        (place.metadata as { tags?: Record<string, string> })?.tags || {}
+      ).slice(0, 2)
+    : []
 
   return (
     <div className="flex max-w-xs flex-col gap-2">
@@ -17,9 +13,9 @@ export const PopupContent = ({
         <h6 className="text-sm font-semibold">
           {place.name || 'Unnamed Place'}
         </h6>
-        {score !== undefined && (
+        {place.score !== undefined && (
           <span className="bg-primary/10 text-primary shrink-0 rounded px-1.5 py-0.5 text-xs font-medium">
-            {score.toFixed(1)}
+            {place.score.toFixed(1)}
           </span>
         )}
       </div>
