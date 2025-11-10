@@ -1,10 +1,6 @@
 'use client'
 
-import {
-  BoundingBox,
-  getPlacesInBounds,
-  ParkGeometry,
-} from '@/actions/explore.actions'
+import { BoundingBox, ParkGeometry } from '@/actions/explore.actions'
 import { searchPlacesAction } from '@/actions/search.actions'
 import { SearchFormModal } from '@/components/search/form/SearchFormModal'
 import SearchFiltersBar from '@/components/search/result/SearchFiltersBar'
@@ -293,26 +289,29 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     try {
       isLoadingRef.current = true
       setIsLoading(true)
-      const placesInBounds = await getPlacesInBounds(bounds)
-      // Convert PlacesInView[] to SearchPlaceInView[]
-      const searchPlaces: SearchPlaceInView[] = placesInBounds.map((place) => ({
-        id: place.id,
-        country: place.country,
-        description: place.description,
-        distance_km: place.distance_km ?? 0, // Default to 0 if undefined
-        lat: place.lat,
-        long: place.long,
-        name: place.name,
-        region: place.region,
-        score: place.score,
-        source: place.source,
-        type: place.type,
-        website: place.website,
-        wikipedia_query: place.wikipedia_query,
-        metadata: place.metadata,
-        photos: undefined, // Will be loaded lazily
-      }))
-      setPlaceResults(searchPlaces)
+      // Use search_places_by_location to ensure distance_km is always available
+      // Calculate center and radius from bounds
+      const center = {
+        latitude: (bounds.north + bounds.south) / 2,
+        longitude: (bounds.east + bounds.west) / 2,
+      }
+      // Calculate approximate radius in km from bounds
+      // Using Haversine formula approximation for diagonal distance
+      const latDiff = bounds.north - bounds.south
+      const lngDiff = bounds.east - bounds.west
+      const avgLat = center.latitude
+      const latKm = latDiff * 111 // 1 degree latitude ≈ 111 km
+      const lngKm = lngDiff * 111 * Math.cos((avgLat * Math.PI) / 180)
+      const radiusKm = Math.max(latKm, lngKm) / 2 // Use half of the larger dimension
+
+      // Use search_places_by_location to get places with distance_km
+      const places = await searchPlacesAction({
+        latitude: center.latitude,
+        longitude: center.longitude,
+        radiusKm: Math.max(radiusKm, 10), // Minimum 10km radius
+        limit: 50, // Show more places when panning
+      })
+      setPlaceResults(places)
     } catch (error) {
       console.error('Error fetching places:', error)
       toast.error('Failed to load places')
@@ -326,40 +325,43 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     currentFiltersRef.current = currentFilters
   }, [currentFilters])
 
-  const handleBoundsChange = useCallback((bounds: BoundingBox) => {
-    if (boundsChangeTimeoutRef.current) {
-      clearTimeout(boundsChangeTimeoutRef.current)
-    }
-
-    const lastBounds = lastBoundsRef.current
-    if (lastBounds) {
-      const latDiff =
-        Math.abs(bounds.north - lastBounds.north) +
-        Math.abs(bounds.south - lastBounds.south)
-      const lngDiff =
-        Math.abs(bounds.east - lastBounds.east) +
-        Math.abs(bounds.west - lastBounds.west)
-      const threshold = 0.001
-
-      if (latDiff < threshold && lngDiff < threshold) {
-        return
+  const handleBoundsChange = useCallback(
+    (bounds: BoundingBox) => {
+      if (boundsChangeTimeoutRef.current) {
+        clearTimeout(boundsChangeTimeoutRef.current)
       }
-    }
 
-    boundsChangeTimeoutRef.current = setTimeout(() => {
-      lastBoundsRef.current = bounds
+      const lastBounds = lastBoundsRef.current
+      if (lastBounds) {
+        const latDiff =
+          Math.abs(bounds.north - lastBounds.north) +
+          Math.abs(bounds.south - lastBounds.south)
+        const lngDiff =
+          Math.abs(bounds.east - lastBounds.east) +
+          Math.abs(bounds.west - lastBounds.west)
+        const threshold = 0.001
 
-      if (!currentFiltersRef.current) {
-        fetchPlacesInBounds(bounds)
-      } else {
-        const center = {
-          latitude: (bounds.north + bounds.south) / 2,
-          longitude: (bounds.east + bounds.west) / 2,
+        if (latDiff < threshold && lngDiff < threshold) {
+          return
         }
-        performFilteredSearch(currentFiltersRef.current, center)
       }
-    }, 1000)
-  }, [])
+
+      boundsChangeTimeoutRef.current = setTimeout(() => {
+        lastBoundsRef.current = bounds
+
+        if (!currentFiltersRef.current) {
+          fetchPlacesInBounds(bounds)
+        } else {
+          const center = {
+            latitude: (bounds.north + bounds.south) / 2,
+            longitude: (bounds.east + bounds.west) / 2,
+          }
+          performFilteredSearch(currentFiltersRef.current, center)
+        }
+      }, 1000)
+    },
+    [fetchPlacesInBounds, performFilteredSearch]
+  )
 
   function onSubmit(values: SearchFormValues) {
     let selectedLocation: { latitude: number; longitude: number }

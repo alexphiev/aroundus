@@ -81,6 +81,7 @@ export default function PlaceCard({
 
     return () => {
       observer.disconnect()
+      hasLoadedPhotos.current = false // Reset on unmount
     }
   }, [place.id, photos])
 
@@ -209,15 +210,6 @@ export default function PlaceCard({
           </CardDescription>
 
           <div className="space-content flex-1">
-            {/* Duration Information - Single Row */}
-            {place.distance_km && (
-              <div className="flex flex-wrap gap-2">
-                <span className="badge-info">
-                  Distance: {place.distance_km} km
-                </span>
-              </div>
-            )}
-
             {/* Best Time to Visit - Bottom with 3-line limit */}
             {place.wikipedia_query && (
               <div className="space-tight">

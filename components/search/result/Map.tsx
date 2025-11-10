@@ -961,16 +961,8 @@ const Map: React.FC<Props> = ({
           },
           filter: [
             'any',
-            [
-              'all',
-              ['==', ['get', 'type'], 'national_park'],
-              ['>=', ['zoom'], 6],
-            ],
-            [
-              'all',
-              ['==', ['get', 'type'], 'regional_park'],
-              ['>=', ['zoom'], 6],
-            ],
+            ['==', ['get', 'type'], 'national_park'],
+            ['==', ['get', 'type'], 'regional_park'],
           ],
         })
 
@@ -985,16 +977,8 @@ const Map: React.FC<Props> = ({
           },
           filter: [
             'any',
-            [
-              'all',
-              ['==', ['get', 'type'], 'national_park'],
-              ['>=', ['zoom'], 6],
-            ],
-            [
-              'all',
-              ['==', ['get', 'type'], 'regional_park'],
-              ['>=', ['zoom'], 6],
-            ],
+            ['==', ['get', 'type'], 'national_park'],
+            ['==', ['get', 'type'], 'regional_park'],
           ],
         })
       }

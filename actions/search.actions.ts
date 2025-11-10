@@ -1,9 +1,13 @@
 'use server'
 
 import { SearchPlaceInView, SearchPlacePhoto } from '@/types/search.types'
-import { Json } from '@/types/supabase'
+import { Database } from '@/types/supabase'
 import { distanceToRadiusKm } from '@/utils/distance.utils'
 import { createClient } from '@/utils/supabase/server'
+
+// Type for the RPC function return value
+type SearchPlacesByLocationResult =
+  Database['public']['Functions']['search_places_by_location']['Returns'][number]
 
 interface SearchPlacesParams {
   latitude: number
@@ -26,7 +30,7 @@ export async function getPlacePhotos(
 
   let query = supabase
     .from('place_photos')
-    .select('id, place_id, url, attribution, is_primary')
+    .select('id, place_id, url, attribution, is_primary, source')
     .eq('place_id', placeId)
     .order('is_primary', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: true })
@@ -48,14 +52,15 @@ export async function getPlacePhotos(
       url: photo.url,
       attribution: photo.attribution,
       is_primary: photo.is_primary,
+      source: photo.source,
     })) || []
   )
 }
 
 /**
  * Search places by location using RPC function
- * Returns only the fields returned by the RPC function (no photos)
- * Photos should be loaded lazily at the component level
+ * Returns SearchPlaceInView with all fields from search_places_by_location RPC (including distance_km)
+ * Photos are loaded lazily at the component level
  */
 export async function searchPlacesAction(
   params: SearchPlacesParams
@@ -64,6 +69,7 @@ export async function searchPlacesAction(
   const { latitude, longitude, radiusKm, limit = 20 } = params
 
   // Fetch places using RPC function - returns exactly what the RPC returns
+  // This includes distance_km calculated by ST_Distance in the SQL function
   const { data: placesData, error: placesError } = await supabase.rpc(
     'search_places_by_location',
     {
@@ -85,24 +91,15 @@ export async function searchPlacesAction(
   }
 
   // Map RPC return type to SearchPlaceInView (photos will be loaded lazily)
-  const places: SearchPlaceInView[] = placesData.map((place) => ({
-    id: place.id,
-    country: place.country,
-    description: place.description,
-    distance_km: place.distance_km,
-    lat: place.lat,
-    long: place.long,
-    name: place.name,
-    region: place.region,
-    score: place.score,
-    source: place.source,
-    type: place.type,
-    website: place.website,
-    wikipedia_query: place.wikipedia_query,
-    metadata: place.metadata as Json | undefined,
-    // photos will be undefined initially, loaded lazily
-    photos: undefined,
-  }))
+  // The RPC function already returns all the fields we need including distance_km,
+  // we just add photos field which is undefined initially
+  const places: SearchPlaceInView[] = placesData.map(
+    (place: SearchPlacesByLocationResult) => ({
+      ...place,
+      // photos will be undefined initially, loaded lazily
+      photos: undefined,
+    })
+  )
 
   return places
 }

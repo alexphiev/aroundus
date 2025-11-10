@@ -114,6 +114,7 @@ export default function SearchPlaceDetailView({
             photos={photos.map((photo) => ({
               url: photo.url,
               attribution: photo.attribution || undefined,
+              source: photo.source,
             }))}
             placeName={place.name}
           />

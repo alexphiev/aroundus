@@ -24,17 +24,32 @@ interface PlacePhotoGalleryProps {
 /**
  * Strip HTML tags from a string and return plain text
  * Also decodes HTML entities like &amp;, &lt;, etc.
+ * Uses DOMParser for safe HTML parsing without XSS risk
  */
 function stripHtmlTags(html: string): string {
   if (typeof document !== 'undefined') {
-    // Browser environment - use DOM parser for better accuracy
-    const tmp = document.createElement('div')
-    tmp.innerHTML = html
-    const text = tmp.textContent || tmp.innerText || ''
-    // Decode HTML entities
-    const decoded = document.createElement('textarea')
-    decoded.innerHTML = text
-    return decoded.value.trim()
+    // Browser environment - use DOMParser for safe parsing (prevents XSS)
+    try {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, 'text/html')
+      const text = doc.body.textContent || doc.body.innerText || ''
+      // Decode HTML entities safely using textarea
+      const decoded = document.createElement('textarea')
+      decoded.textContent = text
+      return decoded.value.trim()
+    } catch {
+      // Fallback to regex if DOMParser fails
+      let cleaned = html.replace(/<[^>]*>/g, '')
+      cleaned = cleaned
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim()
+      return cleaned
+    }
   }
   // Server-side fallback - basic regex stripping and entity decoding
   let cleaned = html.replace(/<[^>]*>/g, '') // Remove HTML tags
@@ -71,6 +86,33 @@ export default function PlacePhotoGallery({
   if (!validPhotos.length) {
     return null
   }
+
+  // Determine the source to display - use the most common source, or first photo's source, or fallback to Google Maps
+  const getPhotoSource = (): string => {
+    const sources = validPhotos
+      .map((photo) => photo.source)
+      .filter((source): source is string => Boolean(source))
+
+    if (sources.length === 0) {
+      return 'Google Maps' // Fallback
+    }
+
+    // Count occurrences of each source
+    const sourceCounts = sources.reduce(
+      (acc, source) => {
+        acc[source] = (acc[source] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>
+    )
+
+    // Return the most common source, or first source if all are equal
+    return Object.entries(sourceCounts).reduce((a, b) =>
+      sourceCounts[a[0]] > sourceCounts[b[0]] ? a : b
+    )[0]
+  }
+
+  const photoSource = getPhotoSource()
 
   return (
     <>
@@ -121,15 +163,15 @@ export default function PlacePhotoGallery({
 
           {validPhotos.some((photo) => photo.attribution) && (
             <div className="border-muted mt-3 border-t pt-3">
-              {googleMapsUri ? (
+              {googleMapsUri && photoSource === 'Google Maps' ? (
                 <Link href={googleMapsUri} target="_blank">
                   <p className="text-muted-foreground text-xs hover:underline">
-                    Source: Google Maps
+                    Source: {photoSource}
                   </p>
                 </Link>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  Source: Google Maps
+                  Source: {photoSource}
                 </p>
               )}
             </div>

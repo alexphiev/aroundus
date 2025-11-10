@@ -1,4 +1,4 @@
-import { Json } from '@/types/supabase'
+import { Database } from '@/types/supabase'
 
 /**
  * Photo structure from place_photos table
@@ -8,26 +8,21 @@ export interface SearchPlacePhoto {
   url: string
   attribution: string | null
   is_primary: boolean | null
+  source: string
 }
 
 /**
- * Place structure for search page with photos from place_photos table
+ * Supabase generated type from search_places_by_location RPC function
+ * This ensures type safety and stays in sync with the database schema
  */
-export interface SearchPlaceInView {
-  country: string
-  description: string
-  distance_km: number
-  id: string
-  lat: number
-  long: number
-  name: string
-  region: string
-  score: number
-  source: string
-  type: string
-  website: string
-  wikipedia_query: string
-  metadata?: Json
+export type SearchPlaceByLocation =
+  Database['public']['Functions']['search_places_by_location']['Returns'][number]
+
+/**
+ * Place structure for search page - extends SearchPlaceByLocation with photos
+ * Photos are loaded lazily at the component level
+ */
+export interface SearchPlaceInView extends SearchPlaceByLocation {
   photos?: SearchPlacePhoto[]
 }
 
