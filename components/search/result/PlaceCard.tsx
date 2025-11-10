@@ -1,6 +1,6 @@
 'use client'
 
-import { PlacesInView } from '@/actions/explore.actions'
+import { getPlacePhotos } from '@/actions/search.actions'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -9,14 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { SearchPlaceInView, SearchPlacePhoto } from '@/types/search.types'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ImageIcon, Star } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface PlaceCardProps {
-  place: PlacesInView
+  place: SearchPlaceInView
   index: number
   isActive: boolean
   onClick: () => void
@@ -33,27 +34,78 @@ export default function PlaceCard({
   onMouseLeave,
 }: PlaceCardProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [photos, setPhotos] = useState<SearchPlacePhoto[] | undefined>(
+    place.photos
+  )
+  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const hasLoadedPhotos = useRef(false)
+
+  // Lazy load photos when card becomes visible
+  useEffect(() => {
+    // If photos already exist, don't fetch again
+    if (photos || hasLoadedPhotos.current) {
+      return
+    }
+
+    // Use Intersection Observer to detect when card is visible
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !hasLoadedPhotos.current) {
+            hasLoadedPhotos.current = true
+            setIsLoadingPhotos(true)
+            // Load only 3 photos max for place cards
+            getPlacePhotos(place.id, 3)
+              .then((loadedPhotos) => {
+                setPhotos(loadedPhotos)
+              })
+              .catch((error) => {
+                console.error('Error loading photos:', error)
+              })
+              .finally(() => {
+                setIsLoadingPhotos(false)
+              })
+            observer.disconnect()
+          }
+        })
+      },
+      {
+        rootMargin: '50px', // Start loading 50px before card is visible
+      }
+    )
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current)
+    }
+
+    return () => {
+      observer.disconnect()
+      hasLoadedPhotos.current = false // Reset on unmount
+    }
+  }, [place.id, photos])
 
   const nextPhoto = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (place.photos && place.photos.length > 0) {
+    if (photos && photos.length > 0) {
       setCurrentPhotoIndex((prev) =>
-        prev === place.photos!.length - 1 ? 0 : prev + 1
+        prev === photos.length - 1 ? 0 : prev + 1
       )
     }
   }
 
   const prevPhoto = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (place.photos && place.photos.length > 0) {
+    if (photos && photos.length > 0) {
       setCurrentPhotoIndex((prev) =>
-        prev === 0 ? place.photos!.length - 1 : prev - 1
+        prev === 0 ? photos.length - 1 : prev - 1
       )
     }
   }
 
   return (
     <motion.div
+      ref={cardRef}
       key={place.id || index}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -74,10 +126,14 @@ export default function PlaceCard({
       >
         {/* Photo Carousel or Placeholder */}
         <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
-          {place.photos && place.photos.length > 0 ? (
+          {isLoadingPhotos ? (
+            <div className="flex h-full w-full items-center justify-center bg-[#F5F5F5]">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-600"></div>
+            </div>
+          ) : photos && photos.length > 0 ? (
             <>
               <Image
-                src={place.photos[currentPhotoIndex].url}
+                src={photos[currentPhotoIndex].url}
                 alt={`${place.name} - Photo ${currentPhotoIndex + 1}`}
                 className="h-full w-full object-cover"
                 width={300}
@@ -88,7 +144,7 @@ export default function PlaceCard({
               />
 
               {/* Photo Navigation */}
-              {place.photos.length > 1 && (
+              {photos.length > 1 && (
                 <>
                   <Button
                     variant="ghost"
@@ -109,11 +165,11 @@ export default function PlaceCard({
 
                   {/* Photo Indicators */}
                   <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
-                    {place.photos.map((_, index) => (
+                    {photos.map((_, photoIndex) => (
                       <div
-                        key={index}
+                        key={photoIndex}
                         className={`h-2 w-2 rounded-full ${
-                          index === currentPhotoIndex
+                          photoIndex === currentPhotoIndex
                             ? 'bg-white'
                             : 'bg-white/50'
                         }`}
@@ -154,15 +210,6 @@ export default function PlaceCard({
           </CardDescription>
 
           <div className="space-content flex-1">
-            {/* Duration Information - Single Row */}
-            {place.distance_km && (
-              <div className="flex flex-wrap gap-2">
-                <span className="badge-info">
-                  Distance: {place.distance_km} km
-                </span>
-              </div>
-            )}
-
             {/* Best Time to Visit - Bottom with 3-line limit */}
             {place.wikipedia_query && (
               <div className="space-tight">

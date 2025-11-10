@@ -1,6 +1,7 @@
 export interface PlacePhoto {
   url: string
   attribution?: string
+  source?: string
 }
 
 export interface PlaceReview {

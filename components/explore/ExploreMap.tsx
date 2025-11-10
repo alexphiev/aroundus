@@ -598,16 +598,8 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
           },
           filter: [
             'any',
-            [
-              'all',
-              ['==', ['get', 'type'], 'national_park'],
-              ['>=', ['zoom'], 6],
-            ],
-            [
-              'all',
-              ['==', ['get', 'type'], 'regional_park'],
-              ['>=', ['zoom'], 6],
-            ],
+            ['==', ['get', 'type'], 'national_park'],
+            ['==', ['get', 'type'], 'regional_park'],
           ],
         })
 
@@ -622,16 +614,8 @@ const ExploreMap: React.FC<ExploreMapProps> = ({
           },
           filter: [
             'any',
-            [
-              'all',
-              ['==', ['get', 'type'], 'national_park'],
-              ['>=', ['zoom'], 6],
-            ],
-            [
-              'all',
-              ['==', ['get', 'type'], 'regional_park'],
-              ['>=', ['zoom'], 6],
-            ],
+            ['==', ['get', 'type'], 'national_park'],
+            ['==', ['get', 'type'], 'regional_park'],
           ],
         })
       }

@@ -1,11 +1,6 @@
 'use client'
 
-import {
-  BoundingBox,
-  getPlacesInBounds,
-  ParkGeometry,
-  PlacesInView,
-} from '@/actions/explore.actions'
+import { BoundingBox, ParkGeometry } from '@/actions/explore.actions'
 import { searchPlacesAction } from '@/actions/search.actions'
 import { SearchFormModal } from '@/components/search/form/SearchFormModal'
 import SearchFiltersBar from '@/components/search/result/SearchFiltersBar'
@@ -16,6 +11,7 @@ import {
 } from '@/components/ui/resizable'
 import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
 import type { SearchFilters, SearchFormValues } from '@/types/search.types'
+import { SearchPlaceInView } from '@/types/search.types'
 import { distanceToRadiusKm } from '@/utils/distance.utils'
 import { mapActivityToPlaceTypes } from '@/utils/place.utils'
 import { searchFormSchema } from '@/validation/search-form.validation'
@@ -45,7 +41,7 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
   )
 
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [placeResults, setPlaceResults] = useState<PlacesInView[]>([])
+  const [placeResults, setPlaceResults] = useState<SearchPlaceInView[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [currentFilters, setCurrentFilters] = useState<SearchFilters | null>(
     null
@@ -57,9 +53,13 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     latitude: 46.603354,
     longitude: 1.888334,
   })
-  const [selectedPlace, setSelectedPlace] = useState<PlacesInView | null>(null)
+  const [selectedPlace, setSelectedPlace] = useState<SearchPlaceInView | null>(
+    null
+  )
   const [activeCardIndex, setActiveCardIndex] = useState<number>(-1)
-  const [hoveredPlace, setHoveredPlace] = useState<PlacesInView | null>(null)
+  const [hoveredPlace, setHoveredPlace] = useState<SearchPlaceInView | null>(
+    null
+  )
 
   const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isLoadingRef = useRef(false)
@@ -289,8 +289,29 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     try {
       isLoadingRef.current = true
       setIsLoading(true)
-      const placesInBounds = await getPlacesInBounds(bounds)
-      setPlaceResults(placesInBounds)
+      // Use search_places_by_location to ensure distance_km is always available
+      // Calculate center and radius from bounds
+      const center = {
+        latitude: (bounds.north + bounds.south) / 2,
+        longitude: (bounds.east + bounds.west) / 2,
+      }
+      // Calculate approximate radius in km from bounds
+      // Using Haversine formula approximation for diagonal distance
+      const latDiff = bounds.north - bounds.south
+      const lngDiff = bounds.east - bounds.west
+      const avgLat = center.latitude
+      const latKm = latDiff * 111 // 1 degree latitude ≈ 111 km
+      const lngKm = lngDiff * 111 * Math.cos((avgLat * Math.PI) / 180)
+      const radiusKm = Math.max(latKm, lngKm) / 2 // Use half of the larger dimension
+
+      // Use search_places_by_location to get places with distance_km
+      const places = await searchPlacesAction({
+        latitude: center.latitude,
+        longitude: center.longitude,
+        radiusKm: Math.max(radiusKm, 10), // Minimum 10km radius
+        limit: 50, // Show more places when panning
+      })
+      setPlaceResults(places)
     } catch (error) {
       console.error('Error fetching places:', error)
       toast.error('Failed to load places')
@@ -304,40 +325,43 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     currentFiltersRef.current = currentFilters
   }, [currentFilters])
 
-  const handleBoundsChange = useCallback((bounds: BoundingBox) => {
-    if (boundsChangeTimeoutRef.current) {
-      clearTimeout(boundsChangeTimeoutRef.current)
-    }
-
-    const lastBounds = lastBoundsRef.current
-    if (lastBounds) {
-      const latDiff =
-        Math.abs(bounds.north - lastBounds.north) +
-        Math.abs(bounds.south - lastBounds.south)
-      const lngDiff =
-        Math.abs(bounds.east - lastBounds.east) +
-        Math.abs(bounds.west - lastBounds.west)
-      const threshold = 0.001
-
-      if (latDiff < threshold && lngDiff < threshold) {
-        return
+  const handleBoundsChange = useCallback(
+    (bounds: BoundingBox) => {
+      if (boundsChangeTimeoutRef.current) {
+        clearTimeout(boundsChangeTimeoutRef.current)
       }
-    }
 
-    boundsChangeTimeoutRef.current = setTimeout(() => {
-      lastBoundsRef.current = bounds
+      const lastBounds = lastBoundsRef.current
+      if (lastBounds) {
+        const latDiff =
+          Math.abs(bounds.north - lastBounds.north) +
+          Math.abs(bounds.south - lastBounds.south)
+        const lngDiff =
+          Math.abs(bounds.east - lastBounds.east) +
+          Math.abs(bounds.west - lastBounds.west)
+        const threshold = 0.001
 
-      if (!currentFiltersRef.current) {
-        fetchPlacesInBounds(bounds)
-      } else {
-        const center = {
-          latitude: (bounds.north + bounds.south) / 2,
-          longitude: (bounds.east + bounds.west) / 2,
+        if (latDiff < threshold && lngDiff < threshold) {
+          return
         }
-        performFilteredSearch(currentFiltersRef.current, center)
       }
-    }, 1000)
-  }, [])
+
+      boundsChangeTimeoutRef.current = setTimeout(() => {
+        lastBoundsRef.current = bounds
+
+        if (!currentFiltersRef.current) {
+          fetchPlacesInBounds(bounds)
+        } else {
+          const center = {
+            latitude: (bounds.north + bounds.south) / 2,
+            longitude: (bounds.east + bounds.west) / 2,
+          }
+          performFilteredSearch(currentFiltersRef.current, center)
+        }
+      }, 1000)
+    },
+    [fetchPlacesInBounds, performFilteredSearch]
+  )
 
   function onSubmit(values: SearchFormValues) {
     let selectedLocation: { latitude: number; longitude: number }
@@ -403,7 +427,11 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
   }, [])
 
   const handlePlaceSelect = useCallback(
-    (index: number, place: PlacesInView | null, shouldCenterMap = false) => {
+    (
+      index: number,
+      place: SearchPlaceInView | null,
+      shouldCenterMap = false
+    ) => {
       setActiveCardIndex(index)
       setSelectedPlace(place)
 
@@ -420,12 +448,12 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     []
   )
 
-  const handlePlaceHover = useCallback((place: PlacesInView | null) => {
+  const handlePlaceHover = useCallback((place: SearchPlaceInView | null) => {
     setHoveredPlace(place)
   }, [])
 
   const handleMapMarkerClick = useCallback(
-    (index: number, place: PlacesInView) => {
+    (index: number, place: SearchPlaceInView) => {
       setActiveCardIndex(index)
       setSelectedPlace(place)
       // Note: We don't center the map here because the user clicked directly on the map
