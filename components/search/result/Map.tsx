@@ -1,12 +1,10 @@
 'use client'
 
-import {
-  GeoJSONGeometry,
-  ParkGeometry,
-  getPlaceGeometry,
-} from '@/actions/explore.actions'
+import { getPlaceGeometry } from '@/actions/explore.actions'
+import { ParkWithGeometry } from '@/actions/search.actions'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { GeoJSONGeometry } from '@/types/map.types'
 import { SearchPlaceInView } from '@/types/search.types'
 import { FocusIcon } from 'lucide-react'
 import maplibregl, { LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
@@ -18,7 +16,7 @@ import { PopupContent } from './PopupContent'
 
 interface Props {
   places: SearchPlaceInView[]
-  parkGeometries?: ParkGeometry[]
+  parksWithGeometry?: ParkWithGeometry[]
   onBoundsChange?: (bounds: {
     north: number
     south: number
@@ -34,7 +32,7 @@ interface Props {
 
 const Map: React.FC<Props> = ({
   places,
-  parkGeometries = [],
+  parksWithGeometry = [],
   onBoundsChange,
   className = '',
   activePlace,
@@ -49,8 +47,10 @@ const Map: React.FC<Props> = ({
   // Separate refs for pinned (clicked) and hover popups
   const pinnedPopupRef = useRef<maplibregl.Popup | null>(null)
   const hoverPopupRef = useRef<maplibregl.Popup | null>(null)
+  const parkHoverPopupRef = useRef<maplibregl.Popup | null>(null)
   const pinnedPlaceIdRef = useRef<string | null>(null)
   const hoveredPlaceIdRef = useRef<string | null>(null)
+  const hoveredParkIdRef = useRef<string | null>(null)
   const geometryLayerRef = useRef<string | null>(null) // For pinned geometry
   const hoverGeometryLayerRef = useRef<string | null>(null) // For hover geometry
   const geometryCacheRef = useRef<{ [key: string]: GeoJSONGeometry | null }>({})
@@ -336,6 +336,10 @@ const Map: React.FC<Props> = ({
         return
       }
 
+      if (hoveredPlaceIdRef.current !== place.id) {
+        return
+      }
+
       const layerId = `hover-geometry-${place.id}`
       const sourceId = `hover-geometry-source-${place.id}`
       const opacity = place.type === 'regional_park' ? 0.1 : 0.3
@@ -533,7 +537,11 @@ const Map: React.FC<Props> = ({
   const addPlacesLayer = useCallback(() => {
     if (!map.current || !map.current.isStyleLoaded()) return
 
-    const currentPlaces = placesRef.current
+    const currentPlaces = placesRef.current.filter(
+      (place) =>
+        place.type !== 'national_park' && place.type !== 'regional_park'
+    )
+
     const sourceId = 'nature-places'
     const layerId = 'nature-places'
 
@@ -900,7 +908,7 @@ const Map: React.FC<Props> = ({
       return
     }
 
-    if (parkGeometries.length === 0) {
+    if (parksWithGeometry.length === 0) {
       return
     }
 
@@ -908,7 +916,7 @@ const Map: React.FC<Props> = ({
     const fillLayerId = 'park-geometries-fill'
     const outlineLayerId = 'park-geometries-outline'
 
-    const features: GeoJSON.Feature[] = parkGeometries
+    const features: GeoJSON.Feature[] = parksWithGeometry
       .filter(
         (park) =>
           park.geometry.type === 'Polygon' ||
@@ -920,6 +928,7 @@ const Map: React.FC<Props> = ({
           id: park.id,
           name: park.name,
           type: park.type,
+          score: park.score,
         },
         geometry: park.geometry as GeoJSON.Geometry,
       }))
@@ -981,11 +990,87 @@ const Map: React.FC<Props> = ({
             ['==', ['get', 'type'], 'regional_park'],
           ],
         })
+
+        map.current.on('mouseenter', fillLayerId, (e) => {
+          if (map.current) {
+            map.current.getCanvas().style.cursor = 'pointer'
+          }
+
+          if (!e.features || e.features.length === 0) {
+            return
+          }
+
+          const feature = e.features[0]
+          const parkId = feature.properties?.id
+
+          if (!parkId || hoveredParkIdRef.current === parkId) {
+            return
+          }
+
+          const park = parksWithGeometry.find((p) => p.id === parkId)
+
+          if (!park) {
+            return
+          }
+
+          if (parkHoverPopupRef.current) {
+            isProgrammaticCloseRef.current = true
+            parkHoverPopupRef.current.remove()
+            parkHoverPopupRef.current = null
+            hoveredParkIdRef.current = null
+            isProgrammaticCloseRef.current = false
+          }
+
+          hoveredParkIdRef.current = parkId
+
+          const popupNode = document.createElement('div')
+          const popupRoot = createRoot(popupNode)
+          popupRoot.render(
+            <PopupContent
+              place={{
+                name: park.name,
+                score: park.score,
+              }}
+            />
+          )
+
+          const popup = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            offset: [0, -10],
+          })
+            .setLngLat(e.lngLat)
+            .setDOMContent(popupNode)
+            .addTo(map.current!)
+
+          popup.on('close', () => {
+            if (parkHoverPopupRef.current === popup) {
+              parkHoverPopupRef.current = null
+              hoveredParkIdRef.current = null
+            }
+          })
+
+          parkHoverPopupRef.current = popup
+        })
+
+        map.current.on('mouseleave', fillLayerId, () => {
+          if (map.current) {
+            map.current.getCanvas().style.cursor = ''
+          }
+
+          if (parkHoverPopupRef.current) {
+            isProgrammaticCloseRef.current = true
+            parkHoverPopupRef.current.remove()
+            parkHoverPopupRef.current = null
+            hoveredParkIdRef.current = null
+            isProgrammaticCloseRef.current = false
+          }
+        })
       }
     } catch (error) {
       console.warn('Failed to add park geometries layer:', error)
     }
-  }, [parkGeometries, mapLoaded])
+  }, [parksWithGeometry, mapLoaded])
 
   // Update activePlaceRef when activePlace changes
   useEffect(() => {

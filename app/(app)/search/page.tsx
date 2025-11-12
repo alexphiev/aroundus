@@ -1,8 +1,8 @@
-import { getAllParkGeometries } from '@/actions/explore.actions'
+import { getParksWithGeometry } from '@/actions/search.actions'
 import SearchPageComponent from '@/components/search/SearchPageComponent'
 
 export default async function SearchPage() {
-  const parkGeometries = await getAllParkGeometries()
+  const parkGeometries = await getParksWithGeometry()
 
-  return <SearchPageComponent parkGeometries={parkGeometries} />
+  return <SearchPageComponent parksWithGeometry={parkGeometries} />
 }

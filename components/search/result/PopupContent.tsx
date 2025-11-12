@@ -1,6 +1,11 @@
-import { SearchPlaceInView } from '@/types/search.types'
-
-export const PopupContent = ({ place }: { place: SearchPlaceInView }) => {
+export const PopupContent = ({
+  place,
+}: {
+  place: {
+    name: string
+    score: number
+  }
+}) => {
   return (
     <div className="flex max-w-xs flex-col gap-2">
       <div className="mr-4 flex items-start justify-between gap-2">

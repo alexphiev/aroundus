@@ -1,5 +1,6 @@
 'use server'
 
+import { GeoJSONGeometry } from '@/types/map.types'
 import { SearchPlaceInView, SearchPlacePhoto } from '@/types/search.types'
 import { Database } from '@/types/supabase'
 import { distanceToRadiusKm } from '@/utils/distance.utils'
@@ -117,4 +118,37 @@ export async function searchPlaces(
     radiusKm,
     limit: 20,
   })
+}
+
+export interface ParkWithGeometry {
+  id: string
+  name: string
+  type: string
+  score: number
+  geometry: GeoJSONGeometry
+}
+
+export async function getParksWithGeometry(): Promise<ParkWithGeometry[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('places')
+    .select('id, name, type, score, geometry')
+    .in('type', ['national_park', 'regional_park'])
+    .not('geometry', 'is', null)
+
+  if (error) {
+    console.error('Failed to fetch park geometries:', error)
+    return []
+  }
+
+  return (
+    data?.map((place) => ({
+      id: place.id,
+      name: place.name || '',
+      type: place.type || '',
+      score: place.score || 0,
+      geometry: place.geometry as GeoJSONGeometry,
+    })) || []
+  )
 }

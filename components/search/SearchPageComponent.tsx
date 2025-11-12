@@ -1,7 +1,6 @@
 'use client'
 
-import { BoundingBox, ParkGeometry } from '@/actions/explore.actions'
-import { searchPlacesAction } from '@/actions/search.actions'
+import { ParkWithGeometry, searchPlacesAction } from '@/actions/search.actions'
 import { SearchFormModal } from '@/components/search/form/SearchFormModal'
 import SearchFiltersBar from '@/components/search/result/SearchFiltersBar'
 import {
@@ -10,6 +9,7 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
+import { BoundingBox } from '@/types/map.types'
 import type { SearchFilters, SearchFormValues } from '@/types/search.types'
 import { SearchPlaceInView } from '@/types/search.types'
 import { distanceToRadiusKm } from '@/utils/distance.utils'
@@ -24,10 +24,10 @@ import Map from './result/Map'
 import SearchResults from './result/SearchResults'
 
 interface SearchPageComponentProps {
-  parkGeometries: ParkGeometry[]
+  parksWithGeometry: ParkWithGeometry[]
 }
 
-function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
+function SearchPageComponent({ parksWithGeometry }: SearchPageComponentProps) {
   // const searchParams = useSearchParams()
   // const router = useRouter()
 
@@ -46,13 +46,7 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
   const [currentFilters, setCurrentFilters] = useState<SearchFilters | null>(
     null
   )
-  const [mapCenter, setMapCenter] = useState<{
-    latitude: number
-    longitude: number
-  }>({
-    latitude: 46.603354,
-    longitude: 1.888334,
-  })
+
   const [selectedPlace, setSelectedPlace] = useState<SearchPlaceInView | null>(
     null
   )
@@ -113,7 +107,6 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
           }
 
           setUserLocation(location)
-          setMapCenter(location)
           setLocationError(null)
 
           const geocodePromise = reverseGeocode(
@@ -398,23 +391,7 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
     }
 
     setCurrentFilters(filters)
-    setMapCenter(selectedLocation)
     setIsSearchOpen(false)
-
-    // const params = new URLSearchParams()
-    // params.set('lat', selectedLocation.latitude.toString())
-    // params.set('lng', selectedLocation.longitude.toString())
-    // params.set('distance', values.distance)
-    // params.set('transport', values.transportType)
-    // if (selectedLocationName) {
-    //   params.set('location', selectedLocationName)
-    // }
-    // if (values.activity) {
-    //   params.set('activity', values.activity)
-    // }
-
-    // router.push(`/search?${params.toString()}`, { scroll: false })
-
     performFilteredSearch(filters, selectedLocation)
   }
 
@@ -521,7 +498,7 @@ function SearchPageComponent({ parkGeometries }: SearchPageComponentProps) {
             <ResizablePanel defaultSize={50} minSize={30} className="h-full">
               <Map
                 places={placeResults}
-                parkGeometries={parkGeometries}
+                parksWithGeometry={parksWithGeometry}
                 onBoundsChange={handleBoundsChange}
                 activePlace={hoveredPlace || selectedPlace}
                 onMarkerClick={handleMapMarkerClick}

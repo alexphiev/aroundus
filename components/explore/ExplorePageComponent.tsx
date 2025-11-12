@@ -1,12 +1,8 @@
 'use client'
 
-import {
-  BoundingBox,
-  ParkGeometry,
-  PlacesInView,
-  getPlacesInBounds,
-} from '@/actions/explore.actions'
+import { ParkGeometry, getPlacesInBounds } from '@/actions/explore.actions'
 import ExploreMap from '@/components/explore/ExploreMap'
+import { BoundingBox, PlacesInView } from '@/types/map.types'
 import { useCallback, useEffect, useState } from 'react'
 
 interface ExploreClientProps {

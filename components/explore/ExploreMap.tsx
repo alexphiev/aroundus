@@ -1,13 +1,12 @@
 'use client'
 
 import {
-  GeoJSONGeometry,
   ParkGeometry,
-  PlacesInView,
   getPlaceGeometry,
   getPlaceMetadata,
 } from '@/actions/explore.actions'
 import { Button } from '@/components/ui/button'
+import { GeoJSONGeometry, PlacesInView } from '@/types/map.types'
 import { FocusIcon } from 'lucide-react'
 import maplibregl, { LngLatBounds, Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
