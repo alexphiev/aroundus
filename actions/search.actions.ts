@@ -78,7 +78,7 @@ export async function searchPlacesAction(
       search_lng: longitude,
       radius_km: radiusKm,
       result_limit: limit,
-      min_score: 3, // Quite restrictive, but we want to be sure we're getting good results
+      min_score: 1,
     }
   )
 

@@ -27,7 +27,12 @@ interface Props {
   activePlace?: SearchPlaceInView | null
   onMarkerClick?: (index: number, place: SearchPlaceInView) => void
   onPopupClose?: () => void
-  onMapReady?: (centerMap: (lat: number, lng: number) => void) => void
+  onMapReady?: (
+    centerMap: (lat: number, lng: number) => void,
+    restoreView: () => void
+  ) => void
+  hideZoomControls?: boolean
+  disableHoverInteractions?: boolean
 }
 
 const Map: React.FC<Props> = ({
@@ -39,6 +44,8 @@ const Map: React.FC<Props> = ({
   onMarkerClick,
   onPopupClose,
   onMapReady,
+  hideZoomControls = false,
+  disableHoverInteractions = false,
 }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null)
   const map = useRef<MapLibreMap | null>(null)
@@ -61,9 +68,13 @@ const Map: React.FC<Props> = ({
   const activePlaceRef = useRef<SearchPlaceInView | null | undefined>(
     activePlace
   )
-  // Track zoom level before centering, to restore it when going back
   const zoomBeforeCenteringRef = useRef<number | null>(null)
+  const centerBeforeCenteringRef = useRef<{ lng: number; lat: number } | null>(
+    null
+  )
   const shouldRestoreZoomRef = useRef(false)
+  const userMovedAfterCenteringRef = useRef(false)
+  const isProgrammaticMoveRef = useRef(false)
 
   const mapStyle =
     'https://api.maptiler.com/maps/topo-v2/style.json?key=Gxxj1jCvJhu2HSp6n0tp'
@@ -73,26 +84,72 @@ const Map: React.FC<Props> = ({
   }, [onBoundsChange])
 
   const centerMap = useCallback((lat: number, lng: number) => {
-    if (!map.current) return
+    if (!map.current) {
+      return
+    }
+
+    const currentCenter = map.current.getCenter()
     const currentZoom = map.current.getZoom()
-    // Use zoom 10 as minimum, but keep current zoom if it's higher
     const targetZoom = Math.max(currentZoom, 10)
 
-    // Store original zoom if we're going to change it (for restoration when going back)
-    if (targetZoom > currentZoom) {
-      zoomBeforeCenteringRef.current = currentZoom
-      shouldRestoreZoomRef.current = true
-    } else {
-      // If zoom won't change, don't restore
-      shouldRestoreZoomRef.current = false
-      zoomBeforeCenteringRef.current = null
+    isProgrammaticMoveRef.current = true
+
+    centerBeforeCenteringRef.current = {
+      lng: currentCenter.lng,
+      lat: currentCenter.lat,
     }
+    zoomBeforeCenteringRef.current = currentZoom
+    shouldRestoreZoomRef.current = true
+    userMovedAfterCenteringRef.current = false
 
     map.current.flyTo({
       center: [lng, lat],
       zoom: targetZoom,
       duration: 1000,
     })
+
+    setTimeout(() => {
+      isProgrammaticMoveRef.current = false
+    }, 1100)
+  }, [])
+
+  const restoreView = useCallback(() => {
+    if (
+      !map.current ||
+      !shouldRestoreZoomRef.current ||
+      userMovedAfterCenteringRef.current
+    ) {
+      shouldRestoreZoomRef.current = false
+      zoomBeforeCenteringRef.current = null
+      centerBeforeCenteringRef.current = null
+      userMovedAfterCenteringRef.current = false
+      return
+    }
+
+    if (
+      zoomBeforeCenteringRef.current !== null &&
+      centerBeforeCenteringRef.current !== null
+    ) {
+      isProgrammaticMoveRef.current = true
+
+      map.current.flyTo({
+        center: [
+          centerBeforeCenteringRef.current.lng,
+          centerBeforeCenteringRef.current.lat,
+        ],
+        zoom: zoomBeforeCenteringRef.current,
+        duration: 500,
+      })
+
+      setTimeout(() => {
+        isProgrammaticMoveRef.current = false
+      }, 600)
+    }
+
+    shouldRestoreZoomRef.current = false
+    zoomBeforeCenteringRef.current = null
+    centerBeforeCenteringRef.current = null
+    userMovedAfterCenteringRef.current = false
   }, [])
 
   const updateBounds = useCallback(() => {
@@ -451,9 +508,7 @@ const Map: React.FC<Props> = ({
     hoverGeometryLayerRef.current = null
   }, [])
 
-  // Cleanup hover state function
   const cleanupHoverState = useCallback(() => {
-    // Close hover popup
     if (hoverPopupRef.current) {
       isProgrammaticCloseRef.current = true
       hoverPopupRef.current.remove()
@@ -461,34 +516,41 @@ const Map: React.FC<Props> = ({
       hoveredPlaceIdRef.current = null
       isProgrammaticCloseRef.current = false
     }
-    // Remove hover geometry
     removeHoverGeometryLayer()
   }, [removeHoverGeometryLayer])
 
-  // Helper function to create and show pinned popup (persistent, with close button)
+  const cleanupPinnedState = useCallback(() => {
+    if (pinnedPopupRef.current) {
+      isProgrammaticCloseRef.current = true
+      pinnedPopupRef.current.remove()
+      pinnedPopupRef.current = null
+      pinnedPlaceIdRef.current = null
+      isProgrammaticCloseRef.current = false
+    }
+    removeGeometryLayer()
+  }, [removeGeometryLayer])
+
+  const cleanupParkHoverState = useCallback(() => {
+    if (parkHoverPopupRef.current) {
+      isProgrammaticCloseRef.current = true
+      parkHoverPopupRef.current.remove()
+      parkHoverPopupRef.current = null
+      hoveredParkIdRef.current = null
+      isProgrammaticCloseRef.current = false
+    }
+  }, [])
+
+  const cleanupAllPopupsAndGeometries = useCallback(() => {
+    cleanupHoverState()
+    cleanupPinnedState()
+    cleanupParkHoverState()
+  }, [cleanupHoverState, cleanupPinnedState, cleanupParkHoverState])
+
   const showPinnedPopup = useCallback(
     async (place: SearchPlaceInView) => {
       if (!map.current) return
 
-      // Close previous pinned popup if exists
-      if (pinnedPopupRef.current) {
-        isProgrammaticCloseRef.current = true
-        pinnedPopupRef.current.remove()
-        pinnedPopupRef.current = null
-        pinnedPlaceIdRef.current = null
-        isProgrammaticCloseRef.current = false
-        removeGeometryLayer()
-      }
-
-      // Close hover popup if hovering on the same place
-      if (hoverPopupRef.current && hoveredPlaceIdRef.current === place.id) {
-        isProgrammaticCloseRef.current = true
-        hoverPopupRef.current.remove()
-        hoverPopupRef.current = null
-        hoveredPlaceIdRef.current = null
-        isProgrammaticCloseRef.current = false
-        removeHoverGeometryLayer()
-      }
+      cleanupAllPopupsAndGeometries()
 
       pinnedPlaceIdRef.current = place.id
 
@@ -526,12 +588,7 @@ const Map: React.FC<Props> = ({
 
       pinnedPopupRef.current = popup
     },
-    [
-      addGeometryLayer,
-      removeGeometryLayer,
-      removeHoverGeometryLayer,
-      onPopupClose,
-    ]
+    [addGeometryLayer, cleanupAllPopupsAndGeometries, onPopupClose]
   )
 
   const addPlacesLayer = useCallback(() => {
@@ -600,47 +657,50 @@ const Map: React.FC<Props> = ({
     })
 
     // Add layer with MapLibre native interpolation
+    // Mobile markers: larger but with smaller max size
     map.current.addLayer({
       id: layerId,
       type: 'circle',
       source: sourceId,
       paint: {
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          8,
-          3, // At zoom 8: radius 3px
-          12,
-          6, // At zoom 12: radius 6px
-          16,
-          12, // At zoom 16: radius 12px
-        ],
+        'circle-radius': hideZoomControls
+          ? [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              8,
+              6,
+              12,
+              10,
+              16,
+              14,
+            ]
+          : [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              8,
+              3,
+              12,
+              6,
+              16,
+              12,
+            ],
         'circle-color': '#D3572C',
         'circle-stroke-color': '#fff',
-        'circle-stroke-width': 1,
+        'circle-stroke-width': hideZoomControls ? 2 : 1,
       },
     })
 
-    // Helper function to create and show hover popup (temporary, no close button)
     const showHoverPopup = async (place: SearchPlaceInView) => {
-      // Don't show hover popup if hovering on the pinned place
       if (pinnedPlaceIdRef.current === place.id) {
         return
       }
 
-      // Store the place ID we're about to show hover for
       const targetPlaceId = place.id
 
-      // Close existing hover popup and geometry
-      if (hoverPopupRef.current) {
-        isProgrammaticCloseRef.current = true
-        hoverPopupRef.current.remove()
-        hoverPopupRef.current = null
-        hoveredPlaceIdRef.current = null
-        isProgrammaticCloseRef.current = false
-      }
-      removeHoverGeometryLayer()
+      cleanupHoverState()
+      cleanupParkHoverState()
 
       // Verify we're still hovering on the same place after async cleanup
       if (!map.current || !map.current.isStyleLoaded()) {
@@ -667,19 +727,21 @@ const Map: React.FC<Props> = ({
       const popupRoot = createRoot(popupNode)
       popupRoot.render(<PopupContent place={place} />)
 
+      if (!map.current) {
+        return
+      }
+
       const popup = new maplibregl.Popup({
-        closeButton: false, // No close button for hover popup
+        closeButton: false,
         closeOnClick: false,
         offset: [0, -10],
       })
         .setLngLat([place.long, place.lat])
         .setDOMContent(popupNode)
-        .addTo(map.current!)
+        .addTo(map.current)
 
-      // Verify we're still on the same place before setting the ref
       if (hoveredPlaceIdRef.current === targetPlaceId) {
         popup.on('close', () => {
-          // Only clear if this is still the current hover popup
           if (hoverPopupRef.current === popup) {
             hoverPopupRef.current = null
             hoveredPlaceIdRef.current = null
@@ -689,32 +751,33 @@ const Map: React.FC<Props> = ({
 
         hoverPopupRef.current = popup
       } else {
-        // We moved to a different place, clean up this popup
         popup.remove()
       }
     }
 
-    // Hover to show popup (temporary, can coexist with pinned popup)
-    map.current.on('mouseenter', layerId, async (e) => {
-      if (map.current) {
-        map.current.getCanvas().style.cursor = 'pointer'
-      }
+    // Hover to show popup (temporary, can coexist with pinned popup) - only on desktop
+    if (!disableHoverInteractions) {
+      map.current.on('mouseenter', layerId, async (e) => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = 'pointer'
+        }
 
-      if (!e.features || e.features.length === 0) {
-        return
-      }
+        if (!e.features || e.features.length === 0) {
+          return
+        }
 
-      const feature = e.features[0]
-      const placeId = feature.properties?.id
-      const place = placesRef.current.find((p) => p.id === placeId)
+        const feature = e.features[0]
+        const placeId = feature.properties?.id
+        const place = placesRef.current.find((p) => p.id === placeId)
 
-      if (!place) {
-        return
-      }
+        if (!place) {
+          return
+        }
 
-      // Show hover popup (will not show if hovering on pinned place)
-      await showHoverPopup(place)
-    })
+        // Show hover popup (will not show if hovering on pinned place)
+        await showHoverPopup(place)
+      })
+    }
 
     // Click to pin popup and select place
     map.current.on('click', layerId, async (e) => {
@@ -731,7 +794,18 @@ const Map: React.FC<Props> = ({
         return
       }
 
-      // Pin the popup (this will show it with a close button and close previous pinned popup)
+      // On mobile, skip popup pinning and go straight to detail view
+      if (disableHoverInteractions) {
+        if (onMarkerClick) {
+          const placeIndex = placesRef.current.findIndex((p) => p.id === placeId)
+          if (placeIndex >= 0) {
+            onMarkerClick(placeIndex, place)
+          }
+        }
+        return
+      }
+
+      // Desktop: Pin the popup (this will show it with a close button and close previous pinned popup)
       await showPinnedPopup(place)
 
       // Also trigger the marker click handler to open detail view
@@ -743,15 +817,17 @@ const Map: React.FC<Props> = ({
       }
     })
 
-    // Remove hover popup when leaving (only hover popup, not pinned)
-    map.current.on('mouseleave', layerId, () => {
-      if (map.current) {
-        map.current.getCanvas().style.cursor = ''
-      }
+    // Remove hover popup when leaving (only hover popup, not pinned) - only on desktop
+    if (!disableHoverInteractions) {
+      map.current.on('mouseleave', layerId, () => {
+        if (map.current) {
+          map.current.getCanvas().style.cursor = ''
+        }
 
-      // Close hover popup when mouse leaves (pinned popup stays)
-      cleanupHoverState()
-    })
+        // Close hover popup when mouse leaves (pinned popup stays)
+        cleanupHoverState()
+      })
+    }
 
     // Add click handler for map background to clear pinned popup and deselect place
     map.current.on('click', (e) => {
@@ -781,10 +857,12 @@ const Map: React.FC<Props> = ({
     onMarkerClick,
     onPopupClose,
     removeGeometryLayer,
-    removeHoverGeometryLayer,
     addHoverGeometryLayer,
     showPinnedPopup,
     cleanupHoverState,
+    cleanupParkHoverState,
+    hideZoomControls,
+    disableHoverInteractions,
   ])
 
   const onViewAllPlaces = useCallback(() => {
@@ -818,11 +896,16 @@ const Map: React.FC<Props> = ({
 
       map.current.on('load', () => {
         setMapLoaded(true)
-        map.current?.addControl(new maplibregl.NavigationControl(), 'top-right')
 
-        // Expose the centerMap function to parent
+        if (!hideZoomControls) {
+          map.current?.addControl(
+            new maplibregl.NavigationControl(),
+            'top-right'
+          )
+        }
+
         if (onMapReady) {
-          onMapReady(centerMap)
+          onMapReady(centerMap, restoreView)
         }
 
         setTimeout(() => {
@@ -840,10 +923,16 @@ const Map: React.FC<Props> = ({
 
       map.current.on('dragstart', () => {
         isUserInteractingRef.current = true
+        if (!isProgrammaticMoveRef.current) {
+          userMovedAfterCenteringRef.current = true
+        }
       })
 
       map.current.on('zoomstart', () => {
         isUserInteractingRef.current = true
+        if (!isProgrammaticMoveRef.current) {
+          userMovedAfterCenteringRef.current = true
+        }
       })
 
       map.current.on('moveend', () => {
@@ -869,7 +958,6 @@ const Map: React.FC<Props> = ({
     }
 
     return () => {
-      // Clean up all hover state
       if (hoverPopupRef.current) {
         isProgrammaticCloseRef.current = true
         hoverPopupRef.current.remove()
@@ -879,6 +967,13 @@ const Map: React.FC<Props> = ({
       }
       if (hoverGeometryLayerRef.current) {
         removeHoverGeometryLayer()
+      }
+      if (pinnedPopupRef.current) {
+        isProgrammaticCloseRef.current = true
+        pinnedPopupRef.current.remove()
+        pinnedPopupRef.current = null
+        pinnedPlaceIdRef.current = null
+        isProgrammaticCloseRef.current = false
       }
       if (map.current) {
         removeGeometryLayer()
@@ -891,16 +986,14 @@ const Map: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Update places layer when places change
   useEffect(() => {
     if (!map.current || !mapLoaded) return
 
-    // Clean up any hover state when places change
-    cleanupHoverState()
+    cleanupAllPopupsAndGeometries()
 
     placesRef.current = places
     addPlacesLayer()
-  }, [places, mapLoaded, addPlacesLayer, cleanupHoverState])
+  }, [places, mapLoaded, addPlacesLayer, cleanupAllPopupsAndGeometries])
 
   // Add park geometries layer with pre-loaded data
   useEffect(() => {
@@ -1013,13 +1106,8 @@ const Map: React.FC<Props> = ({
             return
           }
 
-          if (parkHoverPopupRef.current) {
-            isProgrammaticCloseRef.current = true
-            parkHoverPopupRef.current.remove()
-            parkHoverPopupRef.current = null
-            hoveredParkIdRef.current = null
-            isProgrammaticCloseRef.current = false
-          }
+          cleanupParkHoverState()
+          cleanupHoverState()
 
           hoveredParkIdRef.current = parkId
 
@@ -1058,93 +1146,46 @@ const Map: React.FC<Props> = ({
             map.current.getCanvas().style.cursor = ''
           }
 
-          if (parkHoverPopupRef.current) {
-            isProgrammaticCloseRef.current = true
-            parkHoverPopupRef.current.remove()
-            parkHoverPopupRef.current = null
-            hoveredParkIdRef.current = null
-            isProgrammaticCloseRef.current = false
-          }
+          cleanupParkHoverState()
         })
       }
     } catch (error) {
       console.warn('Failed to add park geometries layer:', error)
     }
-  }, [parksWithGeometry, mapLoaded])
+  }, [parksWithGeometry, mapLoaded, cleanupParkHoverState, cleanupHoverState])
 
   // Update activePlaceRef when activePlace changes
   useEffect(() => {
     activePlaceRef.current = activePlace
   }, [activePlace])
 
-  // Handle activePlace prop to show/hide popup (from card hover/click)
   useEffect(() => {
-    if (!map.current || !mapLoaded) {
+    if (!map.current || !mapLoaded || disableHoverInteractions) {
       return
     }
 
     if (activePlace) {
-      // Don't recreate pinned popup if it's already open for this place
-      if (
-        pinnedPopupRef.current &&
-        pinnedPlaceIdRef.current === activePlace.id
-      ) {
+      if (pinnedPlaceIdRef.current === activePlace.id) {
         return
       }
 
-      // Show pinned popup for selected place (from card click)
-      showPinnedPopup(activePlace).catch((error) => {
-        console.error('Failed to show pinned popup:', error)
-      })
-    } else {
-      // When activePlace becomes null, close pinned popup and clean up geometry
-      if (pinnedPopupRef.current) {
-        isProgrammaticCloseRef.current = true
-        pinnedPopupRef.current.remove()
-        pinnedPopupRef.current = null
-        pinnedPlaceIdRef.current = null
-        isProgrammaticCloseRef.current = false
-        removeGeometryLayer()
-      }
-
-      // Restore zoom level if it was changed when centering on the place
-      if (
-        shouldRestoreZoomRef.current &&
-        zoomBeforeCenteringRef.current !== null &&
-        map.current
-      ) {
-        const originalZoom = zoomBeforeCenteringRef.current
-        map.current.flyTo({
-          zoom: originalZoom,
-          duration: 500,
+      if (hoveredPlaceIdRef.current !== activePlace.id) {
+        cleanupHoverState()
+        hoveredPlaceIdRef.current = activePlace.id
+        addHoverGeometryLayer(activePlace).catch((error) => {
+          console.warn('Failed to add hover geometry:', error)
         })
-        // Reset the restore flag
-        shouldRestoreZoomRef.current = false
-        zoomBeforeCenteringRef.current = null
       }
+    } else {
+      cleanupHoverState()
     }
-  }, [
-    activePlace,
-    mapLoaded,
-    addGeometryLayer,
-    removeGeometryLayer,
-    onPopupClose,
-    showPinnedPopup,
-  ])
+  }, [activePlace, mapLoaded, disableHoverInteractions, addHoverGeometryLayer, cleanupHoverState])
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (pinnedPopupRef.current) {
-        isProgrammaticCloseRef.current = true
-        pinnedPopupRef.current.remove()
-        pinnedPopupRef.current = null
-        isProgrammaticCloseRef.current = false
-      }
-      removeGeometryLayer()
-      removeHoverGeometryLayer()
+      cleanupAllPopupsAndGeometries()
     }
-  }, [removeGeometryLayer, removeHoverGeometryLayer])
+  }, [cleanupAllPopupsAndGeometries])
 
   return (
     <div
@@ -1165,11 +1206,13 @@ const Map: React.FC<Props> = ({
         <FocusIcon className="h-4 w-4" />
       </Button>
 
-      <div className="absolute top-4 right-16 z-10">
-        <div className="rounded-md bg-white px-3 py-1 text-sm shadow-md dark:bg-neutral-800">
-          Zoom: {Math.round(currentZoom * 10) / 10}
+      {!hideZoomControls && (
+        <div className="absolute top-4 right-16 z-10">
+          <div className="rounded-md bg-white px-3 py-1 text-sm shadow-md dark:bg-neutral-800">
+            Zoom: {Math.round(currentZoom * 10) / 10}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

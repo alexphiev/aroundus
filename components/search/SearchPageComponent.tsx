@@ -2,12 +2,8 @@
 
 import { ParkWithGeometry, searchPlacesAction } from '@/actions/search.actions'
 import { SearchFormModal } from '@/components/search/form/SearchFormModal'
-import SearchFiltersBar from '@/components/search/result/SearchFiltersBar'
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable'
+import MobileSearchResults from '@/components/search/result/MobileSearchResults'
+import DesktopSearchResults from '@/components/search/result/DesktopSearchResults'
 import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
 import { BoundingBox } from '@/types/map.types'
 import type { SearchFilters, SearchFormValues } from '@/types/search.types'
@@ -16,12 +12,9 @@ import { distanceToRadiusKm } from '@/utils/distance.utils'
 import { mapActivityToPlaceTypes } from '@/utils/place.utils'
 import { searchFormSchema } from '@/validation/search-form.validation'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-// import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import Map from './result/Map'
-import SearchResults from './result/SearchResults'
 
 interface SearchPageComponentProps {
   parksWithGeometry: ParkWithGeometry[]
@@ -66,6 +59,8 @@ function SearchPageComponent({ parksWithGeometry }: SearchPageComponentProps) {
   const mapCenterCallbackRef = useRef<
     ((lat: number, lng: number) => void) | null
   >(null)
+  const mapRestoreViewCallbackRef = useRef<(() => void) | null>(null)
+  const isCenteringOnPlaceRef = useRef(false)
 
   const form = useForm<SearchFormValues>({
     resolver: standardSchemaResolver(searchFormSchema),
@@ -342,6 +337,11 @@ function SearchPageComponent({ parksWithGeometry }: SearchPageComponentProps) {
       boundsChangeTimeoutRef.current = setTimeout(() => {
         lastBoundsRef.current = bounds
 
+        // Don't refetch if we're just centering on a selected place
+        if (isCenteringOnPlaceRef.current) {
+          return
+        }
+
         if (!currentFiltersRef.current) {
           fetchPlacesInBounds(bounds)
         } else {
@@ -412,14 +412,18 @@ function SearchPageComponent({ parksWithGeometry }: SearchPageComponentProps) {
       setActiveCardIndex(index)
       setSelectedPlace(place)
 
-      // Clear hover state when going back to cards view
-      if (place === null) {
-        setHoveredPlace(null)
+      if (shouldCenterMap && place && mapCenterCallbackRef.current) {
+        isCenteringOnPlaceRef.current = true
+        mapCenterCallbackRef.current(place.lat, place.long)
+        setTimeout(() => {
+          isCenteringOnPlaceRef.current = false
+        }, 2500)
       }
 
-      // Center map on place if requested (e.g., when clicking a card)
-      if (shouldCenterMap && place && mapCenterCallbackRef.current) {
-        mapCenterCallbackRef.current(place.lat, place.long)
+      if (!place && index === -1) {
+        if (mapRestoreViewCallbackRef.current) {
+          mapRestoreViewCallbackRef.current()
+        }
       }
     },
     []
@@ -427,20 +431,6 @@ function SearchPageComponent({ parksWithGeometry }: SearchPageComponentProps) {
 
   const handlePlaceHover = useCallback((place: SearchPlaceInView | null) => {
     setHoveredPlace(place)
-  }, [])
-
-  const handleMapMarkerClick = useCallback(
-    (index: number, place: SearchPlaceInView) => {
-      setActiveCardIndex(index)
-      setSelectedPlace(place)
-      // Note: We don't center the map here because the user clicked directly on the map
-    },
-    []
-  )
-
-  const handleMapPopupClose = useCallback(() => {
-    setActiveCardIndex(-1)
-    setSelectedPlace(null)
   }, [])
 
   useEffect(() => {
@@ -466,61 +456,51 @@ function SearchPageComponent({ parksWithGeometry }: SearchPageComponentProps) {
       />
 
       <div className="ml-0 flex h-[100dvh] flex-col md:ml-[60px]">
-        {currentFilters && (
-          <SearchFiltersBar
-            filters={currentFilters}
-            onEdit={handleEditFilters}
-            onClear={handleClearFilters}
+        <div className="hidden h-full flex-1 flex-col md:flex">
+          <DesktopSearchResults
+            places={placeResults}
+            parksWithGeometry={parksWithGeometry}
+            isLoading={isLoading}
+            onNewSearch={() => setIsSearchOpen(true)}
+            hasFilters={!!currentFilters}
+            selectedPlace={selectedPlace}
+            activeCardIndex={activeCardIndex}
+            hoveredPlace={hoveredPlace}
+            onPlaceSelect={handlePlaceSelect}
+            onPlaceHover={handlePlaceHover}
+            onBoundsChange={handleBoundsChange}
+            currentFilters={currentFilters}
+            onEditFilters={handleEditFilters}
+            onClearFilters={handleClearFilters}
+            onMapReady={(centerMap, restoreView) => {
+              if (window.innerWidth >= 768) {
+                mapCenterCallbackRef.current = centerMap
+                mapRestoreViewCallbackRef.current = restoreView
+              }
+            }}
           />
-        )}
-
-        <div className="hidden h-full flex-1 md:block">
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            <ResizablePanel
-              defaultSize={50}
-              minSize={30}
-              className="h-full overflow-hidden"
-            >
-              <SearchResults
-                places={placeResults}
-                isLoading={isLoading}
-                onNewSearch={() => setIsSearchOpen(true)}
-                hasFilters={!!currentFilters}
-                selectedPlace={selectedPlace}
-                activeCardIndex={activeCardIndex}
-                onPlaceSelect={handlePlaceSelect}
-                onPlaceHover={handlePlaceHover}
-              />
-            </ResizablePanel>
-
-            <ResizableHandle withHandle />
-
-            <ResizablePanel defaultSize={50} minSize={30} className="h-full">
-              <Map
-                places={placeResults}
-                parksWithGeometry={parksWithGeometry}
-                onBoundsChange={handleBoundsChange}
-                activePlace={hoveredPlace || selectedPlace}
-                onMarkerClick={handleMapMarkerClick}
-                onPopupClose={handleMapPopupClose}
-                onMapReady={(centerMap) => {
-                  mapCenterCallbackRef.current = centerMap
-                }}
-              />
-            </ResizablePanel>
-          </ResizablePanelGroup>
         </div>
 
-        {/* <div className="block flex-1 md:hidden">
-          <div className="relative h-full">
-            <SearchMap
-              places={placeResults}
-              center={mapCenter}
-              onBoundsChange={handleBoundsChange}
-              userLocation={userLocation}
-            />
-          </div>
-        </div> */}
+        <div className="block h-full flex-1 md:hidden">
+          <MobileSearchResults
+            places={placeResults}
+            parksWithGeometry={parksWithGeometry}
+            isLoading={isLoading}
+            onNewSearch={() => setIsSearchOpen(true)}
+            hasFilters={!!currentFilters}
+            selectedPlace={selectedPlace}
+            activeCardIndex={activeCardIndex}
+            onPlaceSelect={handlePlaceSelect}
+            onPlaceHover={handlePlaceHover}
+            onBoundsChange={handleBoundsChange}
+            onMapReady={(centerMap, restoreView) => {
+              if (window.innerWidth < 768) {
+                mapCenterCallbackRef.current = centerMap
+                mapRestoreViewCallbackRef.current = restoreView
+              }
+            }}
+          />
+        </div>
       </div>
     </>
   )
