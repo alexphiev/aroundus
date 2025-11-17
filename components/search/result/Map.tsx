@@ -524,9 +524,10 @@ const Map: React.FC<Props> = ({
       isProgrammaticCloseRef.current = true
       pinnedPopupRef.current.remove()
       pinnedPopupRef.current = null
-      pinnedPlaceIdRef.current = null
       isProgrammaticCloseRef.current = false
     }
+    // Always clear pinned place ID and geometry (needed for mobile where there's no popup)
+    pinnedPlaceIdRef.current = null
     removeGeometryLayer()
   }, [removeGeometryLayer])
 
@@ -835,20 +836,30 @@ const Map: React.FC<Props> = ({
         layers: [layerId],
       })
 
-      // If clicking on empty map area and popup is pinned, close it and deselect
-      if (features.length === 0 && pinnedPopupRef.current) {
-        // Don't restore zoom when clicking map to unfocus
-        shouldRestoreZoomRef.current = false
-        zoomBeforeCenteringRef.current = null
+      // If clicking on empty map area
+      if (features.length === 0) {
+        // Desktop: close pinned popup if it exists
+        if (pinnedPopupRef.current) {
+          // Don't restore zoom when clicking map to unfocus
+          shouldRestoreZoomRef.current = false
+          zoomBeforeCenteringRef.current = null
 
-        removeGeometryLayer()
-        isProgrammaticCloseRef.current = true
-        pinnedPopupRef.current.remove()
-        pinnedPopupRef.current = null
-        pinnedPlaceIdRef.current = null
-        isProgrammaticCloseRef.current = false
-        // Deselect the place in the left panel
-        if (onPopupClose) {
+          removeGeometryLayer()
+          isProgrammaticCloseRef.current = true
+          pinnedPopupRef.current.remove()
+          pinnedPopupRef.current = null
+          pinnedPlaceIdRef.current = null
+          isProgrammaticCloseRef.current = false
+          // Deselect the place in the left panel
+          if (onPopupClose) {
+            onPopupClose()
+          }
+        }
+        // Mobile: close preview card if clicking on empty map area
+        else if (disableHoverInteractions && onPopupClose) {
+          // Don't restore zoom when clicking map to unfocus
+          shouldRestoreZoomRef.current = false
+          zoomBeforeCenteringRef.current = null
           onPopupClose()
         }
       }
@@ -1160,26 +1171,54 @@ const Map: React.FC<Props> = ({
   }, [activePlace])
 
   useEffect(() => {
-    if (!map.current || !mapLoaded || disableHoverInteractions) {
+    if (!map.current || !mapLoaded) {
       return
     }
 
     if (activePlace) {
-      if (pinnedPlaceIdRef.current === activePlace.id) {
-        return
-      }
-
-      if (hoveredPlaceIdRef.current !== activePlace.id) {
-        cleanupHoverState()
-        hoveredPlaceIdRef.current = activePlace.id
-        addHoverGeometryLayer(activePlace).catch((error) => {
-          console.warn('Failed to add hover geometry:', error)
-        })
+      // On mobile (disableHoverInteractions), use pinned geometry for preview place
+      // On desktop, use hover geometry
+      if (disableHoverInteractions) {
+        // Mobile: use pinned geometry for more prominent display
+        // Always update if it's a different place
+        if (pinnedPlaceIdRef.current !== activePlace.id) {
+          cleanupHoverState()
+          cleanupPinnedState()
+          pinnedPlaceIdRef.current = activePlace.id
+          // Add geometry for all place types (including parks)
+          // Parks will be shown with different opacity in addGeometryLayer
+          addGeometryLayer(activePlace).catch((error) => {
+            console.warn('Failed to add geometry layer:', error)
+            // Reset pinned place ID if geometry failed to load
+            pinnedPlaceIdRef.current = null
+          })
+        }
+      } else {
+        // Desktop: use hover geometry
+        if (hoveredPlaceIdRef.current !== activePlace.id) {
+          cleanupHoverState()
+          hoveredPlaceIdRef.current = activePlace.id
+          addHoverGeometryLayer(activePlace).catch((error) => {
+            console.warn('Failed to add hover geometry:', error)
+          })
+        }
       }
     } else {
       cleanupHoverState()
+      // On mobile, also cleanup pinned geometry when activePlace is cleared
+      if (disableHoverInteractions) {
+        cleanupPinnedState()
+      }
     }
-  }, [activePlace, mapLoaded, disableHoverInteractions, addHoverGeometryLayer, cleanupHoverState])
+  }, [
+    activePlace,
+    mapLoaded,
+    addHoverGeometryLayer,
+    addGeometryLayer,
+    cleanupHoverState,
+    cleanupPinnedState,
+    disableHoverInteractions,
+  ])
 
   useEffect(() => {
     return () => {

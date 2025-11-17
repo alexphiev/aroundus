@@ -1,17 +1,18 @@
 'use client'
 
-import MapToggleButton from '@/components/discovery/result/MapToggleButton'
+import { ParkWithGeometry } from '@/actions/search.actions'
 import EmptyState from '@/components/discovery/result/EmptyState'
 import LoadingState from '@/components/discovery/result/LoadingState'
+import MapToggleButton from '@/components/discovery/result/MapToggleButton'
 import { Button } from '@/components/ui/button'
-import { ParkWithGeometry } from '@/actions/search.actions'
 import { SearchPlaceInView } from '@/types/search.types'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import Map from './Map'
-import PlaceResultsGrid from './PlaceResultsGrid'
 import SearchPlaceDetailView from './details/SearchPlaceDetailView'
+import Map from './Map'
+import MobileMapPreviewCard from './MobileMapPreviewCard'
+import PlaceResultsGrid from './PlaceResultsGrid'
 
 interface MobileSearchResultsProps {
   places: SearchPlaceInView[]
@@ -56,17 +57,51 @@ export default function MobileSearchResults({
   const [navigationContext, setNavigationContext] = useState<'map' | 'grid'>(
     'map'
   )
+  const [previewPlace, setPreviewPlace] = useState<SearchPlaceInView | null>(
+    null
+  )
 
   const activePlace =
     activeCardIndex >= 0 && places ? places[activeCardIndex] : null
 
   const handleMarkerClick = (index: number, place: SearchPlaceInView) => {
-    onPlaceSelect(index, place, false)
+    // Only set the index for tracking, but don't set selectedPlace yet
+    // This will show the preview card instead of the detail view
+    onPlaceSelect(index, null, false)
     setNavigationContext('map')
+    setPreviewPlace(place)
   }
 
   const handlePopupClose = () => {
+    // Clear both the selected place and preview place
     onPlaceSelect(-1, null)
+    setPreviewPlace(null)
+  }
+
+  const handlePreviewCardClick = () => {
+    if (!previewPlace) {
+      return
+    }
+
+    // Open the detail view and clear the preview card
+    onPlaceSelect(activeCardIndex, previewPlace, false)
+    setPreviewPlace(null)
+
+    const url = new URL(window.location.href)
+    url.searchParams.set('place', activeCardIndex.toString())
+    url.searchParams.set('placeName', previewPlace.name)
+    url.searchParams.set('from', 'map')
+
+    window.history.pushState(
+      {
+        detailView: true,
+        index: activeCardIndex,
+        placeName: previewPlace.name,
+        from: 'map',
+      },
+      '',
+      url.toString()
+    )
   }
 
   const handleCardClick = (index: number, place: SearchPlaceInView) => {
@@ -91,7 +126,8 @@ export default function MobileSearchResults({
       onPlaceSelect(-1, null)
     } else {
       setVisibleView('map')
-      onPlaceSelect(activeCardIndex, null)
+      onPlaceSelect(-1, null)
+      setPreviewPlace(null)
     }
 
     const url = new URL(window.location.href)
@@ -130,12 +166,23 @@ export default function MobileSearchResults({
       if (!placeIndex && selectedPlace) {
         if (navigationContext === 'grid') {
           onPlaceSelect(-1, null)
+        } else {
+          // Coming back from map context - clear both selected place and preview
+          onPlaceSelect(-1, null)
+          setPreviewPlace(null)
         }
       }
     }
     window.addEventListener('popstate', handlePopstate)
     return () => window.removeEventListener('popstate', handlePopstate)
   }, [selectedPlace, navigationContext, onPlaceSelect])
+
+  // Clear preview card when switching away from map view
+  useEffect(() => {
+    if (visibleView === 'grid') {
+      setPreviewPlace(null)
+    }
+  }, [visibleView])
 
   return (
     <div className="flex h-full flex-col">
@@ -145,7 +192,7 @@ export default function MobileSearchResults({
             places={places}
             parksWithGeometry={parksWithGeometry}
             onBoundsChange={onBoundsChange}
-            activePlace={activePlace}
+            activePlace={previewPlace || activePlace}
             onMarkerClick={handleMarkerClick}
             onPopupClose={handlePopupClose}
             onMapReady={onMapReady}
@@ -153,6 +200,15 @@ export default function MobileSearchResults({
             disableHoverInteractions={true}
           />
         </div>
+
+        {previewPlace && !selectedPlace && visibleView === 'map' && (
+          <AnimatePresence>
+            <MobileMapPreviewCard
+              place={previewPlace}
+              onClick={handlePreviewCardClick}
+            />
+          </AnimatePresence>
+        )}
 
         <AnimatePresence mode="wait">
           {selectedPlace ? (
@@ -219,10 +275,19 @@ export default function MobileSearchResults({
         </AnimatePresence>
       </div>
 
-      {!selectedPlace && places && places.length > 0 && (
+      {!selectedPlace && (
         <MapToggleButton
-          onClick={() => setVisibleView(visibleView === 'map' ? 'grid' : 'map')}
+          onClick={() => {
+            const newView = visibleView === 'map' ? 'grid' : 'map'
+            setVisibleView(newView)
+            // Clear preview card when switching to grid view
+            if (newView === 'grid') {
+              setPreviewPlace(null)
+            }
+          }}
           showingMap={visibleView === 'map'}
+          isLoading={isLoading}
+          hasPreviewCard={!!previewPlace && visibleView === 'map'}
         />
       )}
     </div>
