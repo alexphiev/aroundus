@@ -1,5 +1,5 @@
 import { FormLabel } from '@/components/ui/form'
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 
 export const CustomFormLabel = ({
   children,

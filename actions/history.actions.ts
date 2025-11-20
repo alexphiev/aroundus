@@ -1,7 +1,7 @@
 'use server'
 
-import { authenticateUser, getSupabaseClient } from '@/lib/auth.service'
-import { NominatimResponse } from '@/lib/geocoding.service'
+import { authenticateUser, getSupabaseClient } from '@/services/auth.service'
+import { NominatimResponse } from '@/services/geocoding.service'
 import type {
   SaveSearchResponse,
   SearchHistoryRecord,

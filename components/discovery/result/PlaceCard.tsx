@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { abbreviateDuration } from '@/lib/utils'
+import { abbreviateDuration } from '@/services/utils'
 import { PlaceResultItem } from '@/types/result.types'
 import { getIcon, IconType } from '@/utils/icon.utils'
 import { motion } from 'framer-motion'

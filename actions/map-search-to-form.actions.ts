@@ -1,7 +1,7 @@
 'use server'
 
 import { MODEL } from '@/constants/ai.constants'
-import { getAIError, getGenAI, isAIAvailable } from '@/lib/ai.service'
+import { getAIError, getGenAI, isAIAvailable } from '@/services/ai.service'
 import type { FormValues } from '@/types/search-history.types'
 import {
   aiMappingSchema,

@@ -43,7 +43,7 @@ import {
   TRANSPORT_OPTIONS,
   WHEN_OPTIONS,
 } from '@/constants/discover.constants'
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 import type { DiscoveryFormValues } from '@/validation/discover-form.validation'
 import { format } from 'date-fns'
 import {

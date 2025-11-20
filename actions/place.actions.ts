@@ -1,6 +1,6 @@
 'use server'
 
-import { authenticateUser, getSupabaseClient } from '@/lib/auth.service'
+import { authenticateUser, getSupabaseClient } from '@/services/auth.service'
 import { z } from 'zod'
 
 // Define the structure of a trip to be saved, matching the TripResult and table schema

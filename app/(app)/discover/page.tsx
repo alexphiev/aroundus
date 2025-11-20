@@ -11,7 +11,7 @@ import { mapSearchToFormFilters } from '@/actions/map-search-to-form.actions'
 import { savePlaceAction } from '@/actions/place.actions'
 import { SearchFormModal } from '@/components/discovery/form/DiscoverFormModal'
 import DiscoveryResult from '@/components/discovery/result/DiscoveryResult'
-import { LocationInfo, reverseGeocode } from '@/lib/geocoding.service'
+import { LocationInfo, reverseGeocode } from '@/services/geocoding.service'
 import { OptimizedSearchContext, PlaceResultItem } from '@/types/result.types'
 import type {
   FormValues,

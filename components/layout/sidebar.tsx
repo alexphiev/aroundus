@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 import Link, { LinkProps } from 'next/link'
 import React, { useState, createContext, useContext } from 'react'
 import { motion } from 'framer-motion'

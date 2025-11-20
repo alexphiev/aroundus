@@ -2,7 +2,7 @@ import { Sidebar, SidebarBody, SidebarLink, useSidebar } from '@/components/layo
 import { signOutAction } from '@/app/actions'
 import { Compass, Home, LogOut, Map, Heart, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 
 const navLinks = [
   {

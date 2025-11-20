@@ -1,8 +1,8 @@
 'use server'
 
 import { MODEL } from '@/constants/ai.constants'
-import { getAIError, getGenAI } from '@/lib/ai.service'
-import { authenticateUser } from '@/lib/auth.service'
+import { getAIError, getGenAI } from '@/services/ai.service'
+import { authenticateUser } from '@/services/auth.service'
 import { FormValues } from '@/types/search-history.types'
 
 // Generate a short title summarizing the search
