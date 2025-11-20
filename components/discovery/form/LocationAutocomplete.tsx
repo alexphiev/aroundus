@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input'
 import {
   searchLocations,
   type LocationSuggestion,
-} from '@/lib/location-autocomplete.service'
-import { cn } from '@/lib/utils'
+} from '@/services/location-autocomplete.service'
+import { cn } from '@/services/utils'
 import { MapPin } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 

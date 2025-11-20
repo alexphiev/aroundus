@@ -1,9 +1,9 @@
 'use server'
 
 import { MODEL } from '@/constants/ai.constants'
-import { getAIError, getGenAI } from '@/lib/ai.service'
-import { authenticateUser } from '@/lib/auth.service'
-import { enrichPlaceWithGoogleData } from '@/lib/google-places.service'
+import { getAIError, getGenAI } from '@/services/ai.service'
+import { authenticateUser } from '@/services/auth.service'
+import { enrichPlaceWithGoogleData } from '@/services/google-places.service'
 import type {
   DiscoverError,
   DiscoverResult,

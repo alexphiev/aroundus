@@ -9,7 +9,24 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "generate-types": "npx supabase gen types --lang=typescript --project-id \"ydtttobvqajzglvdcqas\" --schema public > types/supabase.ts"
+    "generate-types": "npx supabase gen types --lang=typescript --project-id \"ydtttobvqajzglvdcqas\" --schema public > types/supabase.ts",
+    "fetch-osm-places": "tsx scripts/fetch-osm-places.ts",
+    "fetch-overture-places": "tsx scripts/fetch-overture-places.ts",
+    "fetch-french-regional-parks": "tsx scripts/fetch-french-regional-parks.ts",
+    "fetch-french-national-parks": "tsx scripts/fetch-french-national-parks.ts",
+    "remove-places": "tsx scripts/remove-places.ts",
+    "recalculate-scores": "tsx scripts/recalculate-scores.ts",
+    "migrate-place-types": "tsx scripts/migrate-place-types.ts",
+    "analyze-place-website": "tsx scripts/analyze-place-website.ts",
+    "analyze-place-wikipedia": "tsx scripts/analyze-place-wikipedia.ts",
+    "batch-analyze-place-websites": "tsx scripts/batch-analyze-place-websites.ts",
+    "batch-analyze-place-wikipedias": "tsx scripts/batch-analyze-place-wikipedias.ts",
+    "analyze-place-reddit": "tsx scripts/analyze-place-reddit.ts",
+    "analyze-urls": "tsx scripts/analyze-urls.ts",
+    "verify-places": "tsx scripts/verify-places.ts",
+    "clean-invalid-wikipedia": "tsx scripts/clean-invalid-wikipedia.ts",
+    "fetch-photos": "tsx scripts/fetch-photos.ts",
+    "fetch-ratings": "tsx scripts/fetch-ratings.ts"
   },
   "dependencies": {
     "@google/genai": "^1.23.0",
@@ -43,7 +60,11 @@
     "react-hook-form": "^7.64.0",
     "react-resizable-panels": "^3.0.6",
     "sonner": "^2.0.7",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.3",
+    "proj4": "^2.19.10",
+    "sitemap": "^9.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -67,7 +88,8 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "4.1.13",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "tsx": "^4.7.0"
   },
   "pnpm": {
     "overrides": {

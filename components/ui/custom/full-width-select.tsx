@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 
 const FullWidthSelect = React.forwardRef<
   React.ComponentRef<typeof SelectTrigger>,

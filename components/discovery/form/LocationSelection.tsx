@@ -7,7 +7,7 @@ import {
   FormItem,
   FormMessage,
 } from '@/components/ui/form'
-import { type LocationSuggestion } from '@/lib/location-autocomplete.service'
+import { type LocationSuggestion } from '@/services/location-autocomplete.service'
 import {
   CheckCircle,
   Loader2,

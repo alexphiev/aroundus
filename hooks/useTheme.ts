@@ -3,7 +3,7 @@ import {
   statusColors,
   type StatusVariant,
 } from '@/types/theme.types'
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 
 /**
  * Hook for using the centralized theme system

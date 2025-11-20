@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 
 // Reusable SelectionGrid component for grid-based selections
 interface SelectionGridProps {

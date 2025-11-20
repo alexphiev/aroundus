@@ -3,7 +3,7 @@
 import { getPlaceGeometry } from '@/actions/explore.actions'
 import { ParkWithGeometry } from '@/actions/search.actions'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn } from '@/services/utils'
 import { GeoJSONGeometry } from '@/types/map.types'
 import { SearchPlaceInView } from '@/types/search.types'
 import { FocusIcon } from 'lucide-react'
